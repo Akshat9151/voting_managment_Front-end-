@@ -1,0 +1,1968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ElectWin – Election Campaign Management Platform</title>
+  <meta name="description" content="Clean, modern, professional election campaign management platform for Sarpanch & Panch candidates, campaign managers, and field volunteers in India.">
+
+  <!-- Core Stylesheet -->
+  <link rel="stylesheet" href="css/styles.css">
+
+  <!-- External CDNs: Chart.js for analytics, Lucide icons for crisp UI -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container"></div>
+
+  <!-- Mobile Drawer Backdrop -->
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+  <!-- ==========================================================================
+       TOP NAVBAR (COMPACT SINGLE-ROW • AMAZON/FLIPKART STANDARD)
+       ========================================================================== -->
+  <header class="navbar-top">
+    <div class="navbar-left">
+      <!-- Mobile Hamburger Button -->
+      <button class="btn btn-secondary btn-icon" id="mobile-menu-toggle" aria-label="Toggle Navigation" style="display: none;">
+        <i data-lucide="menu"></i>
+      </button>
+
+      <a href="#dashboard" class="brand-wrapper" id="main-brand-logo-link">
+        <div class="brand-logo-badge" id="navbar-brand-logo-badge">
+          <i data-lucide="vote" style="width: 18px; height: 18px;"></i>
+        </div>
+        <div class="brand-text-block">
+          <h1 id="navbar-panel-title">Elect<span>Win</span></h1>
+          <span class="tagline" id="navbar-panel-subtitle">Rampur Campaign HQ</span>
+        </div>
+      </a>
+
+      <!-- Desktop Context Pill -->
+      <div class="election-selector-pill" id="election-context-picker" title="Active Campaign HQ">
+        <span class="pulse-dot"></span>
+        <span id="navbar-context-text">Gram Panchayat Rampur HQ</span>
+      </div>
+    </div>
+
+    <!-- Right Controls: Role Switcher & Role Badge -->
+    <div class="navbar-right">
+      <!-- Desktop Role Switcher Pill -->
+      <div class="role-switcher-group">
+        <button class="role-pill-btn active" id="role-btn-superadmin" data-role="superadmin">
+          <i data-lucide="award" style="width: 12px; height: 12px;"></i> <span data-i18n="superAdmin">Super Admin (Candidate)</span>
+        </button>
+        <button class="role-pill-btn" id="role-btn-admin" data-role="admin">
+          <i data-lucide="shield" style="width: 12px; height: 12px;"></i> <span data-i18n="admin">Admin (Manager)</span>
+        </button>
+        <button class="role-pill-btn" id="role-btn-volunteer" data-role="volunteer">
+          <i data-lucide="user-check" style="width: 12px; height: 12px;"></i> <span data-i18n="volunteer">Volunteer (Field)</span>
+        </button>
+      </div>
+
+      <!-- Current Role Indicator Badge -->
+      <span class="badge-chip badge-amber" id="current-role-badge">
+        <i data-lucide="award" style="width: 11px; height: 11px;"></i> <span data-i18n="candidateOwner">Candidate Owner</span>
+      </span>
+
+      <!-- Language Switcher Dropdown -->
+      <div class="lang-dropdown-wrapper" id="lang-dropdown-container">
+        <button class="lang-btn" id="lang-switcher-trigger" title="Switch Language / भाषा बदलें">
+          <i data-lucide="globe" style="width: 14px; height: 14px;"></i>
+          <span id="current-lang-label">🇬🇧 English</span>
+          <i data-lucide="chevron-down" style="width: 11px; height: 11px;"></i>
+        </button>
+        <div class="lang-dropdown-menu" id="lang-dropdown-menu">
+          <!-- Populated by i18n.js -->
+        </div>
+      </div>
+
+      <!-- Auth / Login Demo Button -->
+      <button class="btn btn-secondary btn-sm" id="open-login-btn">
+        <i data-lucide="log-in" style="width: 13px; height: 13px;"></i> <span data-i18n="login">Login</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       PREMIUM SPLIT-SCREEN AUTH SCREENS (LOGIN + MULTI-STEP SIGNUP)
+       Shown when user clicks Login button; hides #app-container
+       ========================================================================== -->
+  <div id="auth-fullscreen-section" style="display: flex; min-height: 100vh; background: var(--bg-base); padding: 20px 16px; align-items: flex-start; justify-content: center; flex-direction: column; gap: 0;">
+
+    <!-- ===== LOGIN CARD ===== -->
+    <div id="auth-card-login" style="width: 100%; max-width: 960px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1.15fr; background: var(--bg-surface); border: 1px solid var(--card-border); border-radius: var(--radius-xl); box-shadow: var(--shadow-modal); overflow: hidden;">
+
+      <!-- Left Visual Hero -->
+      <div style="background: linear-gradient(145deg, #0284c7, #7c3aed); padding: 36px 28px; color: white; display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 24px;">
+            <div class="brand-logo-badge" style="width: 36px; height: 36px; background: rgba(255,255,255,0.2); border: 1.5px solid rgba(255,255,255,0.3);">
+              <i data-lucide="vote" style="width: 18px; height: 18px;"></i>
+            </div>
+            <span style="font-family: var(--font-heading); font-weight: 900; font-size: 1.35rem;">Elect<span style="color: #38bdf8;">Win</span></span>
+          </div>
+
+          <h2 style="font-family: var(--font-heading); font-size: 1.7rem; font-weight: 900; line-height: 1.15; margin-bottom: 8px;" data-i18n="loginTitle">Welcome to ElectWin</h2>
+          <p style="opacity: 0.88; font-size: 0.88rem; font-weight: 500; line-height: 1.4; margin-bottom: 24px;" data-i18n="loginSubtitle">Run Your Election Campaign, Simplified</p>
+
+          <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px;">
+            <div style="display: flex; align-items: center; gap: 10px; font-size: 0.83rem; font-weight: 600;">
+              <div style="width: 24px; height: 24px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">✅</div>
+              <span data-i18n="featureBroadcast">Smart WhatsApp + SMS Fallback Broadcast</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; font-size: 0.83rem; font-weight: 600;">
+              <div style="width: 24px; height: 24px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">✅</div>
+              <span data-i18n="featureVoterDb">Voter Database with OCR Scanner</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; font-size: 0.83rem; font-weight: 600;">
+              <div style="width: 24px; height: 24px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">✅</div>
+              <span data-i18n="featureDesignStudio">Design Studio with 50+ Official Symbols</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; font-size: 0.83rem; font-weight: 600;">
+              <div style="width: 24px; height: 24px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">✅</div>
+              <span data-i18n="featureMultiLang">Multi-Language: Hindi, Marathi, Gujarati+</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.12); border-radius: var(--radius-md); padding: 12px 14px; backdrop-filter: blur(4px);">
+          <div style="font-size: 0.72rem; font-weight: 700; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px;" data-i18n="trustedBy">Trusted By</div>
+          <div style="font-size: 0.95rem; font-weight: 800;" data-i18n="candidatesCount">500+ Local Candidates</div>
+          <div style="font-size: 0.75rem; opacity: 0.85;" data-i18n="candidatesLocation">across Sarpanch & Panch elections in India</div>
+        </div>
+      </div>
+
+      <!-- Right Login Form Panel -->
+      <div style="padding: 36px 32px; display: flex; flex-direction: column; justify-content: center; background: var(--bg-surface);">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+          <div>
+            <h3 style="font-family: var(--font-heading); font-size: 1.25rem; font-weight: 900; color: var(--text-primary); margin-bottom: 2px;" data-i18n="signInTitle">Sign in to your account</h3>
+            <p style="font-size: 0.78rem; color: var(--text-tertiary);" data-i18n="signInSubtitle">Enter your registered phone or email below</p>
+          </div>
+          <!-- Inline Language Switcher -->
+          <div class="lang-dropdown-wrapper" id="login-lang-container" style="flex-shrink: 0;">
+            <button class="lang-btn" id="login-lang-trigger" onclick="document.getElementById('modal-lang-sheet').classList.add('open')" style="font-size: 0.72rem; padding: 4px 8px;">
+              <i data-lucide="globe" style="width: 13px; height: 13px;"></i>
+              <span id="login-lang-label">🇬🇧 English</span>
+            </button>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div class="control-group">
+            <label class="control-label" data-i18n="phoneEmail">Phone / Email</label>
+            <input type="text" class="form-input" id="login-phone-input" placeholder="e.g. 9876543210 or you@email.com" style="font-size: 0.9rem;">
+          </div>
+
+          <!-- OTP Verification UI -->
+          <div class="control-group" id="login-otp-section" style="display: none;">
+            <label class="control-label" data-i18n="enterOtp">Enter 4-Digit OTP</label>
+            <p style="font-size: 0.72rem; color: var(--text-tertiary); margin-bottom: 6px;" data-i18n="otpSent">OTP sent to your registered mobile number</p>
+            <div class="otp-boxes-grid">
+              <input type="text" class="otp-input-box" maxlength="1" id="otp-box-1">
+              <input type="text" class="otp-input-box" maxlength="1" id="otp-box-2">
+              <input type="text" class="otp-input-box" maxlength="1" id="otp-box-3">
+              <input type="text" class="otp-input-box" maxlength="1" id="otp-box-4">
+            </div>
+            <p style="font-size: 0.7rem; color: var(--cyan-primary); font-weight: 700; cursor: pointer; margin-top: 4px;" data-i18n="resendOtp">Didn't receive? Resend OTP ↩</p>
+          </div>
+
+          <button class="btn btn-primary btn-lg" id="btn-auth-send-otp" style="width: 100%;">
+            <i data-lucide="send"></i> <span data-i18n="sendOtp">Send OTP</span>
+          </button>
+          <button class="btn btn-mint btn-lg" id="btn-auth-submit-login" style="width: 100%; display: none;" data-i18n="loginCta">
+            <i data-lucide="log-in"></i> Enter Campaign Dashboard
+          </button>
+
+          <div style="text-align: center; font-size: 0.76rem; color: var(--text-tertiary); margin-top: 6px;">
+            <a href="#" id="auth-link-to-signup" style="color: var(--cyan-primary); font-weight: 700; text-decoration: none;" data-i18n="dontHaveAccount">Don’t have an account? Sign up</a>
+          </div>
+
+          <button class="btn btn-secondary btn-sm" onclick="window.ElectWinApp.navigateTo('dashboard')" style="width: 100%; color: var(--text-muted);">
+            <i data-lucide="arrow-right" style="width: 13px; height: 13px;"></i> <span data-i18n="continueDemo">Continue Demo without Login</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SIGNUP CARD ===== -->
+    <div id="auth-card-signup" style="width: 100%; max-width: 960px; margin: 0 auto; display: none; grid-template-columns: 1fr 1.15fr; background: var(--bg-surface); border: 1px solid var(--card-border); border-radius: var(--radius-xl); box-shadow: var(--shadow-modal); overflow: hidden;">
+
+      <!-- Left Visual Hero -->
+      <div style="background: linear-gradient(145deg, #059669, #0284c7); padding: 36px 28px; color: white; display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 24px;">
+            <div class="brand-logo-badge" style="width: 36px; height: 36px; background: rgba(255,255,255,0.2); border: 1.5px solid rgba(255,255,255,0.3);">
+              <i data-lucide="vote" style="width: 18px; height: 18px;"></i>
+            </div>
+            <span style="font-family: var(--font-heading); font-weight: 900; font-size: 1.35rem;">Elect<span style="color: #34d399;">Win</span></span>
+          </div>
+          <h2 style="font-family: var(--font-heading); font-size: 1.7rem; font-weight: 900; line-height: 1.15; margin-bottom: 8px;" data-i18n="signupTitle">Create Campaign Account</h2>
+          <p style="opacity: 0.88; font-size: 0.88rem; font-weight: 500; line-height: 1.4; margin-bottom: 20px;" data-i18n="signupSubtitle">Launch your Sarpanch or Panch campaign in minutes</p>
+
+          <div style="background: rgba(255,255,255,0.15); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px;">
+            <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 10px; opacity: 0.8;" data-i18n="accountHierarchy">Account Hierarchy You Get</div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 600;"><span style="background: rgba(255,255,255,0.25); padding: 2px 6px; border-radius: 4px;">👑</span> <span data-i18n="superAdminDesc">Super Admin (You — the Candidate)</span></div>
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 600;"><span style="background: rgba(255,255,255,0.25); padding: 2px 6px; border-radius: 4px;">👔</span> <span data-i18n="adminDesc">Admin (Your Campaign Manager)</span></div>
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 600;"><span style="background: rgba(255,255,255,0.25); padding: 2px 6px; border-radius: 4px;">📱</span> <span data-i18n="volunteersDesc">Volunteers (Your Field Workers)</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.12); border-radius: var(--radius-md); padding: 12px 14px;">
+          <div style="font-size: 0.78rem; font-weight: 700; margin-bottom: 4px;" data-i18n="freeDemo">✅ Free 30-Day Demo</div>
+          <div style="font-size: 0.72rem; opacity: 0.85;" data-i18n="noCreditCard">No credit card required to start your campaign</div>
+        </div>
+      </div>
+
+      <!-- Right Signup Multi-Step Form -->
+      <div style="padding: 28px 32px; display: flex; flex-direction: column; justify-content: flex-start; background: var(--bg-surface);">
+        <!-- Step Progress Indicator -->
+        <div class="auth-step-progress-bar">
+          <div id="signup-pill-1" class="auth-step-pill active" data-i18n="signupStep1">1. Basic Info</div>
+          <div id="signup-pill-2" class="auth-step-pill" data-i18n="signupStep2">2. Election Post</div>
+          <div id="signup-pill-3" class="auth-step-pill" data-i18n="signupStep3">3. Quick Branding</div>
+        </div>
+
+        <!-- Step 1: Basic Info -->
+        <div id="signup-step-content-1" style="display: flex; flex-direction: column; gap: 10px;">
+          <h3 style="font-family: var(--font-heading); font-size: 1.15rem; font-weight: 900; color: var(--text-primary); margin-bottom: 4px;" data-i18n="basicInfo">Your Basic Information</h3>
+          <div class="control-group">
+            <label class="control-label" data-i18n="fullName">Full Name (as on ballot paper)</label>
+            <input type="text" class="form-input" id="signup-input-name" placeholder="e.g. Rameshwar Patel">
+          </div>
+          <div class="control-group">
+            <label class="control-label" data-i18n="mobileNumber">Mobile Number</label>
+            <input type="tel" class="form-input" id="signup-input-phone" placeholder="10-digit mobile number">
+          </div>
+          <div class="control-group">
+            <label class="control-label" data-i18n="createPassword">Create Password</label>
+            <input type="password" class="form-input" id="signup-input-pass" placeholder="Minimum 8 characters">
+          </div>
+        </div>
+
+        <!-- Step 2: Election Details -->
+        <div id="signup-step-content-2" style="display: none; flex-direction: column; gap: 10px;">
+          <h3 style="font-family: var(--font-heading); font-size: 1.15rem; font-weight: 900; color: var(--text-primary); margin-bottom: 4px;" data-i18n="electionDetails">Your Election Details</h3>
+          <div class="control-group">
+            <label class="control-label" data-i18n="electionType">Election Type (Post you are contesting)</label>
+            <select class="studio-select" id="signup-input-post">
+              <option value="sarpanch">Sarpanch (Gram Panchayat Head)</option>
+              <option value="panch">Panch (Ward Member)</option>
+              <option value="adhyaksh">Panchayat Samiti Adhyaksh</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label class="control-label" data-i18n="panchayatName">Gram Panchayat / Constituency Name</label>
+            <input type="text" class="form-input" id="signup-input-panchayat" placeholder="e.g. Gram Panchayat Rampur">
+          </div>
+          <div class="control-group">
+            <label class="control-label" data-i18n="state">State</label>
+            <select class="studio-select" id="signup-input-state">
+              <option value="rajasthan">Rajasthan</option>
+              <option value="maharashtra">Maharashtra</option>
+              <option value="gujarat">Gujarat</option>
+              <option value="punjab">Punjab</option>
+              <option value="up">Uttar Pradesh</option>
+              <option value="mp">Madhya Pradesh</option>
+              <option value="bengal">West Bengal</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label class="control-label" data-i18n="district">District</label>
+            <input type="text" class="form-input" id="signup-input-district" placeholder="e.g. Sikar">
+          </div>
+        </div>
+
+        <!-- Step 3: Quick Branding -->
+        <div id="signup-step-content-3" style="display: none; flex-direction: column; gap: 10px;">
+          <h3 style="font-family: var(--font-heading); font-size: 1.15rem; font-weight: 900; color: var(--text-primary); margin-bottom: 4px;" data-i18n="quickBranding">Quick Branding (Optional)</h3>
+          <p style="font-size: 0.76rem; color: var(--text-tertiary); margin-bottom: 8px;" data-i18n="brandingSkip">You can set this now or later from Settings — skip to proceed.</p>
+          <div class="control-group">
+            <label class="control-label" data-i18n="uploadLogo">Upload Logo / Photo (JPG, PNG)</label>
+            <div style="border: 2px dashed var(--card-border); border-radius: var(--radius-md); padding: 14px; text-align: center; background: var(--bg-surface-subtle); cursor: pointer;" onclick="document.getElementById('signup-logo-upload').click()">
+              <input type="file" id="signup-logo-upload" style="display: none;" accept="image/*">
+              <i data-lucide="upload-cloud" style="width: 24px; height: 24px; color: var(--cyan-primary);"></i>
+              <div style="font-size: 0.78rem; font-weight: 700; margin-top: 4px;" data-i18n="uploadCampaignLogo">Upload Campaign Logo or Candidate Photo</div>
+            </div>
+          </div>
+          <div class="control-group">
+            <label class="control-label" data-i18n="pickBrandColor">Pick Primary Brand Color</label>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px;">
+              <div style="width: 32px; height: 32px; border-radius: 50%; background: #0284c7; border: 3px solid #0284c7; box-shadow: 0 0 0 2px white; cursor: pointer;"></div>
+              <div style="width: 32px; height: 32px; border-radius: 50%; background: #7c3aed; border: 3px solid #7c3aed; cursor: pointer;"></div>
+              <div style="width: 32px; height: 32px; border-radius: 50%; background: #059669; border: 3px solid #059669; cursor: pointer;"></div>
+              <div style="width: 32px; height: 32px; border-radius: 50%; background: #d97706; border: 3px solid #d97706; cursor: pointer;"></div>
+              <div style="width: 32px; height: 32px; border-radius: 50%; background: #e11d48; border: 3px solid #e11d48; cursor: pointer;"></div>
+              <div style="width: 32px; height: 32px; border-radius: 50%; background: #0891b2; border: 3px solid #0891b2; cursor: pointer;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Navigation Buttons -->
+        <div style="display: flex; gap: 8px; margin-top: 16px;">
+          <button class="btn btn-secondary" id="btn-signup-prev" style="display: none;">
+            <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i> <span data-i18n="back">Back</span>
+          </button>
+          <button class="btn btn-primary" id="btn-signup-next" style="flex: 1;" data-i18n="continue">
+            Continue <i data-lucide="arrow-right" style="width: 14px; height: 14px;"></i>
+          </button>
+          <button class="btn btn-mint" id="btn-signup-complete" style="display: none; flex: 1;">
+            <i data-lucide="rocket"></i> <span data-i18n="launchCampaign">Launch My Campaign HQ!</span>
+          </button>
+        </div>
+
+        <div style="text-align: center; font-size: 0.76rem; color: var(--text-tertiary); margin-top: 10px;">
+          <a href="#" id="auth-link-to-login" style="color: var(--cyan-primary); font-weight: 700; text-decoration: none;" data-i18n="alreadyAccount">Already have an account? Log in</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APP SHELL -->
+
+  <div id="app-container" style="display: none;">
+
+    <!-- SIDEBAR & DRAWER NAVIGATION -->
+    <aside class="sidebar" id="app-sidebar">
+      <!-- Mobile Drawer Header with Close Button -->
+      <div class="sidebar-header-mobile">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div class="brand-logo-badge" style="width: 26px; height: 26px;">
+            <i data-lucide="vote" style="width: 14px; height: 14px;"></i>
+          </div>
+          <div style="font-family: var(--font-heading); font-weight: 800; font-size: 1rem;">Elect<span style="color:var(--cyan-primary);">Win</span></div>
+        </div>
+        <button class="btn btn-secondary btn-icon" id="close-sidebar-drawer-btn" style="width: 32px; height: 32px; min-height: 32px;">
+          <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+        </button>
+      </div>
+
+      <!-- Mobile In-Drawer Role Switcher -->
+      <div style="margin-bottom: 8px; display: flex; flex-direction: column; gap: 4px;" id="drawer-role-selector-block">
+        <div class="nav-label" style="padding-left: 2px;">Active Role View</div>
+        <select class="studio-select" id="drawer-role-select" style="min-height: 36px; font-weight: 700; font-size: 0.78rem;">
+          <option value="superadmin">👑 Super Admin (Candidate Owner – Rameshwar Patel)</option>
+          <option value="admin">👔 Admin (Campaign Manager – Rajesh Kumar)</option>
+          <option value="volunteer">📱 Volunteer (Field Worker – Kailash Saini)</option>
+        </select>
+      </div>
+
+      <!-- ADMIN & SUPER ADMIN NAVIGATION GROUP -->
+      <div class="nav-menu-group" id="nav-group-admin">
+        <div class="nav-label">Campaign HQ</div>
+        
+        <a href="#dashboard" class="nav-item active" data-nav="dashboard" id="nav-dashboard">
+          <i data-lucide="layout-dashboard"></i>
+          <span data-i18n="dashboard">Dashboard</span>
+        </a>
+
+        <!-- MANAGE TEAM (Super Admin / Admin only) -->
+        <a href="#team" class="nav-item" data-nav="team" id="nav-team">
+          <i data-lucide="users-2"></i>
+          <span data-i18n="manageTeam">Manage Team</span>
+          <span class="nav-badge" id="team-active-count-badge">6 Members</span>
+        </a>
+
+        <a href="#candidates" class="nav-item" data-nav="candidates" id="nav-candidates">
+          <i data-lucide="user-check"></i>
+          <span data-i18n="candidateProfiles">Candidate Profiles</span>
+          <span class="nav-badge">3</span>
+        </a>
+
+        <div class="nav-label">Voter Intelligence</div>
+
+        <a href="#voters" class="nav-item" data-nav="voters" id="nav-voters">
+          <i data-lucide="database"></i>
+          <span data-i18n="voterDatabase">Voter Database &amp; OCR</span>
+          <span class="nav-badge">3,500</span>
+        </a>
+
+        <a href="#studio" class="nav-item" data-nav="studio" id="nav-studio">
+          <i data-lucide="palette"></i>
+          <span data-i18n="designStudio">Design Studio</span>
+          <span class="badge-chip badge-mint" style="font-size: 0.62rem; padding: 1px 5px;">Print HD</span>
+        </a>
+
+        <a href="#broadcast" class="nav-item" data-nav="broadcast" id="nav-broadcast">
+          <i data-lucide="message-square"></i>
+          <span data-i18n="smartBroadcast">Smart Broadcast</span>
+          <span class="badge-chip badge-cyan" style="font-size: 0.62rem; padding: 1px 5px;">Fallback</span>
+        </a>
+
+        <div class="nav-label">Field &amp; Budget</div>
+
+        <a href="#volunteers" class="nav-item" data-nav="volunteers" id="nav-volunteers">
+          <i data-lucide="map-pin"></i>
+          <span data-i18n="boothOps">Booth Operations</span>
+          <span class="nav-badge">6 Booths</span>
+        </a>
+
+        <a href="#complaints" class="nav-item" data-nav="complaints" id="nav-complaints">
+          <i data-lucide="clipboard-list"></i>
+          <span data-i18n="surveysComplaints">Surveys &amp; Grievances</span>
+          <span class="nav-badge" style="background: var(--amber-subtle); color: var(--amber-primary);">12</span>
+        </a>
+
+        <a href="#expenses" class="nav-item" data-nav="expenses" id="nav-expenses">
+          <i data-lucide="indian-rupee"></i>
+          <span data-i18n="expensesLedger">Expenses Ledger</span>
+        </a>
+
+        <a href="#analytics" class="nav-item" data-nav="analytics" id="nav-analytics">
+          <i data-lucide="bar-chart-2"></i>
+          <span data-i18n="turnoutAnalytics">Turnout Analytics</span>
+        </a>
+
+        <div class="nav-label">Configuration</div>
+
+        <a href="#settings" class="nav-item" data-nav="settings" id="nav-settings">
+          <i data-lucide="settings"></i>
+          <span data-i18n="settingsBranding">Settings &amp; Branding</span>
+        </a>
+      </div>
+
+      <!-- VOLUNTEER NAVIGATION GROUP (MINIMAL, 3 ITEMS) -->
+      <div class="nav-menu-group" id="nav-group-volunteer" style="display: none;">
+        <div class="nav-label" data-i18n="fieldWorkerOps">Field Worker Ops</div>
+
+        <a href="#volunteer-ward" class="nav-item active" data-nav="volunteer-ward">
+          <i data-lucide="home"></i>
+          <span data-i18n="myWardVoters">My Ward Voters</span>
+          <span class="nav-badge">Ward 02</span>
+        </a>
+
+        <a href="#volunteer-add" class="nav-item" data-nav="volunteer-add">
+          <i data-lucide="user-plus"></i>
+          <span data-i18n="addVoter">Add Voter (Ward 02)</span>
+        </a>
+
+        <a href="#volunteer-activity" class="nav-item" data-nav="volunteer-activity">
+          <i data-lucide="activity"></i>
+          <span data-i18n="myActivity">My Activity Stats</span>
+        </a>
+      </div>
+
+      <!-- Sidebar Footer User Card -->
+      <div class="sidebar-footer-card">
+        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
+          <span class="pulse-dot"></span>
+          <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-primary);">
+            RAMPUR HQ ACTIVE
+          </span>
+        </div>
+        <div style="font-size: 0.72rem; color: var(--text-secondary);" id="sidebar-user-name">
+          Candidate: <b>Rameshwar Patel</b>
+        </div>
+        <div style="font-size: 0.66rem; color: var(--text-tertiary);" id="sidebar-role-note">
+          Sarpanch Candidate &amp; Owner
+        </div>
+      </div>
+    </aside>
+
+    <!-- ==========================================================================
+         MOBILE QUICK NAVIGATION BAR (Bottom Sheet Style)
+         ========================================================================== -->
+    <div class="mobile-quick-bar" style="display: none;">
+      <a href="#dashboard" class="mobile-quick-item active" data-nav="dashboard">
+        <i data-lucide="layout-dashboard"></i>
+        <span data-i18n="home">Home</span>
+      </a>
+      <a href="#voters" class="mobile-quick-item" data-nav="voters">
+        <i data-lucide="database"></i>
+        <span data-i18n="voters">Voters</span>
+      </a>
+      <a href="#broadcast" class="mobile-quick-item" data-nav="broadcast">
+        <i data-lucide="message-circle"></i>
+        <span data-i18n="broadcast">Broadcast</span>
+      </a>
+      <a href="#settings" class="mobile-quick-item" data-nav="settings">
+        <i data-lucide="settings"></i>
+        <span data-i18n="settings">Settings</span>
+      </a>
+    </div>
+
+    <!-- ==========================================================================
+         MAIN CONTENT SCREENS WRAPPER
+         ========================================================================== -->
+    <main class="main-wrapper">
+
+      <!-- ======================================================================
+           MODULE 1: DASHBOARD (HOME)
+           ====================================================================== -->
+      <section class="view-screen active" id="screen-dashboard">
+        <div class="section-header-bar">
+          <div class="section-title-group">
+            <h2 data-i18n="commandCenter">Campaign Command Center</h2>
+            <p data-i18n="commandCenterSub">Real-time ground overview for Gram Panchayat Rampur election war room.</p>
+          </div>
+
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm" id="dash-quick-ocr-btn">
+              <i data-lucide="camera"></i> <span data-i18n="photoOcrScan">Photo OCR Scan</span>
+            </button>
+            <button class="btn btn-primary btn-sm" data-nav="broadcast">
+              <i data-lucide="send"></i> <span data-i18n="sendBroadcast">Send Broadcast</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Action Strip -->
+        <div class="quick-action-strip">
+          <div class="quick-action-card" data-nav="voters" id="quick-action-upload-voter">
+            <div class="quick-action-icon" style="background: var(--cyan-primary);">
+              <i data-lucide="user-plus" style="width: 16px; height: 16px;"></i>
+            </div>
+            <div>
+              <div style="font-weight: 700; font-size: 0.8rem;" data-i18n="uploadVoterRoll">Upload Voter Roll</div>
+              <div style="font-size: 0.68rem; color: var(--text-tertiary);" data-i18n="csvExcelSync">CSV / Excel Sync</div>
+            </div>
+          </div>
+
+          <div class="quick-action-card" onclick="window.ElectWinVoters && window.ElectWinVoters.openOcrScanner()">
+            <div class="quick-action-icon" style="background: var(--purple-primary);">
+              <i data-lucide="camera" style="width: 16px; height: 16px;"></i>
+            </div>
+            <div>
+              <div style="font-weight: 700; font-size: 0.8rem;" data-i18n="photoOcrScan">Photo OCR Scan</div>
+              <div style="font-size: 0.68rem; color: var(--text-tertiary);" data-i18n="extractPhysicalList">Extract physical list</div>
+            </div>
+          </div>
+
+          <div class="quick-action-card" data-nav="broadcast" id="quick-action-broadcast">
+            <div class="quick-action-icon" style="background: var(--mint-primary);">
+              <i data-lucide="message-circle" style="width: 16px; height: 16px;"></i>
+            </div>
+            <div>
+              <div style="font-weight: 700; font-size: 0.8rem;" data-i18n="smartBroadcast">Smart Broadcast</div>
+              <div style="font-size: 0.68rem; color: var(--text-tertiary);" data-i18n="whatsappSmsFallback">WhatsApp + SMS Fallback</div>
+            </div>
+          </div>
+
+          <div class="quick-action-card" id="quick-action-add-expense">
+            <div class="quick-action-icon" style="background: var(--amber-primary);">
+              <i data-lucide="plus-circle" style="width: 16px; height: 16px;"></i>
+            </div>
+            <div>
+              <div style="font-weight: 700; font-size: 0.8rem;" data-i18n="logExpense">Log Expense</div>
+              <div style="font-size: 0.68rem; color: var(--text-tertiary);" data-i18n="trackBudget">Track ₹ budget</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4 Count-Up Stat Cards -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-info">
+              <span class="stat-label" data-i18n="totalVoters">Total Voters</span>
+              <div class="stat-number" id="dash-stat-total-voters">3,500</div>
+              <div class="stat-trend" style="color: var(--mint-primary);">
+                <i data-lucide="check-circle-2" style="width: 12px; height: 12px;"></i> <span data-i18n="pannaVerified">Panna Verified</span>
+              </div>
+            </div>
+            <div class="stat-icon-box icon-cyan">
+              <i data-lucide="database" style="width: 18px; height: 18px;"></i>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-info">
+              <span class="stat-label" data-i18n="messagesSent">Messages Sent</span>
+              <div class="stat-number" id="dash-stat-total-messages">12,480</div>
+              <div class="stat-trend" style="color: var(--purple-primary);">
+                <i data-lucide="send" style="width: 12px; height: 12px;"></i> <span data-i18n="delivered">98.6% Delivered</span>
+              </div>
+            </div>
+            <div class="stat-icon-box icon-purple">
+              <i data-lucide="message-square" style="width: 18px; height: 18px;"></i>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-info">
+              <span class="stat-label" data-i18n="designsApproved">Designs Approved</span>
+              <div class="stat-number">18</div>
+              <div class="stat-trend" style="color: var(--cyan-primary);">
+                <i data-lucide="printer" style="width: 12px; height: 12px;"></i> <span data-i18n="flexSlipsHd">Flex &amp; Slips HD</span>
+              </div>
+            </div>
+            <div class="stat-icon-box icon-mint">
+              <i data-lucide="palette" style="width: 18px; height: 18px;"></i>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-info">
+              <span class="stat-label" data-i18n="teamActive">Team Members Active</span>
+              <div class="stat-number" id="dash-stat-team-count">6</div>
+              <div class="stat-trend" style="color: var(--amber-primary);">
+                <i data-lucide="users" style="width: 12px; height: 12px;"></i> <span data-i18n="boothsCovered">6 Booths Covered</span>
+              </div>
+            </div>
+            <div class="stat-icon-box icon-amber">
+              <i data-lucide="user-check" style="width: 18px; height: 18px;"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dashboard Subgrid: Dynamic Activity Feed + Village Priorities -->
+        <div class="dashboard-subgrid">
+          <div class="glass-panel" style="padding: 16px;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <h3 style="font-family: var(--font-heading); font-size: 1.05rem; font-weight: 800;" data-i18n="recentActivity">
+                Live Ground Activity Feed
+              </h3>
+              <span class="badge-chip badge-mint" data-i18n="realtimeUpdates">Real-time Updates</span>
+            </div>
+
+            <div class="activity-feed-list" id="dashboard-activity-list">
+              <!-- Injected dynamically by ElectWinApp.renderActivityFeed() -->
+            </div>
+          </div>
+
+          <div class="glass-panel" style="padding: 16px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                <h3 style="font-family: var(--font-heading); font-size: 1.05rem; font-weight: 800;" data-i18n="villageDemands">
+                  Village Demand Priorities
+                </h3>
+                <span class="badge-chip badge-cyan" data-i18n="surveyIntel">Survey Intel</span>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div>
+                  <div style="display: flex; justify-content: space-between; font-size: 0.76rem; font-weight: 600; margin-bottom: 3px;">
+                    <span data-i18n="concreteRoads">Concrete Roads &amp; Drainage (पक्की सड़कें)</span>
+                    <span style="color: var(--cyan-primary); font-weight: 700;" data-i18n="demand94">94% Demand</span>
+                  </div>
+                  <div class="sync-progress-track"><div class="sync-progress-fill" style="width: 94%;"></div></div>
+                </div>
+
+                <div>
+                  <div style="display: flex; justify-content: space-between; font-size: 0.76rem; font-weight: 600; margin-bottom: 3px;">
+                    <span data-i18n="cleanWater">Clean Drinking Water (हर घर नल जल)</span>
+                    <span style="color: var(--mint-primary); font-weight: 700;" data-i18n="demand88">88% Demand</span>
+                  </div>
+                  <div class="sync-progress-track"><div class="sync-progress-fill" style="width: 88%; background: var(--mint-primary);"></div></div>
+                </div>
+
+                <div>
+                  <div style="display: flex; justify-content: space-between; font-size: 0.76rem; font-weight: 600; margin-bottom: 3px;">
+                    <span data-i18n="farmerSubsidy">Farmer Tube Well Power Subsidy</span>
+                    <span style="color: var(--purple-primary); font-weight: 700;" data-i18n="demand82">82% Demand</span>
+                  </div>
+                  <div class="sync-progress-track"><div class="sync-progress-fill" style="width: 82%; background: var(--purple-primary);"></div></div>
+                </div>
+              </div>
+            </div>
+
+            <button class="btn btn-secondary btn-sm" style="margin-top: 14px; width: 100%;" data-nav="analytics">
+              <i data-lucide="bar-chart-2"></i> <span data-i18n="viewDemographics">View Demographics &amp; Forecast</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================================
+           MODULE 2: MANAGE TEAM (SUPER ADMIN & ADMIN ONLY)
+           ====================================================================== -->
+      <section class="view-screen" id="screen-team">
+        <div class="section-header-bar">
+          <div class="section-title-group">
+            <h2 data-i18n="campaignTeam">Campaign Team &amp; Permissions</h2>
+            <p data-i18n="teamDescription">Add, edit, and assign campaign managers (Admins) and ward booth incharge (Volunteers).</p>
+          </div>
+
+          <button class="btn btn-primary" id="open-add-team-member-btn">
+            <i data-lucide="user-plus"></i> + <span data-i18n="addTeamMember">Add Team Member</span>
+          </button>
+        </div>
+
+        <div class="glass-panel" style="padding: 16px;">
+          <div class="table-container">
+            <table class="glass-table responsive-table">
+              <thead>
+                <tr>
+                  <th data-i18n="teamMember">Team Member</th>
+                  <th data-i18n="roleAssignment">Role &amp; Assignment</th>
+                  <th data-i18n="assignedWard">Assigned Ward</th>
+                  <th data-i18n="status">Status</th>
+                  <th data-i18n="activityLevel">Activity Level</th>
+                  <th data-i18n="actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="team-table-body">
+                <!-- Injected dynamically by team.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================================
+           MODULE 3: CANDIDATE PROFILES
+           ====================================================================== -->
+      <section class="view-screen" id="screen-candidates">
+        <div class="section-header-bar">
+          <div class="section-title-group">
+            <h2 data-i18n="candidateCenter">Candidate Management Center</h2>
+            <p data-i18n="candidateDescription">Profiles, official election symbols, slogans, and campaign assets for contesting candidates.</p>
+          </div>
+
+          <button class="btn btn-primary" id="open-add-candidate-btn">
+            <i data-lucide="user-plus"></i> <span data-i18n="addCandidate">Add Candidate</span>
+          </button>
+        </div>
+
+        <div class="filter-pills-bar" id="candidate-filter-bar">
+          <div class="filter-pill active" data-filter="all" data-i18n="allCandidates">All Contesting Candidates (3)</div>
+          <div class="filter-pill" data-filter="sarpanch" data-i18n="sarpanchCandidates">Sarpanch Candidates (1)</div>
+          <div class="filter-pill" data-filter="panch" data-i18n="panchCandidates">Panch Candidates (2)</div>
+        </div>
+
+        <div class="candidate-grid" id="candidate-cards-container"></div>
+      </section>
+
+      <!-- ======================================================================
+           MODULE 4: VOTER DATABASE & OCR
+           ====================================================================== -->
+      <section class="view-screen" id="screen-voters">
+        <div class="section-header-bar">
+          <div class="section-title-group">
+            <h2 data-i18n="voterDatabase">Voter Roll &amp; Contact Database</h2>
+            <p data-i18n="voterDatabaseDesc">Official voter list management with CSV sync and camera-based OCR list extraction.</p>
+          </div>
+
+          <button class="btn btn-primary btn-sm" data-nav="broadcast">
+            <i data-lucide="send"></i> <span data-i18n="sendBroadcast">Broadcast to Filtered List</span>
+          </button>
+        </div>
+
+        <div class="voter-input-methods-grid">
+          <div class="voter-upload-card">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+              <h4 style="font-family: var(--font-heading); font-size: 0.92rem; font-weight: 800;" data-i18n="uploadElectoralRoll">Option A: Upload Electoral Roll File</h4>
+              <span class="badge-chip badge-cyan" data-i18n="csvPdf">CSV / PDF</span>
+            </div>
+            <p style="font-size: 0.74rem; color: var(--text-tertiary); margin-bottom: 10px;" data-i18n="importBulkVoters">Import bulk voter records with automatic phone &amp; channel verification.</p>
+
+            <div class="dropzone-box" id="voter-dropzone-area">
+              <input type="file" id="voter-file-input" style="display: none;" accept=".csv,.xlsx,.pdf">
+              <i data-lucide="upload-cloud" style="width: 28px; height: 28px; color: var(--cyan-primary);"></i>
+              <div style="font-weight: 700; font-size: 0.82rem;" data-i18n="dropVoterList">Drop voter list CSV/PDF file here</div>
+              <div style="font-size: 0.68rem; color: var(--text-tertiary);" data-i18n="clickBrowse">or click to browse from device</div>
+            </div>
+
+            <div id="voter-upload-progress-box" style="display: none; margin-top: 10px;">
+              <div style="display: flex; justify-content: space-between; font-size: 0.74rem; font-weight: 700;">
+                <span id="voter-upload-status-text" data-i18n="syncingRecords">Syncing electoral records...</span>
+                <span id="voter-upload-percentage">0%</span>
+              </div>
+              <div class="sync-progress-track"><div class="sync-progress-fill" id="voter-upload-progress-bar"></div></div>
+              <div style="font-size: 0.68rem; color: var(--cyan-primary); font-weight: 600;" id="voter-upload-counter" data-i18n="parsingRecords">Parsing records...</div>
+            </div>
+          </div>
+
+          <div class="voter-upload-card">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+              <h4 style="font-family: var(--font-heading); font-size: 0.92rem; font-weight: 800;" data-i18n="scanPhysicalList">Option B: Scan Physical Voter List (OCR)</h4>
+              <span class="badge-chip badge-purple" data-i18n="photoScanner">Photo Scanner</span>
+            </div>
+            <p style="font-size: 0.74rem; color: var(--text-tertiary); margin-bottom: 10px;" data-i18n="scanPhysicalDesc">Take a photo of physical electoral roll page to extract names, ward, and voter IDs.</p>
+
+            <div class="ocr-camera-viewport" id="ocr-camera-frame">
+              <div class="ocr-scan-frame"><div class="ocr-scan-line"></div></div>
+              <div style="position: absolute; bottom: 6px; left: 8px; font-size: 0.68rem; background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 4px;" data-i18n="alignPage">📷 Align page within frame</div>
+            </div>
+
+            <button class="btn btn-purple btn-sm" id="btn-trigger-ocr-scan" style="width: 100%; margin-top: 8px;">
+              <i data-lucide="camera"></i> <span data-i18n="clickPhoto">Click Photo of Voter Page</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="glass-panel" style="padding: 16px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
+            <div class="filter-pills-bar" id="voter-segment-filter-bar" style="margin-bottom: 0;">
+              <div class="filter-pill active" data-segment="all" data-i18n="allVoters">All Voters</div>
+              <div class="filter-pill" data-segment="whatsapp" data-i18n="whatsappAvailable">WhatsApp Available</div>
+              <div class="filter-pill" data-segment="no-whatsapp" data-i18n="noWhatsapp">No WhatsApp / SMS Only</div>
+              <div class="filter-pill" data-segment="youth" data-i18n="youth">Youth (18–25)</div>
+              <div class="filter-pill" data-segment="women" data-i18n="womenShg">Women SHG</div>
+              <div class="filter-pill" data-segment="missing" data-i18n="missingMobile">Missing Mobile</div>
+            </div>
+
+            <div style="position: relative; min-width: 200px; width: 100%;">
+              <input type="text" class="form-input" id="voter-search-input" placeholder="Search voter name, mobile, ward..." data-i18n-placeholder="searchVoter" style="padding-left: 32px;">
+              <i data-lucide="search" style="position: absolute; left: 10px; top: 12px; width: 15px; height: 15px; color: var(--text-muted);"></i>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table class="glass-table responsive-table">
+              <thead>
+                <tr>
+                  <th data-i18n="voterId">Voter ID</th>
+                  <th data-i18n="nameAge">Name &amp; Age</th>
+                  <th data-i18n="wardBooth">Ward / Booth</th>
+                  <th data-i18n="mobile">Mobile</th>
+                  <th data-i18n="channel">Channel</th>
+                  <th data-i18n="pannaStatus">Panna Status</th>
+                  <th data-i18n="actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="voter-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================================
+           MODULE 5: DESIGN STUDIO — SEARCHABLE PICKERS (50+ Symbols, 14 Layouts, 16 Dimensions)
+           ====================================================================== -->
+      <section class="view-screen" id="screen-studio">
+        <div class="section-header-bar">
+          <div class="section-title-group">
+            <h2 data-i18n="studioTitle">Design Studio &amp; Campaign Assets</h2>
+            <p data-i18n="studioSub">Generate high-resolution pamphlets, flex banners, and WhatsApp status cards with official symbols.</p>
+          </div>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm" id="studio-export-png-btn">
+              <i data-lucide="download"></i> <span data-i18n="downloadPng">Download PNG HD</span>
+            </button>
+            <button class="btn btn-primary btn-sm" id="studio-export-pdf-btn">
+              <i data-lucide="printer"></i> <span data-i18n="printPdf">Print-Ready PDF</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="studio-container">
+          <!-- LEFT CONTROLS PANEL -->
+          <div class="glass-panel" style="padding: 16px; display: flex; flex-direction: column; gap: 14px;">
+
+            <!-- 1. PHOTO UPLOAD -->
+            <div class="control-group">
+              <label class="control-label" data-i18n="candidatePhoto">Candidate Photo (Required)</label>
+              <div style="border: 2px dashed var(--card-border); border-radius: var(--radius-md); padding: 12px; text-align: center; background: var(--bg-surface-subtle); cursor: pointer; transition: border-color var(--transition-fast);" id="studio-photo-dropzone">
+                <input type="file" id="studio-photo-file-input" style="display: none;" accept="image/jpeg,image/png,image/jpg">
+                <i data-lucide="camera" style="width: 22px; height: 22px; color: var(--cyan-primary);"></i>
+                <div style="font-weight: 700; font-size: 0.79rem; margin-top: 4px;" data-i18n="clickDragPhoto">Click or Drag to Upload Photo</div>
+                <div style="font-size: 0.66rem; color: var(--text-tertiary); margin-top: 2px;" data-i18n="photoSupport">Supports JPG, PNG, JPEG &bull; Max 10MB &bull; Auto-Enhanced Portrait</div>
+              </div>
+            </div>
+
+            <!-- 2. SELECT CONTESTING CANDIDATE -->
+            <div class="control-group">
+              <label class="control-label" data-i18n="selectCandidate">Select Contesting Candidate</label>
+              <select class="studio-select" id="studio-candidate-dropdown">
+                <option value="rameshwar">Rameshwar Patel (Sarpanch – Rampur)</option>
+                <option value="vikram">Vikram Singh Gurjar (Panch – Ward 02)</option>
+                <option value="savitri">Savitri Bai Meena (Panch – Ward 04)</option>
+              </select>
+            </div>
+
+            <!-- 3. SEARCHABLE OFFICIAL ELECTION SYMBOL PICKER -->
+            <div class="control-group">
+              <label class="control-label" style="display: flex; align-items: center; justify-content: space-between;">
+                <span data-i18n="officialSymbol">Official Election Symbol</span>
+                <span id="selected-symbol-chip-preview" style="font-size: 0.72rem; font-weight: 700; color: var(--cyan-primary); display: flex; align-items: center; gap: 4px;">🚜 Tractor</span>
+              </label>
+
+              <!-- Symbol Search Bar -->
+              <div style="position: relative; margin-bottom: 6px;">
+                <i data-lucide="search" style="position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 13px; height: 13px; color: var(--text-muted); pointer-events: none;"></i>
+                <input type="text" class="studio-search-bar" id="studio-symbol-search-input"
+                  placeholder="Search symbol — Tractor, Kite, Sun, Lotus, Fan, Scale..." data-i18n-placeholder="searchSymbol"
+                  style="padding-left: 28px;">
+              </div>
+
+              <!-- Scrollable Symbol Grid -->
+              <div class="searchable-symbols-grid" id="searchable-symbols-grid">
+                <!-- Populated by design-studio.js -->
+              </div>
+            </div>
+
+            <!-- 4. SEARCHABLE POSTER COMPOSITION & LAYOUT STYLE -->
+            <div class="control-group">
+              <label class="control-label" data-i18n="compositionStyle">Poster Composition &amp; Layout Style</label>
+
+              <!-- Layout Search Bar -->
+              <div style="position: relative; margin-bottom: 6px;">
+                <i data-lucide="search" style="position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 13px; height: 13px; color: var(--text-muted); pointer-events: none;"></i>
+                <input type="text" class="studio-search-bar" id="studio-layout-search-input"
+                  placeholder="Search layout — Centerpiece, Split, Festive, Social Story..." data-i18n-placeholder="searchLayout"
+                  style="padding-left: 28px;">
+              </div>
+
+              <!-- Scrollable Layout Gallery -->
+              <div class="searchable-layouts-grid" id="searchable-layouts-grid">
+                <!-- Populated by design-studio.js -->
+              </div>
+            </div>
+
+            <!-- 5. SEARCHABLE MATERIAL DIMENSION -->
+            <div class="control-group">
+              <label class="control-label" style="display: flex; align-items: center; justify-content: space-between;">
+                <span data-i18n="materialDimension">Material Dimension &amp; Size</span>
+                <span id="selected-dimension-chip" style="font-size: 0.7rem; font-weight: 700; color: var(--purple-primary);">📐 Pamphlet A5 (148×210mm)</span>
+              </label>
+
+              <!-- Dimension Search Bar -->
+              <div style="position: relative; margin-bottom: 6px;">
+                <i data-lucide="search" style="position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 13px; height: 13px; color: var(--text-muted); pointer-events: none;"></i>
+                <input type="text" class="studio-search-bar" id="studio-dimension-search-input"
+                  placeholder="Search size — A5, A4, 3x6ft, Hoarding, Story, Sticker..." data-i18n-placeholder="searchSize"
+                  style="padding-left: 28px;">
+              </div>
+
+              <!-- Scrollable Categorised Dimensions List -->
+              <div class="searchable-dimensions-list" id="searchable-dimensions-list">
+                <!-- Populated by design-studio.js -->
+              </div>
+            </div>
+
+            <!-- 6. CANDIDATE NAME, WARD, SLOGAN INPUTS -->
+            <div class="control-group">
+              <label class="control-label" data-i18n="candidateName">Candidate Name</label>
+              <input type="text" class="studio-input" id="studio-candidate-name-input" value="रामेश्वर पटेल (Rameshwar Patel)">
+            </div>
+
+            <div class="control-group">
+              <label class="control-label" data-i18n="constituencyWard">Constituency / Ward</label>
+              <input type="text" class="studio-input" id="studio-ward-input" value="ग्राम पंचायत रामपुर (सरपंच पद)">
+            </div>
+
+            <div class="control-group">
+              <label class="control-label" data-i18n="slogan">Campaign Slogan</label>
+              <textarea class="studio-textarea" id="studio-slogan-input" rows="2">गांव का समग्र विकास, हर घर विश्वास और खुशहाली!</textarea>
+            </div>
+
+            <!-- 7. APPROVAL STATUS TOGGLES -->
+            <div class="control-group">
+              <label class="control-label" data-i18n="approvalStatus">Approval Status</label>
+              <div style="display: flex; gap: 6px;">
+                <button class="filter-pill" id="studio-status-draft" data-i18n="draft">Draft</button>
+                <button class="filter-pill" id="studio-status-pending" data-i18n="pendingReview">Pending Review</button>
+                <button class="filter-pill active" id="studio-status-approved" data-i18n="approved">✅ Approved</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT CANVAS STAGE -->
+          <div class="studio-canvas-stage">
+            <div class="canvas-preview-wrapper">
+              <canvas id="poster-render-canvas" width="600" height="840"></canvas>
+            </div>
+
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 12px; flex-wrap: wrap; gap: 8px;">
+              <span class="badge-chip badge-mint" id="studio-approval-badge">
+                <i data-lucide="check-circle-2" style="width: 12px; height: 12px;"></i> <span data-i18n="statusApproved">Status: Approved for Print Shop</span>
+              </span>
+              <div style="display: flex; gap: 6px;">
+                <button class="btn btn-secondary btn-sm" id="studio-export-png-btn-stage">
+                  <i data-lucide="download" style="width: 13px; height: 13px;"></i> <span data-i18n="savePng">Save PNG</span>
+                </button>
+                <span style="font-size: 0.7rem; color: var(--text-tertiary); align-self: center;" data-i18n="dpi300">300 DPI</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================================
+           MODULE 6: BROADCAST CENTER
+           ====================================================================== -->
+      <section class="view-screen" id="screen-broadcast">
+        <div class="section-header-bar">
+          <div class="section-title-group">
+            <h2 data-i18n="broadcastTitle">Broadcast &amp; Messaging Center</h2>
+            <p data-i18n="broadcastSub">Personalized mobile outreach with automated WhatsApp-to-SMS fallback routing.</p>
+          </div>
+
+          <button class="btn btn-primary" id="dispatch-broadcast-btn">
+            <i data-lucide="send"></i> <span data-i18n="dispatchBroadcast">Dispatch Broadcast</span>
+          </button>
+        </div>
+
+        <div class="broadcast-grid">
+          <div class="glass-panel" style="padding: 16px;">
+            <div class="channels-grid">
+              <div class="channel-card active" data-channel="whatsapp">
+                <div class="channel-icon-circle icon-whatsapp"><i data-lucide="message-circle" style="width:14px;height:14px;"></i></div>
+                <div style="font-weight:700;font-size:0.75rem;" data-i18n="whatsapp">WhatsApp</div>
+                <span class="badge-chip badge-mint" style="font-size:0.6rem;" data-i18n="primary">Primary</span>
+              </div>
+
+              <div class="channel-card" data-channel="sms">
+                <div class="channel-icon-circle icon-sms"><i data-lucide="smartphone" style="width:14px;height:14px;"></i></div>
+                <div style="font-weight:700;font-size:0.75rem;" data-i18n="directSms">Direct SMS</div>
+                <span class="badge-chip badge-cyan" style="font-size:0.6rem;" data-i18n="fallback">Fallback</span>
+              </div>
+
+              <div class="channel-card" data-channel="facebook">
+                <div class="channel-icon-circle icon-facebook"><i data-lucide="facebook" style="width:14px;height:14px;"></i></div>
+                <div style="font-weight:700;font-size:0.75rem;" data-i18n="facebook">Facebook</div>
+                <span class="badge-chip badge-neutral" style="font-size:0.6rem;" data-i18n="page">Page</span>
+              </div>
+
+              <div class="channel-card" data-channel="instagram">
+                <div class="channel-icon-circle icon-instagram"><i data-lucide="instagram" style="width:14px;height:14px;"></i></div>
+                <div style="font-weight:700;font-size:0.75rem;" data-i18n="instagram">Instagram</div>
+                <span class="badge-chip badge-neutral" style="font-size:0.6rem;" data-i18n="story">Story</span>
+              </div>
+            </div>
+
+            <!-- SMART FALLBACK AUDIENCE SPLIT BANNER -->
+            <div class="fallback-banner">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-weight: 800; font-size: 0.82rem; color: var(--text-primary); display: flex; align-items: center; gap: 4px;">
+                  <i data-lucide="git-merge" style="width: 14px; height: 14px; color: var(--cyan-primary);"></i> Smart Audience Fallback Routing
+                </span>
+                <span class="badge-chip badge-cyan">Live Sync</span>
+              </div>
+
+              <div class="fallback-split-grid">
+                <div class="fallback-split-card" style="border-left: 3px solid #25d366;">
+                  <div class="channel-icon-circle icon-whatsapp" style="width: 24px; height: 24px;">
+                    <i data-lucide="message-circle" style="width: 13px; height: 13px;"></i>
+                  </div>
+                  <div>
+                    <div style="font-size: 0.7rem; color: var(--text-tertiary); font-weight: 600;">WhatsApp Primary</div>
+                    <div style="font-size: 0.88rem; font-weight: 800; color: #059669;" id="fallback-count-whatsapp">2,850 Contacts (81.4%)</div>
+                  </div>
+                </div>
+
+                <div class="fallback-split-card" style="border-left: 3px solid #0284c7;">
+                  <div class="channel-icon-circle icon-sms" style="width: 24px; height: 24px;">
+                    <i data-lucide="smartphone" style="width: 13px; height: 13px;"></i>
+                  </div>
+                  <div>
+                    <div style="font-size: 0.7rem; color: var(--text-tertiary); font-weight: 600;">SMS Auto-Fallback</div>
+                    <div style="font-size: 0.88rem; font-weight: 800; color: #0284c7;" id="fallback-count-sms">650 Contacts (18.6%)</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+              <div class="control-group">
+                <label class="control-label">Insert Dynamic Tags</label>
+                <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                  <button class="filter-pill msg-variable-pill" data-var="{{VoterName}}">+ Voter Name</button>
+                  <button class="filter-pill msg-variable-pill" data-var="{{WardNo}}">+ Ward No.</button>
+                  <button class="filter-pill msg-variable-pill" data-var="{{CandidateName}}">+ Candidate</button>
+                  <button class="filter-pill msg-variable-pill" data-var="{{Symbol}}">+ Symbol</button>
+                  <button class="filter-pill msg-variable-pill" data-var="{{PollingDate}}">+ Voting Date</button>
+                </div>
+              </div>
+
+              <div class="control-group">
+                <label class="control-label">Message Content</label>
+                <textarea class="studio-textarea" id="broadcast-message-text" rows="4">आदरणीय {{VoterName}} जी,
+ग्राम पंचायत रामपुर के समग्र विकास के लिए सरपंच पद प्रत्याशी रामेश्वर पटेल को अपना अमूल्य वोट दें।
+चुनाव चिन्ह: ट्रैक्टर 🚜 (क्रमांक 01)
+मतदान दिनांक: 25 अगस्त 2026</textarea>
+              </div>
+
+              <button class="btn btn-primary btn-lg" id="btn-launch-broadcast" style="width: 100%;">
+                <i data-lucide="send"></i> Dispatch Broadcast
+              </button>
+
+              <div class="dual-progress-container" id="broadcast-dual-progress-box" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-weight: 800; font-size: 0.82rem;">Dispatching Broadcast Pipeline...</span>
+                  <span class="pulse-dot"></span>
+                </div>
+
+                <div>
+                  <div style="display: flex; justify-content: space-between; font-size: 0.72rem; font-weight: 700; margin-bottom: 2px;">
+                    <span style="color: #059669;">WhatsApp: <span id="wa-progress-label">0%</span></span>
+                  </div>
+                  <div class="sync-progress-track"><div class="sync-progress-fill" id="wa-progress-fill" style="background: #25d366;"></div></div>
+                </div>
+
+                <div>
+                  <div style="display: flex; justify-content: space-between; font-size: 0.72rem; font-weight: 700; margin-bottom: 2px;">
+                    <span style="color: #0284c7;">SMS Fallback: <span id="sms-progress-label">0%</span></span>
+                  </div>
+                  <div class="sync-progress-track"><div class="sync-progress-fill" id="sms-progress-fill" style="background: #0284c7;"></div></div>
+                </div>
+
+                <div id="broadcast-terminal-log" style="font-family: monospace; font-size: 0.68rem; color: var(--text-secondary); max-height: 50px; overflow-y: auto;">
+                  [Engine] Initializing dual pipeline routing...
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="phone-mockup-wrapper">
+            <div class="smart-phone-frame">
+              <div class="phone-notch"></div>
+              <div class="phone-header">
+                <i data-lucide="arrow-left" style="width: 15px; height: 15px;"></i>
+                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&auto=format&fit=crop&q=80" style="width: 26px; height: 26px; border-radius: 50%; object-fit: cover;" alt="Rameshwar Patel">
+                <div>
+                  <div style="font-size: 0.76rem; font-weight: 700;">Rameshwar Patel Campaign</div>
+                  <div style="font-size: 0.62rem; opacity: 0.85;">Official Election War Room</div>
+                </div>
+              </div>
+
+              <div class="phone-chat-body">
+                <div class="whatsapp-bubble">
+                  <div style="background: #f8fafc; border-radius: 6px; padding: 6px; text-align: center; margin-bottom: 6px; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 1.3rem;">🚜</div>
+                    <div style="font-weight: 800; font-size: 0.76rem; color: var(--text-primary);">रामेश्वर पटेल (Rameshwar Patel)</div>
+                    <div style="font-size: 0.65rem; color: var(--cyan-primary); font-weight: 700;">सरपंच पद प्रत्याशी – ग्राम पंचायत रामपुर</div>
+                  </div>
+
+                  <div id="phone-preview-message-body" style="white-space: pre-line; font-size: 0.72rem;">
+                    आदरणीय मतदाता जी,
+                    ग्राम पंचायत रामपुर के समग्र विकास के लिए सरपंच पद प्रत्याशी रामेश्वर पटेल को अपना अमूल्य वोट दें।
+                  </div>
+
+                  <div style="text-align: right; font-size: 0.6rem; color: #94a3b8; margin-top: 4px;">
+                    10:45 AM • Delivered ✓✓
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- POST-SEND DELIVERY REPORT DASHBOARD -->
+        <div class="glass-panel" style="padding: 16px; margin-top: 20px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <h3 style="font-family: var(--font-heading); font-size: 1.05rem; font-weight: 800;">
+                Delivery Report Dashboard
+              </h3>
+              <p style="font-size: 0.74rem; color: var(--text-tertiary);">Post-broadcast audit and message confirmation log.</p>
+            </div>
+
+            <div class="filter-pills-bar" id="report-channel-filter" style="margin-bottom: 0;">
+              <div class="filter-pill active" data-report="all">All Channels</div>
+              <div class="filter-pill" data-report="whatsapp">WhatsApp Only</div>
+              <div class="filter-pill" data-report="sms">SMS Fallback Only</div>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table class="glass-table responsive-table">
+              <thead>
+                <tr>
+                  <th>Voter Name</th>
+                  <th>Ward No.</th>
+                  <th>Mobile</th>
+                  <th>Dispatched Route</th>
+                  <th>Delivery Status</th>
+                  <th>Read Receipt</th>
+                  <th>Timestamp</th>
+                </tr>
+              </thead>
+              <tbody id="delivery-report-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================================
+           MODULE 7: BOOTH OPERATIONS
+           ====================================================================== -->
+      <section class="view-screen" id="screen-volunteers">
+        <div class="section-header-bar">
+          <div class="section-title-group">
+            <h2 data-i18n="boothOps">Booth Operations &amp; Panna Roster</h2>
+            <p>Ward-wise polling booth coverage, incharge assignments, and slip distribution.</p>
+          </div>
+
+          <button class="btn btn-primary" id="open-add-volunteer-btn">
+            <i data-lucide="user-plus"></i> Add Booth Incharge
+          </button>
+        </div>
+
+        <div class="glass-panel" style="padding: 16px;">
+          <div class="table-container">
+            <table class="glass-table responsive-table">
+              <thead>
+                <tr>
+                  <th>Booth No.</th>
+                  <th>Polling Station Location</th>
+                  <th>Assigned Incharge</th>
+                  <th>Total Electors</th>
+                  <th>Parchi Slips Distributed</th>
+                  <th>Coverage %</th>
+                </tr>
+              </thead>
+              <tbody id="booth-grouping-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================================
+           MODULE 8: SURVEYS & COMPLAINTS
+           ====================================================================== -->
+      <section class="view-screen" id="screen-complaints">
+        <div class="section-header-bar">
+          <div class="section-title-group">
+            <h2 data-i18n="surveysComplaints">Surveys &amp; Citizen Complaints</h2>
+            <p>Track village grievances (water, roads, power) and voter redressal status live.</p>
+          </div>
+
+          <button class="btn btn-primary" id="open-log-complaint-btn">
+            <i data-lucide="plus-circle"></i> Log New Grievance
+          </button>
+        </div>
+
+        <div class="glass-panel" style="padding: 16px;">
+          <div class="table-container">
+            <table class="glass-table responsive-table">
+              <thead>
+                <tr>
+                  <th>Citizen Name</th>
+                  <th>Ward No.</th>
+                  <th>Category</th>
+                  <th>Description</th>
+                  <th>Logged Date</th>
+                  <th>Action Status</th>
+                </tr>
+              </thead>
+              <tbody id="complaints-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================================
+           MODULE 9: EXPENSES
+           ====================================================================== -->
+      <section class="view-screen" id="screen-expenses">
+        <div class="section-header-bar">
+          <div class="section-title-group">
+            <h2 data-i18n="expensesLedger">Expenses Ledger</h2>
+            <p>Track campaign spending with category-wise breakdown and receipt uploads.</p>
+          </div>
+
+          <button class="btn btn-primary" id="open-add-expense-btn">
+            <i data-lucide="plus-circle"></i> <span data-i18n="logExpense">Log Expense</span>
+          </button>
+        </div>
+
+        <div class="expense-budget-hero">
+          <div>
+            <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.9; font-weight: 700;">
+              Gram Panchayat Campaign Budget
+            </div>
+            <div style="font-family: var(--font-heading); font-size: 1.85rem; font-weight: 900; line-height: 1.1; margin: 2px 0;">
+              ₹1,50,000 <span style="font-size: 0.8rem; font-weight: 500; opacity: 0.85;">Ceiling Limit</span>
+            </div>
+            <div style="font-size: 0.76rem; opacity: 0.95;">
+              Remaining Balance: <b id="expense-remaining-val">₹81,550</b>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 16px;">
+            <div>
+              <div style="font-size: 0.68rem; opacity: 0.85; text-transform: uppercase;">Total Spent</div>
+              <div style="font-family: var(--font-heading); font-size: 1.3rem; font-weight: 800;" id="expense-spent-val">₹68,450</div>
+            </div>
+            <div>
+              <div style="font-size: 0.68rem; opacity: 0.85; text-transform: uppercase;">Budget Utilized</div>
+              <div style="font-family: var(--font-heading); font-size: 1.3rem; font-weight: 800;" id="expense-utilized-percent">45.6%</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-panel" style="padding: 16px;">
+          <div class="table-container">
+            <table class="glass-table responsive-table">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Amount (₹)</th>
+                  <th>Date</th>
+                  <th>Vendor &amp; Note</th>
+                  <th>Payment Mode</th>
+                  <th>Logged By</th>
+                </tr>
+              </thead>
+              <tbody id="expenses-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================================
+           MODULE 10: ANALYTICS
+           ====================================================================== -->
+      <section class="view-screen" id="screen-analytics">
+        <div class="section-header-bar">
+          <div class="section-title-group">
+            <h2 data-i18n="turnoutAnalytics">Turnout Analytics</h2>
+            <p>Voter turnout predictions, booth-wise coverage analysis, and demographic insights.</p>
+          </div>
+
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm" id="export-excel-btn">
+              <i data-lucide="file-spreadsheet"></i> Export CSV
+            </button>
+            <button class="btn btn-primary btn-sm" id="export-pdf-btn">
+              <i data-lucide="download"></i> Download PDF
+            </button>
+          </div>
+        </div>
+
+        <div class="analytics-charts-grid">
+          <div class="chart-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <h4 style="font-family: var(--font-heading); font-size: 0.92rem; font-weight: 800;">Ward-Wise Coverage %</h4>
+              <span class="badge-chip badge-cyan">Coverage</span>
+            </div>
+            <div class="chart-wrapper"><canvas id="chart-ward-coverage"></canvas></div>
+          </div>
+
+          <div class="chart-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <h4 style="font-family: var(--font-heading); font-size: 0.92rem; font-weight: 800;">Message Delivery Rate</h4>
+              <span class="badge-chip badge-mint">Delivery Rate</span>
+            </div>
+            <div class="chart-wrapper"><canvas id="chart-channel-delivery"></canvas></div>
+          </div>
+
+          <div class="chart-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <h4 style="font-family: var(--font-heading); font-size: 0.92rem; font-weight: 800;">Design Material Prints</h4>
+              <span class="badge-chip badge-purple">Prints</span>
+            </div>
+            <div class="chart-wrapper"><canvas id="chart-design-usage"></canvas></div>
+          </div>
+
+          <div class="chart-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <h4 style="font-family: var(--font-heading); font-size: 0.92rem; font-weight: 800;">Volunteer Door-to-Door Activity</h4>
+              <span class="badge-chip badge-amber">Field Contacts</span>
+            </div>
+            <div class="chart-wrapper"><canvas id="chart-volunteer-activity"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Simulator -->
+        <div class="glass-panel" style="padding: 16px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;">
+            <div>
+              <h3 style="font-family: var(--font-heading); font-size: 1.1rem; font-weight: 800;">
+                Victory Margin &amp; Turnout Simulator
+              </h3>
+              <p style="font-size: 0.74rem; color: var(--text-tertiary);">Adjust village ground factors to project win probability.</p>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 10px; background: var(--bg-surface-subtle); padding: 8px 14px; border-radius: var(--radius-md);">
+              <div>
+                <div style="font-size: 0.65rem; color: var(--text-tertiary); font-weight: 700; text-transform: uppercase;">Victory Confidence</div>
+                <div style="font-family: var(--font-heading); font-size: 1.6rem; font-weight: 900; color: var(--mint-primary); line-height: 1;" id="sim-prob-number">
+                  84%
+                </div>
+              </div>
+              <div style="width: 80px;">
+                <div class="sync-progress-track"><div class="sync-progress-fill" id="sim-prob-bar" style="width: 84%; background: var(--mint-primary);"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.76rem; font-weight: 700; margin-bottom: 3px;">
+                <span>Voter Turnout Target</span>
+                <span style="color: var(--cyan-primary);" id="sim-turnout-val">76%</span>
+              </div>
+              <input type="range" id="sim-turnout-slider" min="50" max="95" value="76" style="width: 100%; accent-color: var(--cyan-primary);">
+            </div>
+
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.76rem; font-weight: 700; margin-bottom: 3px;">
+                <span>Youth Mobilization Share</span>
+                <span style="color: var(--purple-primary);" id="sim-youth-val">68%</span>
+              </div>
+              <input type="range" id="sim-youth-slider" min="30" max="90" value="68" style="width: 100%; accent-color: var(--purple-primary);">
+            </div>
+
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.76rem; font-weight: 700; margin-bottom: 3px;">
+                <span>Swing Voter Conversion</span>
+                <span style="color: var(--mint-primary);" id="sim-swing-val">62%</span>
+              </div>
+              <input type="range" id="sim-swing-slider" min="20" max="85" value="62" style="width: 100%; accent-color: var(--mint-primary);">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================================
+           MODULE 11: SETTINGS & BRANDING
+           ====================================================================== -->
+      <section class="view-screen" id="screen-settings">
+        <div class="section-header-bar">
+          <div class="section-title-group">
+            <h2 data-i18n="settingsBranding">Settings &amp; Branding</h2>
+            <p>Configure campaign details, branding colors, and system preferences.</p>
+          </div>
+
+          <button class="btn btn-primary">
+            <i data-lucide="save"></i> Save Changes
+          </button>
+        </div>
+
+        <div class="branding-layout-grid">
+          <div class="glass-panel" style="padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+            <div class="control-group">
+              <label class="control-label">Campaign / Party Logo</label>
+              <div class="dropzone-box" id="branding-logo-dropzone">
+                <input type="file" id="branding-logo-file-input" style="display: none;" accept="image/*">
+                <i data-lucide="image" style="width: 28px; height: 28px; color: var(--cyan-primary); margin: 0 auto;"></i>
+                <div style="font-weight: 700; font-size: 0.82rem; margin-top: 4px;">Click or Drag Logo PNG/JPG</div>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label class="control-label">Panel Display Title</label>
+              <input type="text" class="form-input" id="branding-panel-title-input" value="ElectWin – Rampur">
+            </div>
+
+            <div class="control-group">
+              <label class="control-label">Constituency Subtitle</label>
+              <input type="text" class="form-input" id="branding-panel-subtitle-input" value="Sarpanch Campaign War Room 2026">
+            </div>
+
+            <div class="control-group">
+              <label class="control-label">Primary Brand Accent Color</label>
+              <div class="brand-color-swatches" style="display: flex; gap: 8px; margin-top: 4px;">
+                <button class="color-swatch-btn active" data-color="#0284c7" style="background: #0284c7;" title="Electric Cyan Blue"></button>
+                <button class="color-swatch-btn" data-color="#7c3aed" style="background: #7c3aed;" title="Cyber Neon Purple"></button>
+                <button class="color-swatch-btn" data-color="#059669" style="background: #059669;" title="Mint Green"></button>
+                <button class="color-swatch-btn" data-color="#d97706" style="background: #d97706;" title="Royal Saffron"></button>
+                <button class="color-swatch-btn" data-color="#e11d48" style="background: #e11d48;" title="Crimson Rose"></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass-panel" style="padding: 16px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+              <h4 style="font-family: var(--font-heading); font-size: 0.95rem; font-weight: 800;">Live Branding Preview</h4>
+              <span class="badge-chip badge-mint">Real-time</span>
+            </div>
+
+            <div style="background: white; border: 1px solid var(--card-border); border-radius: var(--radius-md); padding: 10px 12px; display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+              <div class="brand-logo-badge" id="preview-nav-logo-badge" style="width: 28px; height: 28px;">
+                <i data-lucide="vote" style="width: 15px; height: 15px;"></i>
+              </div>
+              <div>
+                <div style="font-family: var(--font-heading); font-size: 0.88rem; font-weight: 800;" id="preview-nav-title">ElectWin – Rampur</div>
+                <div style="font-size: 0.65rem; color: var(--text-tertiary);" id="preview-nav-subtitle">Sarpanch Campaign War Room 2026</div>
+              </div>
+            </div>
+
+            <div style="background: white; border: 1px solid var(--card-border); border-radius: var(--radius-md); padding: 10px; text-align: center;">
+              <div style="padding: 8px; border-radius: var(--radius-sm); color: white; background: var(--cyan-primary);" id="preview-banner-header-strip">
+                <div style="font-family: var(--font-heading); font-weight: 800; font-size: 0.95rem;">रामेश्वर पटेल – सरपंच पद प्रत्याशी</div>
+                <div style="font-size: 0.7rem;">ग्राम पंचायत रामपुर (वार्ड 04)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================================
+           ROLE 3: VOLUNTEER VIEW (FIELD WORKER • WARD-LIMITED)
+           ====================================================================== -->
+      <!-- SCREEN: VOLUNTEER MY WARD VOTERS -->
+      <section class="view-screen" id="screen-volunteer-ward">
+        <div class="volunteer-ward-hero">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <div style="font-size: 0.7rem; text-transform: uppercase; font-weight: 800; opacity: 0.9;">Field Volunteer Desk</div>
+              <h2 style="font-family: var(--font-heading); font-size: 1.3rem; font-weight: 800; margin: 2px 0;">Ward 02 – Patel Basti</h2>
+              <div style="font-size: 0.76rem; opacity: 0.95;">Polling Booth 02 (Community Hall) • Incharge: <b>Kailash Saini</b></div>
+            </div>
+
+            <button class="btn btn-secondary btn-sm" data-nav="volunteer-add" style="background: white; color: var(--text-primary); border: none;">
+              <i data-lucide="user-plus"></i> + Add Voter
+            </button>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+          <h3 style="font-family: var(--font-heading); font-size: 1.05rem; font-weight: 800;">Ward 02 Electors List (620 Total)</h3>
+          <span class="badge-chip badge-mint">One-Tap Status Log</span>
+        </div>
+
+        <div id="volunteer-ward-voters-list">
+          <!-- Injected dynamically by volunteer.js -->
+        </div>
+      </section>
+
+      <!-- SCREEN: VOLUNTEER ADD VOTER -->
+      <section class="view-screen" id="screen-volunteer-add">
+        <div class="section-header-bar">
+          <div class="section-title-group">
+            <h2>Add Elector to Ward 02</h2>
+            <p>New voter entries are automatically tagged to Ward 02 – Patel Basti.</p>
+          </div>
+        </div>
+
+        <div class="glass-panel" style="padding: 16px; max-width: 500px;">
+          <div style="background: var(--purple-subtle); border: 1px dashed var(--purple-primary); border-radius: var(--radius-md); padding: 12px; text-align: center; margin-bottom: 12px;">
+            <div style="font-weight: 800; font-size: 0.86rem; color: var(--purple-primary); margin-bottom: 2px;">📷 Quick Photo OCR Scan</div>
+            <div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 8px;">Scan physical voter slip to autofill name &amp; phone.</div>
+            <button class="btn btn-purple btn-sm" id="v-btn-quick-ocr" style="width: 100%;">
+              <i data-lucide="camera"></i> Scan Voter Slip Photo
+            </button>
+          </div>
+
+          <div class="control-group" style="margin-bottom: 10px;">
+            <label class="control-label">Voter Full Name *</label>
+            <input type="text" class="form-input" id="v-input-name" placeholder="e.g. Prakash Saini">
+          </div>
+
+          <div class="control-group" style="margin-bottom: 10px;">
+            <label class="control-label">Mobile Number</label>
+            <input type="tel" class="form-input" id="v-input-mobile" placeholder="+91 94140 00000">
+          </div>
+
+          <div class="control-group" style="margin-bottom: 10px;">
+            <label class="control-label">Age</label>
+            <input type="number" class="form-input" id="v-input-age" placeholder="e.g. 38">
+          </div>
+
+          <div class="control-group" style="margin-bottom: 10px;">
+            <label class="control-label">Assigned Ward (Locked)</label>
+            <input type="text" class="form-input" value="Ward 02 – Patel Basti" readonly style="background: var(--bg-surface-subtle); font-weight: 700;">
+          </div>
+
+          <div class="control-group" style="margin-bottom: 14px;">
+            <label class="control-label">House / Landmark</label>
+            <input type="text" class="form-input" id="v-input-house" placeholder="e.g. House #24, Near Mandir">
+          </div>
+
+          <button class="btn btn-mint btn-lg" id="v-btn-save-voter" style="width: 100%;">
+            <i data-lucide="check"></i> Save Elector to Ward 02
+          </button>
+        </div>
+      </section>
+
+      <!-- SCREEN: VOLUNTEER ACTIVITY STATS -->
+      <section class="view-screen" id="screen-volunteer-activity">
+        <div class="section-header-bar">
+          <div class="section-title-group">
+            <h2>My Field Activity Record</h2>
+            <p>Performance metrics for volunteer Kailash Saini (Ward 02).</p>
+          </div>
+        </div>
+
+        <div class="v-stat-large-grid">
+          <div class="v-stat-large-box">
+            <div class="num" id="v-act-added" style="color: var(--cyan-primary);">45</div>
+            <div class="lbl">Voters Registered</div>
+          </div>
+
+          <div class="v-stat-large-box">
+            <div class="num" id="v-act-calls" style="color: var(--purple-primary);">128</div>
+            <div class="lbl">Voter Calls Made</div>
+          </div>
+
+          <div class="v-stat-large-box">
+            <div class="num" id="v-act-visits" style="color: var(--mint-primary);">84</div>
+            <div class="lbl">Home Visits Logged</div>
+          </div>
+
+          <div class="v-stat-large-box">
+            <div class="num" id="v-act-slips" style="color: var(--amber-primary);">185</div>
+            <div class="lbl">Voter Slips Handed</div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ==========================================================================
+       MOBILE STICKY BOTTOM QUICK-ACTION BAR (56px TIGHT)
+       ========================================================================== -->
+  <nav class="mobile-quick-bar" id="app-mobile-quick-bar"></nav>
+
+  <!-- ==========================================================================
+       MODALS & FULL-SCREEN DIALOGS
+       ========================================================================== -->
+
+  <!-- 1. LOGIN / ROLE SWITCHER MODAL -->
+  <div class="login-modal-backdrop" id="modal-login">
+    <div class="login-glass-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <div class="brand-logo-badge" style="width: 28px; height: 28px;">
+            <i data-lucide="vote" style="width: 14px; height: 14px;"></i>
+          </div>
+          <h3 style="font-family: var(--font-heading); font-size: 1.15rem; font-weight: 800;">
+            ElectWin Role Switcher
+          </h3>
+        </div>
+        <button class="btn btn-secondary btn-icon" id="close-login-modal-btn" style="width: 30px; height: 30px; min-height: 30px;">
+          <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+        </button>
+      </div>
+
+      <p style="font-size: 0.78rem; color: var(--text-tertiary); margin-bottom: 10px;">
+        Switch permission levels inside this campaign account to preview each experience:
+      </p>
+
+      <div class="control-group" style="margin-bottom: 10px;">
+        <label class="control-label">Select Role View</label>
+        <select class="studio-select" id="login-role-selector" style="font-weight: 700;">
+          <option value="superadmin">👑 Super Admin (Candidate Owner – Rameshwar Patel)</option>
+          <option value="admin">👔 Admin (Campaign Operations Manager – Rajesh Kumar)</option>
+          <option value="volunteer">📱 Volunteer (Field Worker – Kailash Saini)</option>
+        </select>
+      </div>
+
+      <div class="control-group" style="margin-bottom: 10px;">
+        <label class="control-label">Mobile Number / OTP (Demo: 2026)</label>
+        <div class="otp-boxes-grid">
+          <input type="text" maxlength="1" class="otp-input-box" value="2">
+          <input type="text" maxlength="1" class="otp-input-box" value="0">
+          <input type="text" maxlength="1" class="otp-input-box" value="2">
+          <input type="text" maxlength="1" class="otp-input-box" value="6">
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-lg" id="btn-submit-login" style="width: 100%;">
+        <i data-lucide="check"></i> Enter Campaign Dashboard
+      </button>
+    </div>
+  </div>
+
+  <!-- 2. ADD TEAM MEMBER MODAL -->
+  <div class="login-modal-backdrop" id="modal-add-team-member">
+    <div class="login-glass-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 style="font-family: var(--font-heading); font-size: 1.15rem; font-weight: 800;">Add Campaign Team Member</h3>
+        <button class="btn btn-secondary btn-icon" id="close-add-team-modal-btn" style="width: 30px; height: 30px; min-height: 30px;"><i data-lucide="x" style="width: 14px; height: 14px;"></i></button>
+      </div>
+
+      <div class="control-group" style="margin-bottom: 10px;">
+        <label class="control-label">Full Name *</label>
+        <input type="text" class="form-input" id="new-team-name" placeholder="e.g. Suresh Kumar Gurjar">
+      </div>
+
+      <div class="control-group" style="margin-bottom: 10px;">
+        <label class="control-label">Mobile Number</label>
+        <input type="tel" class="form-input" id="new-team-phone" placeholder="+91 94140 00000">
+      </div>
+
+      <div class="control-group" style="margin-bottom: 10px;">
+        <label class="control-label">Role Assignment</label>
+        <select class="studio-select" id="new-team-role-select">
+          <option value="Admin">Admin (Campaign Operations Manager)</option>
+          <option value="Volunteer">Volunteer (Panna Pramukh / Field Worker)</option>
+        </select>
+      </div>
+
+      <div class="control-group" style="margin-bottom: 10px;">
+        <label class="control-label">Designation / Title</label>
+        <input type="text" class="form-input" id="new-team-title" placeholder="e.g. Booth 03 Panna Lead">
+      </div>
+
+      <div class="control-group" id="new-team-ward-group" style="display: none; margin-bottom: 14px;">
+        <label class="control-label">Assigned Ward</label>
+        <select class="studio-select" id="new-team-ward-select">
+          <option value="Ward 01 – Old Village">Ward 01 – Old Village</option>
+          <option value="Ward 02 – Patel Basti">Ward 02 – Patel Basti</option>
+          <option value="Ward 03 – School Road">Ward 03 – School Road</option>
+          <option value="Ward 04 – Rampur HQ">Ward 04 – Rampur HQ</option>
+          <option value="Ward 05 – Mandir Block">Ward 05 – Mandir Block</option>
+          <option value="Ward 06 – Krishi Upaj">Ward 06 – Krishi Upaj</option>
+        </select>
+      </div>
+
+      <button class="btn btn-mint btn-lg" id="btn-save-new-team-member" style="width: 100%;"><i data-lucide="check"></i> Register Team Member</button>
+    </div>
+  </div>
+
+  <!-- 3. ADD CANDIDATE MODAL -->
+  <div class="login-modal-backdrop" id="modal-add-candidate">
+    <div class="login-glass-card" style="max-width: 500px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 style="font-family: var(--font-heading); font-size: 1.15rem; font-weight: 800;">Register Candidate Profile</h3>
+        <button class="btn btn-secondary btn-icon" id="close-add-candidate-modal-btn" style="width: 30px; height: 30px; min-height: 30px;"><i data-lucide="x" style="width: 14px; height: 14px;"></i></button>
+      </div>
+
+      <div class="modal-step-indicator" style="display: flex; gap: 6px; margin-bottom: 14px;">
+        <div class="step-pill active" id="cand-step-indicator-1">1. Info</div>
+        <div class="step-pill" id="cand-step-indicator-2">2. Symbol</div>
+        <div class="step-pill" id="cand-step-indicator-3">3. Slogan</div>
+      </div>
+
+      <div id="cand-form-step-1">
+        <div class="control-group" style="margin-bottom: 10px;">
+          <label class="control-label">Candidate Name (English &amp; Hindi)</label>
+          <input type="text" class="form-input" id="new-cand-name" placeholder="e.g. Rameshwar Patel (रामेश्वर पटेल)">
+        </div>
+        <div class="control-group" style="margin-bottom: 10px;">
+          <label class="control-label">Mobile Number</label>
+          <input type="tel" class="form-input" id="new-cand-mobile" placeholder="+91 98290 12345">
+        </div>
+        <div class="control-group" style="margin-bottom: 10px;">
+          <label class="control-label">Candidate Photo URL</label>
+          <input type="text" class="form-input" id="new-cand-photo" value="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80">
+        </div>
+      </div>
+
+      <div id="cand-form-step-2" style="display: none;">
+        <div class="control-group" style="margin-bottom: 10px;">
+          <label class="control-label">Contesting Post</label>
+          <select class="studio-select" id="new-cand-post">
+            <option value="sarpanch">Sarpanch (सरपंच)</option>
+            <option value="panch">Panch (पंच पद)</option>
+          </select>
+        </div>
+        <div class="control-group" style="margin-bottom: 10px;">
+          <label class="control-label">Constituency / Ward No.</label>
+          <input type="text" class="form-input" id="new-cand-constituency" placeholder="e.g. Gram Panchayat Rampur (Ward 04)">
+        </div>
+        <div class="control-group" style="margin-bottom: 10px;">
+          <label class="control-label">Official Election Symbol</label>
+          <select class="studio-select" id="new-cand-symbol">
+            <option value="🚜">🚜 Tractor (ट्रैक्टर)</option>
+            <option value="🌾">🌾 Farmer (किसान)</option>
+            <option value="🔦">🔦 Torch (मशाल)</option>
+            <option value="☀️">☀️ Sun (सूरज)</option>
+            <option value="🪁">🪁 Kite (पतंग)</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="cand-form-step-3" style="display: none;">
+        <div class="control-group" style="margin-bottom: 10px;">
+          <label class="control-label">Campaign Slogan</label>
+          <textarea class="studio-textarea" id="new-cand-slogan" rows="2" placeholder="e.g. गांव का समग्र विकास, हर घर विश्वास और खुशहाली!"></textarea>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; margin-top: 14px;">
+        <button class="btn btn-secondary btn-sm" id="cand-step-prev-btn" style="display: none;"><i data-lucide="arrow-left"></i> Previous</button>
+        <button class="btn btn-primary btn-sm" id="cand-step-next-btn" style="margin-left: auto;">Next <i data-lucide="arrow-right"></i></button>
+        <button class="btn btn-mint btn-sm" id="cand-step-submit-btn" style="display: none; margin-left: auto;"><i data-lucide="check"></i> Save Candidate</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. OCR REVIEW & EDIT MODAL (PRE-SAVE CONFIRMATION) -->
+  <div class="login-modal-backdrop" id="modal-ocr-review">
+    <div class="login-glass-card" style="max-width: 720px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <div>
+          <h3 style="font-family: var(--font-heading); font-size: 1.15rem; font-weight: 800;">Review &amp; Edit OCR Extracted Voters</h3>
+          <p style="font-size: 0.72rem; color: var(--text-tertiary);">Verify and edit extracted fields before saving to official database.</p>
+        </div>
+        <button class="btn btn-secondary btn-icon" id="close-ocr-review-modal-btn" style="width: 30px; height: 30px; min-height: 30px;"><i data-lucide="x" style="width: 14px; height: 14px;"></i></button>
+      </div>
+
+      <div class="table-container" style="max-height: 240px; overflow-y: auto; margin-bottom: 12px;">
+        <table class="glass-table">
+          <thead>
+            <tr>
+              <th>Voter ID</th>
+              <th>Name</th>
+              <th>Age</th>
+              <th>Ward</th>
+              <th>Mobile</th>
+              <th>Channel Tag</th>
+            </tr>
+          </thead>
+          <tbody id="ocr-review-table-body"></tbody>
+        </table>
+      </div>
+
+      <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+        <span style="font-size: 0.72rem; color: var(--mint-primary); font-weight: 700;">✓ Verified OCR records ready to save</span>
+        <div style="display: flex; gap: 6px;">
+          <button class="btn btn-secondary btn-sm" id="btn-cancel-ocr">Cancel</button>
+          <button class="btn btn-mint btn-sm" id="btn-confirm-save-ocr"><i data-lucide="check-circle-2"></i> Confirm &amp; Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. ADD EXPENSE MODAL -->
+  <div class="login-modal-backdrop" id="modal-add-expense">
+    <div class="login-glass-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 style="font-family: var(--font-heading); font-size: 1.15rem; font-weight: 800;">Log Campaign Expense</h3>
+        <button class="btn btn-secondary btn-icon" id="close-add-expense-modal-btn" style="width: 30px; height: 30px; min-height: 30px;"><i data-lucide="x" style="width: 14px; height: 14px;"></i></button>
+      </div>
+
+      <div class="control-group" style="margin-bottom: 10px;">
+        <label class="control-label">Expense Category</label>
+        <select class="studio-select" id="new-expense-category">
+          <option value="Pamphlet & Banner Printing">Pamphlet &amp; Banner Printing</option>
+          <option value="Sound, DJ & Mic Rental">Sound, DJ &amp; Mic Rental</option>
+          <option value="Tea, Snacks & Volunteer Food">Tea, Snacks &amp; Volunteer Food</option>
+          <option value="Vehicle Fuel & Transport">Vehicle Fuel &amp; Transport</option>
+          <option value="Office & Panna Supplies">Office &amp; Panna Supplies</option>
+        </select>
+      </div>
+
+      <div class="control-group" style="margin-bottom: 10px;">
+        <label class="control-label">Amount (₹)</label>
+        <input type="number" class="form-input" id="new-expense-amount" placeholder="e.g. 4500">
+      </div>
+
+      <div class="control-group" style="margin-bottom: 10px;">
+        <label class="control-label">Vendor / Note</label>
+        <input type="text" class="form-input" id="new-expense-note" placeholder="e.g. Rampur Digital Flex Print">
+      </div>
+
+      <div class="control-group" style="margin-bottom: 14px;">
+        <label class="control-label">Payment Mode</label>
+        <select class="studio-select" id="new-expense-mode">
+          <option value="UPI / Online">UPI / Online</option>
+          <option value="Cash Voucher">Cash Voucher</option>
+          <option value="Bank Transfer">Bank Transfer</option>
+        </select>
+      </div>
+
+      <button class="btn btn-primary btn-lg" id="btn-save-new-expense" style="width: 100%;"><i data-lucide="plus"></i> Add to Expense Ledger</button>
+    </div>
+  </div>
+
+  <!-- 6. LOG COMPLAINT MODAL -->
+  <div class="login-modal-backdrop" id="modal-log-complaint">
+    <div class="login-glass-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 style="font-family: var(--font-heading); font-size: 1.15rem; font-weight: 800;">Log Citizen Grievance</h3>
+        <button class="btn btn-secondary btn-icon" id="close-log-complaint-modal-btn" style="width: 30px; height: 30px; min-height: 30px;"><i data-lucide="x" style="width: 14px; height: 14px;"></i></button>
+      </div>
+
+      <div class="control-group" style="margin-bottom: 10px;">
+        <label class="control-label">Resident Name</label>
+        <input type="text" class="form-input" id="new-complaint-voter" placeholder="e.g. Suraj Mal Sharma">
+      </div>
+
+      <div class="control-group" style="margin-bottom: 10px;">
+        <label class="control-label">Ward No.</label>
+        <select class="studio-select" id="new-complaint-ward">
+          <option value="Ward 04">Ward 04</option>
+          <option value="Ward 02">Ward 02</option>
+          <option value="Ward 01">Ward 01</option>
+          <option value="Ward 03">Ward 03</option>
+        </select>
+      </div>
+
+      <div class="control-group" style="margin-bottom: 10px;">
+        <label class="control-label">Issue Category</label>
+        <select class="studio-select" id="new-complaint-category">
+          <option value="Water Supply">Clean Drinking Water Pipeline</option>
+          <option value="Road Drainage">Road Paving &amp; Open Drainage</option>
+          <option value="Electricity">Electricity &amp; Tube Well Power</option>
+          <option value="Health / School">Health Clinic / Anganwadi</option>
+        </select>
+      </div>
+
+      <div class="control-group" style="margin-bottom: 14px;">
+        <label class="control-label">Description</label>
+        <textarea class="studio-textarea" id="new-complaint-desc" rows="3" placeholder="Describe the grievance details..."></textarea>
+      </div>
+
+      <button class="btn btn-mint btn-lg" id="btn-save-new-complaint" style="width: 100%;"><i data-lucide="check"></i> Register Grievance</button>
+    </div>
+  </div>
+
+
+  <!-- Language Switcher Bottom Sheet (Mobile) -->
+  <div class="login-modal-backdrop" id="modal-lang-sheet">
+    <div class="login-glass-card" style="max-width: 420px; width: 100%;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <h3 style="font-family: var(--font-heading); font-size: 1.1rem; font-weight: 900;">
+          <i data-lucide="globe" style="width: 16px; height: 16px; color: var(--cyan-primary); vertical-align: middle;"></i>
+          Select Language / भाषा चुनें
+        </h3>
+        <button class="btn btn-secondary btn-icon" id="close-lang-sheet-btn" style="width: 30px; height: 30px; min-height: 30px;"><i data-lucide="x" style="width: 14px; height: 14px;"></i></button>
+      </div>
+      <div id="lang-sheet-list" style="display: flex; flex-direction: column; gap: 3px;">
+        <!-- Populated by i18n.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- OTP Send Logic (non-blocking inline) -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var sendOtpBtn = document.getElementById('btn-auth-send-otp');
+      var otpSection = document.getElementById('login-otp-section');
+      var submitBtn  = document.getElementById('btn-auth-submit-login');
+
+      if (sendOtpBtn) {
+        sendOtpBtn.addEventListener('click', function() {
+          var phone = document.getElementById('login-phone-input');
+          if (!phone || !phone.value.trim()) {
+            alert('Please enter your phone number or email.');
+            return;
+          }
+          sendOtpBtn.innerHTML = '<span class="pulse-dot" style="background:white;"></span> Sending OTP...';
+          setTimeout(function() {
+            sendOtpBtn.style.display = 'none';
+            if (otpSection) otpSection.style.display = 'block';
+            if (submitBtn) submitBtn.style.display = 'flex';
+            // Auto-fill demo OTP
+            ['otp-box-1','otp-box-2','otp-box-3','otp-box-4'].forEach(function(id, i) {
+              var el = document.getElementById(id);
+              if (el) el.value = ['9','3','0','1'][i];
+            });
+          }, 700);
+        });
+      }
+
+      // OTP box auto-advance
+      ['otp-box-1','otp-box-2','otp-box-3','otp-box-4'].forEach(function(id, idx) {
+        var el = document.getElementById(id);
+        if (el) {
+          el.addEventListener('input', function() {
+            if (this.value.length === 1 && idx < 3) {
+              var nextEl = document.getElementById('otp-box-' + (idx + 2));
+              if (nextEl) nextEl.focus();
+            }
+          });
+        }
+      });
+
+      // Canvas export stage button
+      var stagePngBtn = document.getElementById('studio-export-png-btn-stage');
+      if (stagePngBtn) {
+        stagePngBtn.addEventListener('click', function() {
+          if (window.ElectWinStudio) window.ElectWinStudio.downloadPngHd();
+        });
+      }
+    });
+  </script>
+
+  <!-- Application Logic Modules -->
+  <script src="js/team.js"></script>
+  <script src="js/candidates.js"></script>
+  <script src="js/voter-data.js"></script>
+  <script src="js/design-studio.js"></script>
+  <script src="js/broadcast-center.js"></script>
+  <script src="js/volunteers.js"></script>
+  <script src="js/complaints.js"></script>
+  <script src="js/expenses.js"></script>
+  <script src="js/analytics.js"></script>
+  <script src="js/branding.js"></script>
+  <script src="js/volunteer.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
+
