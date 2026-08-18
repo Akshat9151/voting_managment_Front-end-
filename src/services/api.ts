@@ -459,6 +459,20 @@ class ApiService {
   async getElections() {
     return electionsApi.list();
   }
+
+  // Subscriptions (Stub implementations)
+  async getSubscriptionPlans() {
+    return [];
+  }
+  async getCurrentSubscription() {
+    return null;
+  }
+  async getInvoices() {
+    return [];
+  }
+  async upgradeSubscription(_planId: string, _gateway: string) {
+    return null;
+  }
 }
 
 // ─── Subscriptions API ────────────────────────────────────────────────────────
