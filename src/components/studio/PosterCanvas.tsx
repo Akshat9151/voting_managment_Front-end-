@@ -11,6 +11,9 @@ interface PosterCanvasProps {
   customHeadline?: string;
   accentColor?: string;
   onExportReady?: (canvas: HTMLCanvasElement) => void;
+  candidatePhotoUrl?: string | null;
+  symbolMode?: 'preset' | 'custom';
+  customSymbolUrl?: string | null;
 }
 
 export const PosterCanvas: React.FC<PosterCanvasProps> = ({
@@ -21,7 +24,10 @@ export const PosterCanvas: React.FC<PosterCanvasProps> = ({
   format,
   slogan,
   customHeadline,
-  accentColor = '#0284c7'
+  accentColor = '#0284c7',
+  candidatePhotoUrl,
+  symbolMode = 'preset',
+  customSymbolUrl
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -30,6 +36,13 @@ export const PosterCanvas: React.FC<PosterCanvasProps> = ({
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    renderPoster(ctx);
+  }, [candidate, symbol, symbolName, layout, format, slogan, customHeadline, accentColor, candidatePhotoUrl, symbolMode, customSymbolUrl]);
+
+  const renderPoster = (ctx: CanvasRenderingContext2D) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
     // Set canvas dimensions
     canvas.width = format.width;
@@ -81,18 +94,51 @@ export const PosterCanvas: React.FC<PosterCanvasProps> = ({
     ctx.fill();
     ctx.stroke();
 
-    // Draw Symbol emoji
-    ctx.font = `${Math.floor(symbolBoxSize * 0.52)}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(symbol, symbolX + symbolBoxSize / 2, symbolY + symbolBoxSize / 2 - 8);
+    // Draw Symbol (emoji or image)
+    if (symbolMode === 'custom' && customSymbolUrl) {
+      // Custom symbol image
+      const symbolImg = new Image();
+      symbolImg.onload = () => {
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(
+          symbolX + 4,
+          symbolY + 4,
+          symbolBoxSize - 8,
+          symbolBoxSize - 8,
+          12
+        );
+        ctx.clip();
+        ctx.drawImage(
+          symbolImg,
+          symbolX + 4,
+          symbolY + 4,
+          symbolBoxSize - 8,
+          symbolBoxSize - 8
+        );
+        ctx.restore();
+      };
+      symbolImg.src = customSymbolUrl;
+    } else {
+      // Preset emoji symbol
+      ctx.font = `${Math.floor(symbolBoxSize * 0.52)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#000000';
+      ctx.fillText(symbol, symbolX + symbolBoxSize / 2, symbolY + symbolBoxSize / 2 - 8);
+    }
 
     ctx.font = `bold ${Math.max(10, Math.floor(symbolBoxSize * 0.14))}px sans-serif`;
     ctx.fillStyle = '#0f172a';
-    ctx.fillText(symbolName.split(' ')[0], symbolX + symbolBoxSize / 2, symbolY + symbolBoxSize - 12);
-    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(
+      symbolName.split(' ')[0],
+      symbolX + symbolBoxSize / 2,
+      symbolY + symbolBoxSize - 4
+    );
 
-    // Candidate Photo Placeholder / Circle
+    // Candidate Photo
     const photoSize = Math.floor(w * 0.38);
     const photoX = Math.floor(w * 0.08);
     const photoY = Math.floor(h * 0.16);
@@ -107,28 +153,50 @@ export const PosterCanvas: React.FC<PosterCanvasProps> = ({
     ctx.stroke();
     ctx.clip();
 
-    // Fallback initials or image
-    ctx.font = `bold ${Math.floor(photoSize * 0.35)}px sans-serif`;
-    ctx.fillStyle = accentColor;
-    ctx.textAlign = 'center';
-    ctx.fillText(candidate.name.charAt(0), photoX + photoSize / 2, photoY + photoSize / 2 + Math.floor(photoSize * 0.12));
-    ctx.restore();
+    // Render uploaded photo or fallback to initials
+    if (candidatePhotoUrl) {
+      const photoImg = new Image();
+      photoImg.onload = () => {
+        ctx.drawImage(
+          photoImg,
+          photoX + photoSize / 2 - photoSize / 2,
+          photoY + photoSize / 2 - photoSize / 2,
+          photoSize,
+          photoSize
+        );
+        ctx.restore();
+      };
+      photoImg.onerror = () => {
+        // Fallback to initials if image fails to load
+        ctx.restore();
+        renderPhotoFallback(ctx, photoX, photoY, photoSize);
+      };
+      photoImg.src = candidatePhotoUrl;
+    } else {
+      ctx.restore();
+      renderPhotoFallback(ctx, photoX, photoY, photoSize);
+    }
 
     // Candidate Information Section
+    const displayName = candidate.name ?? candidate.full_name ?? 'Candidate';
+    const displayHindiName = candidate.hindiName ?? candidate.name ?? 'Candidate';
+    const displayPost = candidate.post ?? 'Candidate';
+    const displayConstituency = candidate.constituency ?? 'Constituency';
+
     const textStartY = photoY + photoSize + Math.floor(h * 0.05);
 
     ctx.textAlign = 'center';
     ctx.fillStyle = '#0f172a';
     ctx.font = `bold ${Math.floor(w * 0.065)}px "Outfit", sans-serif`;
-    ctx.fillText(candidate.hindiName || candidate.name, w / 2, textStartY);
+    ctx.fillText(displayHindiName || displayName, w / 2, textStartY);
 
     ctx.fillStyle = '#475569';
     ctx.font = `600 ${Math.floor(w * 0.038)}px sans-serif`;
-    ctx.fillText(candidate.post, w / 2, textStartY + Math.floor(h * 0.035));
+    ctx.fillText(displayPost, w / 2, textStartY + Math.floor(h * 0.035));
 
     ctx.fillStyle = accentColor;
     ctx.font = `bold ${Math.floor(w * 0.035)}px sans-serif`;
-    ctx.fillText(candidate.constituency, w / 2, textStartY + Math.floor(h * 0.065));
+    ctx.fillText(displayConstituency, w / 2, textStartY + Math.floor(h * 0.065));
 
     // Slogan Ribbon
     const ribbonY = textStartY + Math.floor(h * 0.09);
@@ -153,14 +221,38 @@ export const PosterCanvas: React.FC<PosterCanvasProps> = ({
     ctx.fillStyle = '#ffffff';
     ctx.font = `bold ${Math.floor(w * 0.04)}px "Outfit", sans-serif`;
     ctx.fillText(`चुनाव चिह्न "${symbolName}" के सामने वाला बटन दबाकर भारी मतों से विजयी बनाएं!`, w / 2, h - Math.floor(h * 0.05));
+  };
 
-  }, [candidate, symbol, symbolName, layout, format, slogan, customHeadline, accentColor]);
+  const renderPhotoFallback = (ctx: CanvasRenderingContext2D, photoX: number, photoY: number, photoSize: number) => {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(photoX + photoSize / 2, photoY + photoSize / 2, photoSize / 2, 0, Math.PI * 2);
+    ctx.fillStyle = '#e2e8f0';
+    ctx.fill();
+    ctx.strokeStyle = accentColor;
+    ctx.lineWidth = 5;
+    ctx.stroke();
+    ctx.clip();
+
+    const displayName = candidate.name ?? candidate.full_name ?? 'Candidate';
+    ctx.font = `bold ${Math.floor(photoSize * 0.35)}px sans-serif`;
+    ctx.fillStyle = accentColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(
+      displayName.charAt(0),
+      photoX + photoSize / 2,
+      photoY + photoSize / 2 + Math.floor(photoSize * 0.12)
+    );
+    ctx.restore();
+  };
 
   const handleDownload = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const safeName = candidate.name ?? candidate.full_name ?? 'Candidate';
     const link = document.createElement('a');
-    link.download = `ElectWin_Poster_${candidate.name.replace(/\s+/g, '_')}_${format.id}.png`;
+    link.download = `ElectWin_Poster_${safeName.replace(/\s+/g, '_')}_${format.id}.png`;
     link.href = canvas.toDataURL('image/png', 1.0);
     link.click();
   };

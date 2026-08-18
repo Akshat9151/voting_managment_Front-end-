@@ -1,6 +1,7 @@
 ﻿import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import {
   LayoutDashboard,
   Users,
@@ -8,7 +9,6 @@ import {
   Contact2,
   Palette,
   Send,
-  UserCheck,
   AlertCircle,
   Receipt,
   BarChart3,
@@ -18,42 +18,53 @@ import {
   Activity,
   LogOut,
   X,
-  Sparkles
+  CheckSquare,
+  Map
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  onOpenRoleSwitcher: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
-  onClose,
-  onOpenRoleSwitcher
+  onClose
 }) => {
-  const { currentRole, logout } = useAuth();
+  const { logout, user, currentRole } = useAuth();
+  const { t } = useLanguage();
+
+  // Determine role badge color
+  const getRoleBadgeColor = () => {
+    switch (currentRole) {
+      case 'SUPER_ADMIN': return 'bg-purple-100 text-purple-700 border-purple-200';
+      case 'ADMIN': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'VOLUNTEER': return 'bg-green-100 text-green-700 border-green-200';
+      default: return 'bg-slate-100 text-slate-700 border-slate-200';
+    }
+  };
 
   // Navigation Items according to role
   const mainNavItems = [
-    { to: '/', label: 'War Room Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
-    { to: '/team', label: 'Team & Permissions', icon: <Users className="w-4 h-4" /> },
-    { to: '/candidates', label: 'Candidates & Symbols', icon: <Award className="w-4 h-4" /> },
-    { to: '/voters', label: 'Voter Roll & OCR', icon: <Contact2 className="w-4 h-4" /> },
-    { to: '/studio', label: 'Design Studio', icon: <Palette className="w-4 h-4" /> },
-    { to: '/broadcast', label: 'Broadcast Center', icon: <Send className="w-4 h-4" /> },
-    { to: '/volunteers', label: 'Booth Operations', icon: <UserCheck className="w-4 h-4" /> },
-    { to: '/complaints', label: 'Surveys & Grievances', icon: <AlertCircle className="w-4 h-4" /> },
-    { to: '/expenses', label: 'EC Expenses Ledger', icon: <Receipt className="w-4 h-4" /> },
-    { to: '/analytics', label: 'Turnout Analytics', icon: <BarChart3 className="w-4 h-4" /> },
-    { to: '/settings', label: 'Settings & Branding', icon: <Settings className="w-4 h-4" /> }
+    { to: '/', label: t('navItemDashboard'), icon: <LayoutDashboard className="w-4 h-4" /> },
+    { to: '/team', label: t('navItemTeam'), icon: <Users className="w-4 h-4" /> },
+    { to: '/candidates', label: t('navItemCandidates'), icon: <Award className="w-4 h-4" /> },
+    { to: '/voters', label: t('navItemVoters'), icon: <Contact2 className="w-4 h-4" /> },
+    { to: '/tasks', label: t('navItemTasks'), icon: <CheckSquare className="w-4 h-4" /> },
+    { to: '/field-activities', label: t('navItemFieldActivities'), icon: <Map className="w-4 h-4" /> },
+    { to: '/studio', label: t('navItemDesignStudio'), icon: <Palette className="w-4 h-4" /> },
+    { to: '/broadcast', label: t('navItemBroadcast'), icon: <Send className="w-4 h-4" /> },
+    { to: '/complaints', label: t('navItemComplaints'), icon: <AlertCircle className="w-4 h-4" /> },
+    { to: '/expenses', label: t('navItemExpenses'), icon: <Receipt className="w-4 h-4" /> },
+    { to: '/analytics', label: t('navItemAnalytics'), icon: <BarChart3 className="w-4 h-4" /> },
+    { to: '/settings', label: t('navItemSettings'), icon: <Settings className="w-4 h-4" /> }
   ];
 
   const volunteerNavItems = [
-    { to: '/volunteer-ward', label: 'Ward 02 Field Desk', icon: <MapPin className="w-4 h-4" /> },
-    { to: '/volunteer-add', label: 'Add Elector (Ward 02)', icon: <UserPlus className="w-4 h-4" /> },
-    { to: '/volunteer-activity', label: 'My Field Record', icon: <Activity className="w-4 h-4" /> }
+    { to: '/volunteer-ward', label: t('navItemWardFieldDesk'), icon: <MapPin className="w-4 h-4" /> },
+    { to: '/volunteer-add', label: t('navItemAddVoter'), icon: <UserPlus className="w-4 h-4" /> },
+    { to: '/volunteer-activity', label: t('navItemFieldRecord'), icon: <Activity className="w-4 h-4" /> }
   ];
 
   return (
@@ -68,7 +79,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       <aside
         className={clsx(
-          'fixed lg:sticky top-0 lg:top-14 left-0 h-screen lg:h-[calc(100vh-56px)] w-[260px] bg-white border-r border-slate-200 z-50 flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0 overflow-y-auto',
+          'fixed lg:sticky top-0 lg:top-14 left-0 h-screen lg:h-[calc(100vh-56px)] w-[260px] bg-white border-r border-slate-200 z-50 flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0 overflow-y-auto dark:bg-slate-900 dark:border-slate-700',
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
@@ -86,22 +97,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
           </div>
 
-          {/* Role Status Box */}
-          <div
-            onClick={onOpenRoleSwitcher}
-            className="p-3 bg-gradient-to-br from-sky-50 to-slate-50 border border-sky-100 rounded-xl cursor-pointer hover:border-sky-300 transition-all flex items-center justify-between shadow-xs"
-          >
-            <div>
-              <div className="text-[10px] font-extrabold text-sky-600 uppercase tracking-wider">Active Role</div>
-              <div className="text-xs font-bold text-slate-900 capitalize">{currentRole} View</div>
-            </div>
-            <Sparkles className="w-4 h-4 text-sky-500" />
-          </div>
-
           {/* Navigation Links */}
           <nav className="space-y-1">
             <div className="text-[11px] font-extrabold uppercase text-slate-400 px-3 py-1 tracking-wider">
-              Campaign Management
+              {t('navigationSidebarCampaignMgmt')}
             </div>
             {mainNavItems.map((item) => (
               <NavLink
@@ -113,7 +112,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[42px]',
                     isActive
                       ? 'bg-sky-600 text-white shadow-sm font-extrabold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-slate-100 dark:hover:bg-slate-800'
                   )
                 }
               >
@@ -125,7 +124,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* Field Volunteer Section */}
             <div className="pt-3">
               <div className="text-[11px] font-extrabold uppercase text-slate-400 px-3 py-1 tracking-wider">
-                Field Volunteer Desk
+                {t('navigationSidebarFieldVolunteer')}
               </div>
               {volunteerNavItems.map((item) => (
                 <NavLink
@@ -137,7 +136,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[42px]',
                       isActive
                         ? 'bg-emerald-600 text-white shadow-sm font-extrabold'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-slate-100 dark:hover:bg-slate-800'
                     )
                   }
                 >
@@ -150,13 +149,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Footer Logout */}
-        <div className="p-4 border-t border-slate-100 bg-slate-50/50">
+        <div className="p-4 border-t border-slate-100 bg-slate-50/50 space-y-3 dark:border-slate-700 dark:bg-slate-950/40">
+          {/* User Role Display */}
+          {user && (
+            <div className={`px-3 py-2.5 rounded-xl border text-xs font-bold transition-all text-center ${getRoleBadgeColor()}`}>
+              <div className="truncate">{user.first_name} {user.last_name}</div>
+              <div className="text-[10px] opacity-80 mt-0.5">
+                {t(`role${currentRole.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('')}`)}
+              </div>
+            </div>
+          )}
           <button
             onClick={() => { logout(); onClose(); }}
-            className="w-full flex items-center justify-center gap-2 text-xs font-bold text-rose-600 hover:text-rose-700 bg-white hover:bg-rose-50 border border-slate-200 py-2.5 rounded-xl transition-all cursor-pointer min-h-[42px]"
+            className="w-full flex items-center justify-center gap-2 text-xs font-bold text-rose-600 hover:text-rose-700 bg-white hover:bg-rose-50 border border-slate-200 py-2.5 rounded-xl transition-all cursor-pointer min-h-[42px] dark:bg-slate-800 dark:hover:bg-rose-900/20 dark:border-slate-700"
           >
             <LogOut className="w-4 h-4" />
-            <span>Sign Out Session</span>
+            <span>{t('navItemSignOut')}</span>
           </button>
         </div>
       </aside>

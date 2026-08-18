@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { useLanguage } from '../context/LanguageContext';
+import { useElection } from '../context/ElectionContext';
 import { ArrowLeft } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -9,7 +11,9 @@ import { useNavigate } from 'react-router-dom';
 
 export const VolunteerAddPage: React.FC = () => {
   const { showToast } = useToast();
+  const { t } = useLanguage();
   const navigate = useNavigate();
+  const { activeElectionId } = useElection();
 
   const [name, setName] = useState('');
   const [age, setAge] = useState<number>(35);
@@ -20,13 +24,22 @@ export const VolunteerAddPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name) return;
-    await api.addVolunteerVoter({
-      name,
+    if (!activeElectionId) {
+      showToast(t('selectActiveElectionBeforeAdding'), 'error');
+      return;
+    }
+    await api.addVoter({
+      election_id: activeElectionId,
+      voter_id_number: `V-02-${Date.now()}`,
+      first_name: name,
+      last_name: '',
       age,
-      mobile: mobile || '+91 94140 00000',
-      house,
-      status: 'Visited',
-      slipHanded
+      gender: 'Male',
+      ward_name: 'Ward 02',
+      phone_number: mobile || '+91 94140 00000',
+      house_number: house,
+      status: 'Valid',
+      source: 'Volunteer Entry',
     });
     showToast(`Elector ${name} logged directly into Ward 02!`, 'success');
     navigate('/volunteer-ward');

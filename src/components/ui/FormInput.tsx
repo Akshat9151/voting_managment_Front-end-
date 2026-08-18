@@ -29,9 +29,9 @@ export const FormInput = React.forwardRef<HTMLInputElement, FormInputProps>(
             id={inputId}
             ref={ref}
             className={clsx(
-              'w-full min-h-[44px] rounded-xl border bg-white px-3.5 py-2 text-sm text-slate-900 transition-all placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500',
+              'w-full min-h-[44px] rounded-xl border bg-white px-3.5 py-2 text-sm text-slate-900 transition-all placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-600 dark:placeholder:text-slate-400',
               leftIcon && 'pl-10',
-              error ? 'border-rose-300 focus:ring-rose-500' : 'border-slate-300 hover:border-slate-400',
+              error ? 'border-rose-300 focus:ring-rose-500' : 'border-slate-300 hover:border-slate-400 dark:hover:border-slate-500',
               className
             )}
             {...props}

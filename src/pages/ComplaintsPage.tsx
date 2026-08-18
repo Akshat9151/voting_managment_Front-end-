@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { api } from '../services/api';
+import React, { useState, useEffect, useCallback } from 'react';
+import { complaintsApi } from '../services/api';
+import { useElection } from '../context/ElectionContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { AlertCircle, Plus } from 'lucide-react';
@@ -15,47 +16,63 @@ import { Complaint, ComplaintStatus, ComplaintCategory } from '../types';
 export const ComplaintsPage: React.FC = () => {
   const { t } = useLanguage();
   const { showToast } = useToast();
+  const { activeElectionId } = useElection();
 
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
 
   // Form State
-  const [name, setName] = useState('');
-  const [ward, setWard] = useState('Ward 04');
-  const [category, setCategory] = useState<ComplaintCategory>('Water Supply');
+  const [title, setTitle] = useState('');
+  const [reportedByName, setReportedByName] = useState('');
+  const [wardName, setWardName] = useState('Ward 01');
+  const [category, setCategory] = useState<ComplaintCategory>('INFRASTRUCTURE');
   const [desc, setDesc] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    loadComplaints();
-  }, []);
+  const loadComplaints = useCallback(async () => {
+    if (!activeElectionId) return;
+    setIsLoading(true);
+    try {
+      const { items } = await complaintsApi.list(activeElectionId);
+      setComplaints(items as Complaint[]);
+    } catch {
+      showToast(t('failedLoadingComplaints'), 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeElectionId]);
 
-  const loadComplaints = async () => {
-    const data = await api.getComplaints();
-    setComplaints(data);
-  };
+  useEffect(() => { loadComplaints(); }, [loadComplaints]);
 
   const handleStatusChange = async (id: string, newStatus: ComplaintStatus) => {
-    await api.updateComplaintStatus(id, newStatus);
-    showToast(`Grievance marked as "${newStatus}"!`, 'success');
-    loadComplaints();
+    try {
+      await complaintsApi.updateStatus(id, { status: newStatus });
+      showToast(`Grievance marked as "${newStatus}"!`, 'success');
+      loadComplaints();
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || 'Status update failed', 'error');
+    }
   };
 
   const handleLogComplaint = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !desc) return;
-    await api.addComplaint({
-      name,
-      ward,
-      category,
-      desc,
-      status: 'Open'
-    });
-    showToast('Citizen grievance registered successfully!', 'success');
-    setIsLogModalOpen(false);
-    setName('');
-    setDesc('');
-    loadComplaints();
+    if (!activeElectionId || !title) return;
+    try {
+      await complaintsApi.create(activeElectionId, {
+        title,
+        description: desc,
+        category,
+        reported_by_name: reportedByName,
+        ward_name: wardName,
+      });
+      showToast(t('grievanceRegistered'), 'success');
+      setIsLogModalOpen(false);
+      setTitle(''); setDesc(''); setReportedByName(''); setWardName('');
+      loadComplaints();
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || 'Failed to register grievance', 'error');
+    }
   };
 
   const filtered = complaints.filter(c => {
@@ -81,8 +98,9 @@ export const ComplaintsPage: React.FC = () => {
           variant="primary"
           onClick={() => setIsLogModalOpen(true)}
           leftIcon={<Plus className="w-4 h-4" />}
+          disabled={isLoading}
         >
-          {t('logGrievance')}
+          {isLoading ? 'Loading...' : t('logGrievance')}
         </Button>
       </div>
 
@@ -118,36 +136,40 @@ export const ComplaintsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map((c) => (
-                <tr key={c.id} className="hover:bg-slate-50">
-                  <td className="p-3.5 font-bold text-slate-900">{c.name}</td>
-                  <td className="p-3.5">
-                    <Badge variant="purple" size="sm">{c.ward}</Badge>
-                  </td>
-                  <td className="p-3.5">
-                    <Badge variant="cyan" size="sm">{c.category}</Badge>
-                  </td>
-                  <td className="p-3.5 text-slate-700 max-w-xs">{c.desc}</td>
-                  <td className="p-3.5 text-slate-400">{c.date}</td>
-                  <td className="p-3.5">
-                    <select
-                      value={c.status}
-                      onChange={(e) => handleStatusChange(c.id, e.target.value as ComplaintStatus)}
-                      className={`text-xs font-bold rounded-lg px-2 py-1 border transition-all cursor-pointer ${
-                        c.status === 'Resolved'
-                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                          : c.status === 'In Progress'
-                          ? 'bg-amber-50 text-amber-800 border-amber-200'
-                          : 'bg-rose-50 text-rose-800 border-rose-200'
-                      }`}
-                    >
-                      <option value="Open">🔴 Open</option>
-                      <option value="In Progress">🟡 In Progress</option>
-                      <option value="Resolved">🟢 Resolved</option>
-                    </select>
-                  </td>
-                </tr>
-              ))}
+              {filtered.map((c) => {
+                const statusValue = c.status ?? 'OPEN';
+                const label = statusValue === 'RESOLVED' || statusValue === 'Resolved' ? 'Resolved' : statusValue === 'IN_PROGRESS' || statusValue === 'In Progress' ? 'In Progress' : 'Open';
+                return (
+                  <tr key={c.id} className="hover:bg-slate-50">
+                    <td className="p-3.5 font-bold text-slate-900">{c.reported_by_name ?? 'Citizen'}</td>
+                    <td className="p-3.5">
+                      <Badge variant="purple" size="sm">{c.ward_name ?? 'Ward'}</Badge>
+                    </td>
+                    <td className="p-3.5">
+                      <Badge variant="cyan" size="sm">{c.category}</Badge>
+                    </td>
+                    <td className="p-3.5 text-slate-700 max-w-xs">{c.description ?? 'No description'}</td>
+                    <td className="p-3.5 text-slate-400">{c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}</td>
+                    <td className="p-3.5">
+                      <select
+                        value={label}
+                        onChange={(e) => handleStatusChange(c.id, e.target.value as ComplaintStatus)}
+                        className={`text-xs font-bold rounded-lg px-2 py-1 border transition-all cursor-pointer ${
+                          label === 'Resolved'
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                            : label === 'In Progress'
+                            ? 'bg-amber-50 text-amber-800 border-amber-200'
+                            : 'bg-rose-50 text-rose-800 border-rose-200'
+                        }`}
+                      >
+                        <option value="Open">🔴 Open</option>
+                        <option value="In Progress">🟡 In Progress</option>
+                        <option value="Resolved">🟢 Resolved</option>
+                      </select>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -168,16 +190,16 @@ export const ComplaintsPage: React.FC = () => {
           <FormInput
             label="Citizen Name"
             placeholder="e.g. Suraj Mal Sharma"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            value={reportedByName}
+            onChange={(e) => setReportedByName(e.target.value)}
             required
           />
 
           <div className="grid grid-cols-2 gap-3">
             <Select
               label="Ward Location"
-              value={ward}
-              onChange={(e) => setWard(e.target.value)}
+              value={wardName}
+              onChange={(e) => setWardName(e.target.value)}
             >
               <option value="Ward 01">Ward 01</option>
               <option value="Ward 02">Ward 02</option>

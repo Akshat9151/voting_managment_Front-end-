@@ -11,7 +11,8 @@
   SymbolItem,
   LayoutStyle,
   FormatDimension,
-  LocationData
+  LocationData,
+  DesignTemplate
 } from '../types';
 
 export const INITIAL_CANDIDATES: Candidate[] = [
@@ -154,11 +155,11 @@ export const INITIAL_DELIVERY_LOGS: DeliveryLog[] = [
 ];
 
 export const INITIAL_COMPLAINTS: Complaint[] = [
-  { id: 'GR-101', name: 'Suraj Mal Sharma', ward: 'Ward 04', category: 'Water Supply', desc: 'Handpump non-functional near community well; water pipeline pressure low', date: '15 Aug 2026', status: 'In Progress' },
-  { id: 'GR-102', name: 'Kavita Meena', ward: 'Ward 04', category: 'Health / School', desc: 'Primary health sub-center ANM nurse not available on Tuesdays', date: '14 Aug 2026', status: 'Open' },
-  { id: 'GR-103', name: 'Gopal Lal Gurjar', ward: 'Ward 02', category: 'Road Drainage', desc: 'Rainwater stagnation in front of primary school; drainage culvert choked', date: '12 Aug 2026', status: 'Resolved' },
-  { id: 'GR-104', name: 'Sunil Kumar', ward: 'Ward 02', category: 'Electricity', desc: 'Low voltage during evening 6 to 9 PM; tube well pump trip issue', date: '10 Aug 2026', status: 'In Progress' },
-  { id: 'GR-105', name: 'Babulal Prajapat', ward: 'Ward 01', category: 'Road Drainage', desc: 'Kaccha road needs gravel paving before polling day', date: '08 Aug 2026', status: 'Open' }
+  { id: 'GR-101', organization_id: 'org_1', election_id: 'election_1', title: 'Water Supply Issue', description: 'Handpump non-functional near community well; water pipeline pressure low', category: 'Water Supply', status: 'IN_PROGRESS', reported_by_name: 'Suraj Mal Sharma', ward_name: 'Ward 04', created_at: '2026-08-15T00:00:00Z', updated_at: '2026-08-15T00:00:00Z' },
+  { id: 'GR-102', organization_id: 'org_1', election_id: 'election_1', title: 'Health / School Issue', description: 'Primary health sub-center ANM nurse not available on Tuesdays', category: 'Health / School', status: 'OPEN', reported_by_name: 'Kavita Meena', ward_name: 'Ward 04', created_at: '2026-08-14T00:00:00Z', updated_at: '2026-08-14T00:00:00Z' },
+  { id: 'GR-103', organization_id: 'org_1', election_id: 'election_1', title: 'Road Drainage Issue', description: 'Rainwater stagnation in front of primary school; drainage culvert choked', category: 'Road Drainage', status: 'RESOLVED', reported_by_name: 'Gopal Lal Gurjar', ward_name: 'Ward 02', created_at: '2026-08-12T00:00:00Z', updated_at: '2026-08-12T00:00:00Z' },
+  { id: 'GR-104', organization_id: 'org_1', election_id: 'election_1', title: 'Electricity Problem', description: 'Low voltage during evening 6 to 9 PM; tube well pump trip issue', category: 'Electricity', status: 'IN_PROGRESS', reported_by_name: 'Sunil Kumar', ward_name: 'Ward 02', created_at: '2026-08-10T00:00:00Z', updated_at: '2026-08-10T00:00:00Z' },
+  { id: 'GR-105', organization_id: 'org_1', election_id: 'election_1', title: 'Road Repair Needed', description: 'Kaccha road needs gravel paving before polling day', category: 'Road Drainage', status: 'OPEN', reported_by_name: 'Babulal Prajapat', ward_name: 'Ward 01', created_at: '2026-08-08T00:00:00Z', updated_at: '2026-08-08T00:00:00Z' }
 ];
 
 export const INITIAL_EXPENSES: Expense[] = [
@@ -301,3 +302,113 @@ export const MAP_LOCATIONS: Record<string, LocationData> = {
     ]
   }
 };
+
+// ── Mock Design Templates for Poster Generator ──────────────────────────────
+export const DESIGN_TEMPLATES: DesignTemplate[] = [
+  {
+    id: 'template-poster-tricolor',
+    organization_id: null,
+    name: 'Tricolor Poster – Portrait',
+    election_type: 'panchayat',
+    category: 'poster',
+    format_name: 'A4 Poster',
+    format_dims: '210 × 297 mm',
+    thumbnail_url: 'https://images.unsplash.com/photo-1589939705066-5ec8b3b47f1d?w=200&h=280&crop=faces&fit=crop',
+    is_active: true,
+    display_order: 1,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+    layout_json: {
+      bg_color: '#ffffff',
+      width: 600,
+      height: 848,
+      elements: [
+        { type: 'shape', x: 0, y: 0, width: 600, height: 130, color: '#ff9933', value: 'tricolor-top', z_index: 1 },
+        { type: 'shape', x: 0, y: 130, width: 600, height: 130, color: '#ffffff', value: 'tricolor-mid', z_index: 1 },
+        { type: 'shape', x: 0, y: 260, width: 600, height: 130, color: '#138808', value: 'tricolor-bot', z_index: 1 },
+        { type: 'text', x: 10, y: 350, width: 580, height: 80, placeholder: '{{candidate_name}}', font_size: 48, font_weight: 'bold', color: '#000000', z_index: 3 },
+        { type: 'text', x: 10, y: 430, width: 580, height: 60, placeholder: '{{position}}', font_size: 32, color: '#333333', z_index: 3 },
+        { type: 'symbol', x: 450, y: 320, width: 120, height: 120, placeholder: '{{symbol}}', z_index: 4 },
+        { type: 'text', x: 10, y: 500, width: 580, height: 100, placeholder: '{{slogan}}', font_size: 24, font_weight: 'bold', color: '#ff6b00', text_align: 'center', z_index: 3 },
+        { type: 'text', x: 10, y: 620, width: 580, height: 50, value: 'Campaign 2026', font_size: 16, color: '#666666', text_align: 'center', z_index: 3 }
+      ]
+    }
+  },
+  {
+    id: 'template-banner-landscape',
+    organization_id: null,
+    name: 'Campaign Banner – Landscape',
+    election_type: 'panchayat',
+    category: 'banner',
+    format_name: 'Hoarding Banner',
+    format_dims: '1200 × 600 px',
+    thumbnail_url: 'https://images.unsplash.com/photo-1585647347384-2593bc35786b?w=300&h=150&crop=faces&fit=crop',
+    is_active: true,
+    display_order: 2,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+    layout_json: {
+      bg_color: '#0f172a',
+      width: 1200,
+      height: 600,
+      elements: [
+        { type: 'text', x: 20, y: 50, width: 550, height: 150, placeholder: '{{candidate_name}}', font_size: 64, font_weight: 'bold', color: '#ffffff', z_index: 2 },
+        { type: 'photo', x: 50, y: 150, width: 400, height: 400, placeholder: 'candidate_photo', z_index: 1 },
+        { type: 'symbol', x: 600, y: 150, width: 200, height: 200, placeholder: '{{symbol}}', z_index: 3 },
+        { type: 'text', x: 600, y: 380, width: 550, height: 150, placeholder: '{{slogan}}', font_size: 40, font_weight: 'bold', color: '#fbbf24', text_align: 'center', z_index: 2 }
+      ]
+    }
+  },
+  {
+    id: 'template-idcard-small',
+    organization_id: null,
+    name: 'ID Card – Vertical',
+    election_type: 'panchayat',
+    category: 'id_card',
+    format_name: 'ID Card',
+    format_dims: '90 × 150 mm',
+    thumbnail_url: 'https://images.unsplash.com/photo-1549887534-f3d6f6a8f5a0?w=90&h=150&crop=faces&fit=crop',
+    is_active: true,
+    display_order: 3,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+    layout_json: {
+      bg_color: '#1e293b',
+      width: 350,
+      height: 560,
+      elements: [
+        { type: 'photo', x: 20, y: 20, width: 310, height: 200, placeholder: 'candidate_photo', z_index: 1 },
+        { type: 'text', x: 10, y: 240, width: 330, height: 60, placeholder: '{{candidate_name}}', font_size: 24, font_weight: 'bold', color: '#ffffff', text_align: 'center', z_index: 2 },
+        { type: 'text', x: 10, y: 310, width: 330, height: 40, placeholder: '{{position}}', font_size: 14, color: '#cbd5e1', text_align: 'center', z_index: 2 },
+        { type: 'symbol', x: 135, y: 370, width: 80, height: 80, placeholder: '{{symbol}}', z_index: 2 },
+        { type: 'text', x: 10, y: 470, width: 330, height: 40, placeholder: 'Ward {{ward_no}}', font_size: 12, color: '#94a3b8', text_align: 'center', z_index: 2 }
+      ]
+    }
+  },
+  {
+    id: 'template-pamphlet-a5',
+    organization_id: null,
+    name: 'Handbill – A5 Pamphlet',
+    election_type: 'panchayat',
+    category: 'pamphlet',
+    format_name: 'A5 Handbill',
+    format_dims: '148 × 210 mm',
+    thumbnail_url: 'https://images.unsplash.com/photo-1526628653108-1e9d772c8d5a?w=150&h=210&crop=faces&fit=crop',
+    is_active: true,
+    display_order: 4,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+    layout_json: {
+      bg_color: '#f8fafc',
+      width: 600,
+      height: 848,
+      elements: [
+        { type: 'text', x: 20, y: 40, width: 560, height: 80, value: 'Vote Smart • Vote Together', font_size: 36, font_weight: 'bold', color: '#0f172a', text_align: 'center', z_index: 2 },
+        { type: 'photo', x: 80, y: 140, width: 440, height: 350, placeholder: 'candidate_photo', z_index: 1 },
+        { type: 'text', x: 20, y: 510, width: 560, height: 70, placeholder: '{{candidate_name}}', font_size: 32, font_weight: 'bold', color: '#0f172a', text_align: 'center', z_index: 2 },
+        { type: 'text', x: 20, y: 590, width: 560, height: 50, placeholder: '{{slogan}}', font_size: 18, color: '#475569', text_align: 'center', z_index: 2 },
+        { type: 'text', x: 20, y: 660, width: 560, height: 40, placeholder: 'Contact: {{contact}}', font_size: 14, color: '#64748b', text_align: 'center', z_index: 2 }
+      ]
+    }
+  }
+];

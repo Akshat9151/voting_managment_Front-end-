@@ -1,15 +1,18 @@
 ﻿import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { useLanguage } from '../../context/LanguageContext';
 import { LayoutDashboard, Contact2, Palette, Send, MapPin } from 'lucide-react';
 import { clsx } from 'clsx';
 
 export const MobileQuickBar: React.FC = () => {
+  const { t } = useLanguage();
+
   const quickItems = [
-    { to: '/', label: 'War Room', icon: <LayoutDashboard className="w-5 h-5" /> },
-    { to: '/voters', label: 'Voters', icon: <Contact2 className="w-5 h-5" /> },
-    { to: '/studio', label: 'Studio', icon: <Palette className="w-5 h-5" /> },
-    { to: '/broadcast', label: 'Broadcast', icon: <Send className="w-5 h-5" /> },
-    { to: '/volunteer-ward', label: 'Field Desk', icon: <MapPin className="w-5 h-5" /> }
+    { to: '/', label: t('mobileNavDashboard'), icon: <LayoutDashboard className="w-5 h-5" /> },
+    { to: '/voters', label: t('mobileNavVoters'), icon: <Contact2 className="w-5 h-5" /> },
+    { to: '/studio', label: t('mobileNavStudio'), icon: <Palette className="w-5 h-5" /> },
+    { to: '/broadcast', label: t('mobileNavBroadcast'), icon: <Send className="w-5 h-5" /> },
+    { to: '/volunteer-ward', label: t('mobileNavFieldDesk'), icon: <MapPin className="w-5 h-5" /> }
   ];
 
   return (

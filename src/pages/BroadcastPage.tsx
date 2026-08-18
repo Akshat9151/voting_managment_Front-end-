@@ -44,13 +44,14 @@ export const BroadcastPage: React.FC = () => {
   const handleDispatch = async () => {
     setIsSending(true);
     try {
+      // [Frontend-ready] Backend call simulated with local state
       await api.sendBroadcast({
         message,
         channel,
         includePoster,
         selectedWards: ['All Wards']
       });
-      showToast(`Broadcast successfully dispatched to ${audienceSplit.total} electors!`, 'success');
+      showToast(`🚀 Broadcast successfully dispatched to ${audienceSplit.total} electors!\n${audienceSplit.whatsapp} via WhatsApp + ${audienceSplit.sms} via SMS`, 'success');
       loadData();
     } finally {
       setIsSending(false);

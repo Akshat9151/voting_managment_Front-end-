@@ -1,17 +1,36 @@
-﻿export interface Expense {
+// Aligned with backend ExpenseResponse schema
+export type ExpenseCategory = 'PRINTING' | 'VEHICLE' | 'MANPOWER' | 'FOOD' | 'DIGITAL' | 'MISCELLANEOUS';
+
+export interface Expense {
   id: string;
-  category: string;
+  organization_id?: string;
+  election_id?: string;
+  title?: string;
   amount: number;
-  date: string;
-  note: string;
-  mode: 'UPI / Online' | 'Cash Voucher' | 'Bank Transfer' | 'Cheque';
-  user: string;
-  receiptUrl?: string;
+  category: ExpenseCategory | string;
+  vendor_name?: string | null;
+  expense_date?: string | null;
+  receipt_url?: string | null;
+  recorded_by_user_id?: string | null;
+  notes?: string | null;
+  created_at?: string;
+  updated_at?: string;
+
+  // Legacy UI compatibility
+  date?: string | null;
+  note?: string | null;
+  mode?: string | null;
+  user?: string | null;
 }
 
 export interface BudgetSummary {
-  budgetLimit: number;
-  totalSpent: number;
+  budget_limit: number;
+  budgetLimit?: number;
+  total_spent: number;
+  totalSpent?: number;
   remaining: number;
-  utilizedPercent: number;
+  utilized_percent: number;
+  utilizedPercent?: number;
+  expense_count: number;
+  expenseCount?: number;
 }

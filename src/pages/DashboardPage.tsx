@@ -1,282 +1,343 @@
-import React, { useState, useEffect } from 'react';
-import { api } from '../services/api';
+import React, { useEffect, useMemo, useState } from 'react';
+import { analyticsApi } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { useElection } from '../context/ElectionContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useToast } from '../context/ToastContext';
 import {
   Users,
-  MessageSquare,
   UserCheck,
-  Receipt,
-  Vote,
-  Sparkles,
-  Activity,
-  Award,
-  Radio,
-  Sliders,
-  CheckCircle
+  Megaphone,
+  Palette,
+  Plus,
+  BarChart3,
+  AlertCircle,
+  CheckCircle2,
+  ListChecks
 } from 'lucide-react';
 import { StatCard } from '../components/ui/StatCard';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Badge } from '../components/ui/Badge';
-import { InteractiveBoothMap } from '../components/map/InteractiveBoothMap';
-import { Candidate, AudienceSplit, BudgetSummary } from '../types';
+import { EmptyState } from '../components/ui/EmptyState';
 import { useNavigate } from 'react-router-dom';
 
 export const DashboardPage: React.FC = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const { currentRole } = useAuth();
+  const { activeElectionId, activeElection } = useElection();
+  const { showToast } = useToast();
 
-  const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [audienceSplit, setAudienceSplit] = useState<AudienceSplit>({ total: 3500, whatsapp: 2850, sms: 650, whatsappPercent: 81, smsPercent: 19 });
-  const [budget, setBudget] = useState<BudgetSummary>({ budgetLimit: 150000, totalSpent: 68450, remaining: 81550, utilizedPercent: 46 });
-  const [turnoutTarget, setTurnoutTarget] = useState<number>(85);
-  const [projectedMargin, setProjectedMargin] = useState<number>(420);
+  const [dashData, setDashData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const loadData = async () => {
-      const [candData, splitData, budgetData] = await Promise.all([
-        api.getCandidates(),
-        api.getAudienceSplit(),
-        api.getBudgetSummary()
-      ]);
-      setCandidates(candData);
-      setAudienceSplit(splitData);
-      setBudget(budgetData);
+    const fetchDashboard = async () => {
+      if (currentRole !== 'SUPER_ADMIN' && !activeElectionId) return;
+
+      setIsLoading(true);
+      try {
+        let data: any;
+        if (currentRole === 'SUPER_ADMIN') {
+          data = await analyticsApi.getDashboardSuperAdmin();
+        } else if (currentRole === 'ADMIN' && activeElectionId) {
+          data = await analyticsApi.getDashboardAdmin(activeElectionId);
+        } else {
+          data = await analyticsApi.getDashboardVolunteer();
+        }
+        setDashData(data || {});
+      } catch (err) {
+        showToast(t('dashboardLoadError'), 'error');
+      } finally {
+        setIsLoading(false);
+      }
     };
-    loadData();
-  }, []);
 
-  const handleTurnoutChange = (val: number) => {
-    setTurnoutTarget(val);
-    const calculatedMargin = Math.round((val * 35 * 0.15) - 30);
-    setProjectedMargin(calculatedMargin);
-  };
+    fetchDashboard();
+  }, [activeElectionId, currentRole, showToast, t]);
 
-  const activityFeed = [
-    { title: '1,200 voters added via photo scan', sub: 'Kailash Saini scanned Ward 02 official roll', time: '5m ago', icon: <CheckCircle className="w-3.5 h-3.5 text-sky-600" /> },
-    { title: 'Banner approved for Rameshwar Patel', sub: '3x6 ft Hoarding sent to Rampur local printer', time: '22m ago', icon: <Award className="w-3.5 h-3.5 text-emerald-600" /> },
-    { title: 'SMS fallback dispatched to 240 non-WhatsApp voters', sub: 'Morning voting reminder delivered successfully', time: '1h ago', icon: <Radio className="w-3.5 h-3.5 text-violet-600" /> },
-    { title: 'Campaign bolero fuel expense logged (₹1,500)', sub: 'Ward 01 to 06 village tour', time: '3h ago', icon: <Receipt className="w-3.5 h-3.5 text-amber-600" /> }
-  ];
+  const roleSummary = useMemo<any>(() => {
+    if (currentRole === 'SUPER_ADMIN') {
+      return {
+        totalCandidates: Number(dashData?.total_candidates ?? 0),
+        totalOrganizations: Number(dashData?.total_organizations ?? 0),
+        totalVotersAdded: Number(dashData?.total_voters ?? 0),
+        activeElections: Number(dashData?.active_elections ?? 0),
+        recentActivity: Array.isArray(dashData?.recent_activity) ? dashData.recent_activity.slice(0, 5) : []
+      };
+    }
 
-  return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Page Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200/80">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-extrabold font-heading text-slate-900">
-              {t('commandCenter')}
-            </h1>
-            <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 animate-pulse">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" /> LIVE WAR ROOM
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 mt-0.5">{t('commandCenterSub')}</p>
-        </div>
+    if (currentRole === 'ADMIN') {
+      return {
+        totalVoters: Number(dashData?.total_voters ?? 0),
+        volunteers: Number(dashData?.total_volunteers ?? 0),
+        messagesThisWeek: Number(dashData?.messages_sent_this_week ?? 0),
+        wardCoverage: Array.isArray(dashData?.ward_coverage) ? dashData.ward_coverage : [],
+        quickActions: [
+          { label: t('addVoter'), path: '/voters', icon: Plus },
+          { label: t('createPoster'), path: '/studio', icon: Palette },
+          { label: t('sendBroadcast'), path: '/broadcast', icon: Megaphone },
+          { label: t('viewComplaints'), path: '/complaints', icon: AlertCircle }
+        ]
+      };
+    }
 
-        {/* Quick Action Shortcuts */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => navigate('/broadcast')}
-            leftIcon={<Radio className="w-3.5 h-3.5 text-sky-600" />}
-          >
-            Launch Broadcast
-          </Button>
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={() => navigate('/studio')}
-            leftIcon={<Sparkles className="w-3.5 h-3.5 text-sky-200" />}
-          >
-            Create Banner Poster
-          </Button>
-        </div>
+    return {
+      wardVoters: Number(dashData?.ward_voters ?? 0),
+      pendingTasks: Number(dashData?.pending_tasks ?? 0),
+      assignedVoters: Array.isArray(dashData?.assigned_voters) ? dashData.assigned_voters : [],
+      tasks: Array.isArray(dashData?.task_summary) ? dashData.task_summary : []
+    };
+  }, [currentRole, dashData, t]);
+
+  const renderSkeleton = () => (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-pulse">
+      {[...Array(3)].map((_, index) => (
+        <div key={index} className="h-32 rounded-2xl bg-slate-100" />
+      ))}
+    </div>
+  );
+
+  const renderSuperAdmin = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <StatCard
+          title={t('totalCandidatesOrganizations')}
+          value={`${roleSummary.totalCandidates}/${roleSummary.totalOrganizations}`}
+          subtext={t('candidatesAndOrganizations')}
+          icon={<Users className="w-5 h-5" />}
+          color="cyan"
+          onClick={() => navigate('/candidates')}
+        />
+        <StatCard
+          title={t('totalVotersAdded')}
+          value={roleSummary.totalVotersAdded.toLocaleString()}
+          subtext={t('liveVoterDatabase')}
+          icon={<UserCheck className="w-5 h-5" />}
+          color="mint"
+          onClick={() => navigate('/voters')}
+        />
+        <StatCard
+          title={t('activeElections')}
+          value={roleSummary.activeElections.toString()}
+          subtext={t('electionPortfolio')}
+          icon={<BarChart3 className="w-5 h-5" />}
+          color="purple"
+          onClick={() => navigate('/analytics')}
+        />
       </div>
 
-      {/* KPI Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <Card className="space-y-4">
+        <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-200">
+          <div>
+            <h2 className="text-base font-extrabold text-slate-900">{t('recentActivity')}</h2>
+            <p className="text-xs text-slate-500">{t('latestUpdates')}</p>
+          </div>
+          <span className="text-[11px] font-bold text-slate-500">{t('last5Updates')}</span>
+        </div>
+
+        <div className="overflow-hidden rounded-xl border border-slate-200">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-50 text-slate-600">
+              <tr>
+                <th className="px-4 py-3 font-bold">{t('type')}</th>
+                <th className="px-4 py-3 font-bold">{t('name')}</th>
+                <th className="px-4 py-3 font-bold">{t('details')}</th>
+                <th className="px-4 py-3 font-bold">{t('time')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {roleSummary.recentActivity.map((item: any, index: number) => (
+                <tr key={`${item.type}-${index}`} className="border-t border-slate-200">
+                  <td className="px-4 py-3 text-slate-700">{item.type}</td>
+                  <td className="px-4 py-3 font-semibold text-slate-800">{item.name}</td>
+                  <td className="px-4 py-3 text-slate-600">{item.detail}</td>
+                  <td className="px-4 py-3 text-slate-500">{item.time}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+
+  const renderAdmin = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
-          title={t('totalVoters')}
-          value={audienceSplit.total.toLocaleString()}
-          subtext="100% Ward Coverage"
-          trend="+12% this week"
-          trendPositive={true}
+          title={t('totalVotersInElection')}
+          value={roleSummary.totalVoters.toLocaleString()}
+          subtext={activeElection?.title ?? t('currentElection')}
           icon={<Users className="w-5 h-5" />}
           color="cyan"
           onClick={() => navigate('/voters')}
         />
         <StatCard
-          title={t('whatsappReached')}
-          value={`${audienceSplit.whatsappPercent}%`}
-          subtext={`${audienceSplit.whatsapp} verified WhatsApp`}
-          trend="+840 reached"
-          trendPositive={true}
-          icon={<MessageSquare className="w-5 h-5" />}
+          title={t('volunteersCount')}
+          value={roleSummary.volunteers.toString()}
+          subtext={t('activeVolunteers')}
+          icon={<UserCheck className="w-5 h-5" />}
+          color="purple"
+          onClick={() => navigate('/volunteers')}
+        />
+        <StatCard
+          title={t('messagesSentThisWeek')}
+          value={roleSummary.messagesThisWeek.toString()}
+          subtext={t('campaignReach')}
+          icon={<Megaphone className="w-5 h-5" />}
           color="mint"
           onClick={() => navigate('/broadcast')}
         />
-        <StatCard
-          title={t('activeTeam')}
-          value="6 Members"
-          subtext="24 Panna Pramukhs"
-          trend="6 Booths Assigned"
-          trendPositive={true}
-          icon={<UserCheck className="w-5 h-5" />}
-          color="purple"
-          onClick={() => navigate('/team')}
-        />
-        <StatCard
-          title={t('budgetUtilized')}
-          value={`₹${budget.totalSpent.toLocaleString()}`}
-          subtext={`${budget.utilizedPercent}% of EC ₹1.5L Limit`}
-          trend={`₹${budget.remaining.toLocaleString()} left`}
-          trendPositive={budget.utilizedPercent < 80}
-          icon={<Receipt className="w-5 h-5" />}
-          color="amber"
-          onClick={() => navigate('/expenses')}
-        />
       </div>
 
-      {/* Main Grid: Map & Candidates */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Interactive Vector Radar Booth Map */}
-        <div className="lg:col-span-2 space-y-6">
-          <Card className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-heading font-extrabold text-base text-slate-900">
-                  Interactive 3D Booth Radar Map
-                </h3>
-                <p className="text-xs text-slate-500">Live ward voter density &amp; polling station coverage</p>
-              </div>
-              <Badge variant="cyan">Gram Panchayat Rampur</Badge>
+      <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-6">
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-200">
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900">{t('wardCoverage')}</h2>
+              <p className="text-xs text-slate-500">{t('coverageSummary')}</p>
             </div>
+          </div>
 
-            <InteractiveBoothMap />
-          </Card>
-
-          {/* Turnout Victory Simulator */}
-          <Card className="space-y-4 bg-gradient-to-br from-slate-900 to-slate-950 text-white border-slate-800">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sliders className="w-4 h-4 text-sky-400" />
-                <h3 className="font-heading font-extrabold text-sm text-white">
-                  Live Victory Margin &amp; Turnout Simulator
-                </h3>
-              </div>
-              <Badge variant="purple" className="bg-violet-950/80 text-violet-300 border-violet-700">
-                AI Prediction
-              </Badge>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs font-bold text-slate-300">
-                <span>Turnout Target: {turnoutTarget}%</span>
-                <span>Expected Votes: {Math.round(3500 * (turnoutTarget / 100))}</span>
-              </div>
-              <input
-                type="range"
-                min="50"
-                max="98"
-                value={turnoutTarget}
-                onChange={(e) => handleTurnoutChange(Number(e.target.value))}
-                className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sky-400"
-              />
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800 text-center">
-              <div className="bg-slate-800/60 p-2.5 rounded-xl border border-slate-700">
-                <div className="text-[10px] text-slate-400 font-bold uppercase">Estimated Votes</div>
-                <div className="text-base font-extrabold text-sky-400 mt-0.5">
-                  {Math.round(3500 * (turnoutTarget / 100) * 0.58)}
+          <div className="space-y-3">
+            {roleSummary.wardCoverage.map((ward: any) => (
+              <div key={ward.label}>
+                <div className="mb-1 flex items-center justify-between text-xs font-bold text-slate-600">
+                  <span>{ward.label}</span>
+                  <span>{ward.value}%</span>
+                </div>
+                <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-sky-500 to-emerald-500"
+                    style={{ width: `${ward.value}%` }}
+                  />
                 </div>
               </div>
-              <div className="bg-slate-800/60 p-2.5 rounded-xl border border-slate-700">
-                <div className="text-[10px] text-slate-400 font-bold uppercase">Opponent Est.</div>
-                <div className="text-base font-extrabold text-rose-400 mt-0.5">
-                  {Math.round(3500 * (turnoutTarget / 100) * 0.42)}
-                </div>
-              </div>
-              <div className="bg-slate-800/60 p-2.5 rounded-xl border border-slate-700">
-                <div className="text-[10px] text-slate-400 font-bold uppercase">Lead Margin</div>
-                <div className="text-base font-extrabold text-emerald-400 mt-0.5">
-                  +{projectedMargin} Votes
-                </div>
-              </div>
-            </div>
-          </Card>
-        </div>
+            ))}
+          </div>
+        </Card>
 
-        {/* Right 1 Col: Contesting Candidates & Activity Stream */}
-        <div className="space-y-6">
-          {/* Contesting Candidates Card */}
-          <Card className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-heading font-extrabold text-base text-slate-900 flex items-center gap-2">
-                <Vote className="w-4 h-4 text-sky-600" />
-                <span>Contesting Profiles</span>
-              </h3>
-              <Button size="sm" variant="ghost" onClick={() => navigate('/candidates')}>
-                View All
-              </Button>
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-200">
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900">{t('quickActions')}</h2>
+              <p className="text-xs text-slate-500">{t('dailyChecklist')}</p>
             </div>
+          </div>
 
-            <div className="space-y-3">
-              {candidates.map((cand) => (
-                <div
-                  key={cand.id}
-                  onClick={() => navigate('/candidates')}
-                  className="p-3 rounded-xl border border-slate-200 hover:border-sky-300 hover:bg-sky-50/30 transition-all cursor-pointer flex items-center justify-between gap-3"
+          <div className="grid grid-cols-1 gap-3">
+            {roleSummary.quickActions.map((action: any) => {
+              const Icon = action.icon;
+              return (
+                <Button
+                  key={action.label}
+                  variant="secondary"
+                  className="justify-start px-4 py-3 h-auto border-slate-200 bg-white hover:bg-sky-50 text-left"
+                  onClick={() => navigate(action.path)}
+                  leftIcon={<Icon className="w-4 h-4 text-sky-600" />}
                 >
-                  <div className="flex items-center gap-2.5">
-                    <img
-                      src={cand.photo}
-                      alt={cand.name}
-                      className="w-10 h-10 rounded-full object-cover border-2 border-sky-500 shadow-xs"
-                    />
-                    <div>
-                      <div className="text-xs font-extrabold text-slate-900 leading-tight">{cand.name}</div>
-                      <div className="text-[11px] text-slate-500">{cand.post}</div>
-                    </div>
-                  </div>
-                  <div className="text-xl p-1.5 rounded-xl bg-slate-100 border border-slate-200 shadow-xs">
-                    {cand.symbol}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
+                  {action.label}
+                </Button>
+              );
+            })}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
 
-          {/* Live Activity Feed */}
-          <Card className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-heading font-extrabold text-base text-slate-900 flex items-center gap-2">
-                <Activity className="w-4 h-4 text-emerald-600" />
-                <span>Ground Activity Feed</span>
-              </h3>
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-            </div>
+  const renderVolunteer = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <StatCard
+          title={t('wardVotersCount')}
+          value={roleSummary.wardVoters.toLocaleString()}
+          subtext={t('wardCoverageSummary')}
+          icon={<Users className="w-5 h-5" />}
+          color="cyan"
+        />
+        <StatCard
+          title={t('pendingTasks')}
+          value={roleSummary.pendingTasks.toString()}
+          subtext={t('todayChecklist')}
+          icon={<ListChecks className="w-5 h-5" />}
+          color="amber"
+        />
+      </div>
 
-            <div className="space-y-3">
-              {activityFeed.map((item, idx) => (
-                <div key={idx} className="flex items-start gap-2.5 pb-2.5 border-b border-slate-100 last:border-0 last:pb-0">
-                  <div className="mt-0.5 p-1 rounded-lg bg-slate-100 shrink-0">
-                    {item.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-bold text-slate-800 leading-tight">{item.title}</div>
-                    <div className="text-[11px] text-slate-500 truncate">{item.sub}</div>
-                  </div>
-                  <div className="text-[10px] text-slate-400 whitespace-nowrap shrink-0">{item.time}</div>
-                </div>
-              ))}
+      <div className="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-6">
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-200">
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900">{t('taskSummary')}</h2>
+              <p className="text-xs text-slate-500">{t('todayChecklist')}</p>
             </div>
-          </Card>
+          </div>
+
+          <div className="space-y-3">
+            {roleSummary.tasks.map((task: any) => (
+              <div key={task.title} className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                <div className="flex items-center gap-2 text-slate-700">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span className="text-sm font-medium">{task.title}</span>
+                </div>
+                <span className="text-sm font-bold text-slate-800">{task.count}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-200">
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900">{t('assignedVoters')}</h2>
+              <p className="text-xs text-slate-500">{t('assignedVoterSummary')}</p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {roleSummary.assignedVoters.map((voter: any, index: number) => (
+              <div key={`${voter.name}-${index}`} className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2.5">
+                <div>
+                  <div className="text-sm font-bold text-slate-800">{voter.name}</div>
+                  <div className="text-xs text-slate-500">{voter.ward}</div>
+                </div>
+                <span className="text-[11px] font-bold rounded-full bg-slate-100 px-2 py-1 text-slate-700">{voter.status}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+
+  const emptyDashboard = !dashData && !isLoading;
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex flex-col gap-3 pb-2 border-b border-slate-200/80 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-xl font-extrabold text-slate-900 sm:text-2xl">{t('dashboardOverview')}</h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {activeElection?.title ?? t('currentElection')}
+          </p>
         </div>
       </div>
+
+      {isLoading ? renderSkeleton() : emptyDashboard ? (
+        <EmptyState
+          icon={BarChart3}
+          title={t('emptyAnalyticsTitle')}
+          description={t('emptyAnalyticsDesc')}
+        />
+      ) : (
+        <>
+          {currentRole === 'SUPER_ADMIN' && renderSuperAdmin()}
+          {currentRole === 'ADMIN' && renderAdmin()}
+          {currentRole === 'VOLUNTEER' && renderVolunteer()}
+        </>
+      )}
     </div>
   );
 };

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { api } from '../services/api';
+import React, { useState, useEffect, useCallback } from 'react';
+import { expensesApi } from '../services/api';
+import { useElection } from '../context/ElectionContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { Receipt, Plus } from 'lucide-react';
@@ -14,45 +15,71 @@ import { Expense, BudgetSummary } from '../types';
 export const ExpensesPage: React.FC = () => {
   const { t } = useLanguage();
   const { showToast } = useToast();
+  const { activeElectionId } = useElection();
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [budget, setBudget] = useState<BudgetSummary>({ budgetLimit: 150000, totalSpent: 68450, remaining: 81550, utilizedPercent: 46 });
+  const [budget, setBudget] = useState<BudgetSummary>({
+    budget_limit: 150000,
+    total_spent: 0,
+    remaining: 150000,
+    utilized_percent: 0,
+    expense_count: 0,
+    budgetLimit: 150000,
+    totalSpent: 0,
+    utilizedPercent: 0,
+    expenseCount: 0,
+  });
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // Form State
-  const [category, setCategory] = useState('Pamphlet & Banner Printing');
+  const [title, setTitle] = useState('');
+  const [category, setCategory] = useState('PRINTING');
   const [amount, setAmount] = useState<number>(5000);
+  const [vendorName, setVendorName] = useState('');
+  const [notes, setNotes] = useState('');
+  const [mode, setMode] = useState('UPI / Online');
   const [note, setNote] = useState('');
-  const [mode, setMode] = useState<'UPI / Online' | 'Cash Voucher'>('UPI / Online');
-  const [user] = useState('Rajesh Kumar (Admin)');
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const loadData = useCallback(async () => {
+    if (!activeElectionId) return;
+    try {
+      const [expData, bData] = await Promise.all([
+        expensesApi.list(activeElectionId),
+        expensesApi.getBudgetSummary(activeElectionId),
+      ]);
+      setExpenses(expData.items as Expense[]);
+      setBudget({
+        ...bData,
+        budgetLimit: bData.budget_limit ?? 150000,
+        totalSpent: bData.total_spent ?? 0,
+        utilizedPercent: bData.utilized_percent ?? 0,
+        expenseCount: bData.expense_count ?? 0,
+      } as BudgetSummary);
+    } catch {
+      showToast(t('failedLoadingExpenses'), 'error');
+    }
+  }, [activeElectionId]);
 
-  const loadData = async () => {
-    const [expData, bData] = await Promise.all([
-      api.getExpenses(),
-      api.getBudgetSummary()
-    ]);
-    setExpenses(expData);
-    setBudget(bData);
-  };
+  useEffect(() => { loadData(); }, [loadData]);
 
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || !note) return;
-    await api.addExpense({
-      category,
-      amount: Number(amount),
-      note,
-      mode,
-      user
-    });
-    showToast(`Expense of ₹${amount.toLocaleString()} recorded successfully!`, 'success');
-    setIsAddModalOpen(false);
-    setNote('');
-    loadData();
+    if (!activeElectionId || !title || !amount) return;
+    try {
+      await expensesApi.create(activeElectionId, {
+        title,
+        amount,
+        category,
+        vendor_name: vendorName || null,
+        notes: notes || null,
+      });
+      showToast(`Expense of ₹${amount.toLocaleString()} recorded successfully!`, 'success');
+      setIsAddModalOpen(false);
+      setTitle(''); setNotes(''); setVendorName('');
+      loadData();
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || 'Failed to record expense', 'error');
+    }
   };
 
   return (
@@ -86,8 +113,8 @@ export const ExpensesPage: React.FC = () => {
               Statutory Gram Panchayat Election Ceiling
             </div>
             <div className="text-2xl sm:text-3xl font-extrabold font-heading text-white mt-0.5">
-              ₹{budget.totalSpent.toLocaleString()}{' '}
-              <span className="text-sm font-normal text-slate-400">/ ₹{budget.budgetLimit.toLocaleString()}</span>
+              ₹{(budget.totalSpent ?? budget.total_spent ?? 0).toLocaleString()}{' '}
+              <span className="text-sm font-normal text-slate-400">/ ₹{(budget.budgetLimit ?? budget.budget_limit ?? 0).toLocaleString()}</span>
             </div>
           </div>
 
@@ -96,7 +123,7 @@ export const ExpensesPage: React.FC = () => {
               ₹{budget.remaining.toLocaleString()} Remaining
             </Badge>
             <Badge variant="cyan" className="bg-sky-950 text-sky-300 border-sky-700">
-              {budget.utilizedPercent}% Utilized
+              {(budget.utilizedPercent ?? budget.utilized_percent ?? 0)}% Utilized
             </Badge>
           </div>
         </div>
@@ -105,9 +132,9 @@ export const ExpensesPage: React.FC = () => {
         <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-500 ${
-              budget.utilizedPercent > 80 ? 'bg-rose-500' : 'bg-sky-500'
+              (budget.utilizedPercent ?? budget.utilized_percent ?? 0) > 80 ? 'bg-rose-500' : 'bg-sky-500'
             }`}
-            style={{ width: `${Math.min(budget.utilizedPercent, 100)}%` }}
+            style={{ width: `${Math.min(budget.utilizedPercent ?? budget.utilized_percent ?? 0, 100)}%` }}
           />
         </div>
       </Card>

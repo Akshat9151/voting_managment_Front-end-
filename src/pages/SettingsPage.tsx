@@ -2,17 +2,20 @@ import React, { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme, BrandColor } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
-import { Palette, Calendar, UploadCloud, Save, Check } from 'lucide-react';
+import { Palette, Calendar, UploadCloud, Save, Check, CreditCard, Moon, Sun } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { FormInput } from '../components/ui/FormInput';
 import { Select } from '../components/ui/Select';
 import { FileDropzone } from '../components/ui/FileDropzone';
+import { Badge } from '../components/ui/Badge';
 
 export const SettingsPage: React.FC = () => {
   const { t } = useLanguage();
-  const { primaryColor, setPrimaryColor } = useTheme();
+  const { primaryColor, setPrimaryColor, theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
+
+  const [activeTab, setActiveTab] = useState<'branding' | 'billing'>('branding');
 
   const [campaignName, setCampaignName] = useState('Gram Panchayat Rampur Election War Room');
   const [candidateName, setCandidateName] = useState('Rameshwar Patel');
@@ -29,7 +32,7 @@ export const SettingsPage: React.FC = () => {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    showToast('Platform branding & campaign preferences saved!', 'success');
+    showToast(t('allCampaignSettingsSaved'), 'success');
   };
 
   return (
@@ -46,7 +49,63 @@ export const SettingsPage: React.FC = () => {
         </div>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-6">
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-slate-200">
+        <button
+          onClick={() => setActiveTab('branding')}
+          className={`px-4 py-3 text-sm font-bold border-b-2 transition-all ${
+            activeTab === 'branding'
+              ? 'border-slate-900 text-slate-900'
+              : 'border-transparent text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Palette className="w-4 h-4 inline mr-2" />
+          Branding
+        </button>
+        <button
+          onClick={() => setActiveTab('billing')}
+          className={`px-4 py-3 text-sm font-bold border-b-2 transition-all ${
+            activeTab === 'billing'
+              ? 'border-slate-900 text-slate-900'
+              : 'border-transparent text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <CreditCard className="w-4 h-4 inline mr-2" />
+          {t('billingSubscription')}
+        </button>
+      </div>
+
+      {/* Branding Tab */}
+      {activeTab === 'branding' && (
+        <form onSubmit={handleSave} className="space-y-6">
+        {/* Dark Mode Toggle */}
+        <Card className="space-y-4 bg-gradient-to-br from-slate-50 to-slate-100/50 border border-slate-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {theme === 'dark' ? (
+                <Moon className="w-5 h-5 text-violet-600" />
+              ) : (
+                <Sun className="w-5 h-5 text-amber-500" />
+              )}
+              <div>
+                <h3 className="font-heading font-extrabold text-sm text-slate-900">
+                  {theme === 'dark' ? 'Dark Mode' : 'Light Mode'} (Active)
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {theme === 'dark' ? 'Easy on eyes during evening campaigns' : 'Bright & clear for daytime'}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => { toggleTheme(); showToast(`Switched to ${theme === 'light' ? 'dark' : 'light'} mode!`, 'success'); }}
+              className="px-6 py-2.5 rounded-full bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-all"
+            >
+              {theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode'}
+            </button>
+          </div>
+        </Card>
+
         {/* Brand Theme Swatches */}
         <Card className="space-y-4">
           <h3 className="font-heading font-extrabold text-sm text-slate-900 flex items-center gap-2">
@@ -61,7 +120,7 @@ export const SettingsPage: React.FC = () => {
                 <button
                   key={swatch.color}
                   type="button"
-                  onClick={() => setPrimaryColor(swatch.color)}
+                  onClick={() => { setPrimaryColor(swatch.color); showToast(`Theme changed to ${swatch.label}!`, 'success'); }}
                   className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all cursor-pointer ${
                     isSelected ? 'border-slate-900 bg-slate-50 ring-2 ring-slate-900' : 'border-slate-200 hover:bg-slate-50'
                   }`}
@@ -128,7 +187,7 @@ export const SettingsPage: React.FC = () => {
           <FileDropzone
             title="Upload party seal or official candidate emblem"
             subtitle="PNG or SVG format with transparent background recommended"
-            onFileSelect={() => showToast('Emblem logo uploaded successfully!', 'success')}
+            onFileSelect={() => showToast(t('emblemLogoUploadedSuccessfully'), 'success')}
           />
         </Card>
 
@@ -138,7 +197,127 @@ export const SettingsPage: React.FC = () => {
             Save All Preferences
           </Button>
         </div>
-      </form>
+        </form>
+      )}
+
+      {/* Billing & Subscription Tab */}
+      {activeTab === 'billing' && (
+        <div className="space-y-6">
+          <Card className="space-y-6">
+            <div>
+              <h3 className="font-heading font-extrabold text-sm text-slate-900 mb-4">
+                {t('subscriptionPlan')}
+              </h3>
+              <p className="text-xs text-slate-600 mb-6">
+                Choose a plan that best fits your campaign needs. Upgrade or downgrade anytime.
+              </p>
+            </div>
+
+            {/* Pricing Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Basic Plan */}
+              <Card className="border-2 border-slate-200 hover:border-sky-400 transition-all space-y-4 relative">
+                <div>
+                  <h4 className="font-bold text-slate-900">{t('planBasic')}</h4>
+                  <div className="mt-2 flex items-baseline gap-1">
+                    <span className="text-2xl font-extrabold text-slate-900">₹1,999</span>
+                    <span className="text-xs text-slate-600">/month</span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-600">
+                  {t('planBasicFeatures')}
+                </p>
+
+                <Button
+                  disabled
+                  variant="outline"
+                  className="w-full"
+                >
+                  {t('selectPlan')}
+                </Button>
+              </Card>
+
+              {/* Professional Plan */}
+              <Card className="border-2 border-sky-400 bg-sky-50 space-y-4 relative ring-2 ring-sky-400 ring-offset-2">
+                <Badge className="absolute -top-3 -right-3 bg-sky-600">
+                  Popular
+                </Badge>
+                <div>
+                  <h4 className="font-bold text-slate-900">{t('planProfessional')}</h4>
+                  <div className="mt-2 flex items-baseline gap-1">
+                    <span className="text-2xl font-extrabold text-slate-900">₹5,999</span>
+                    <span className="text-xs text-slate-600">/month</span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-600">
+                  {t('planProFeatures')}
+                </p>
+
+                <Button
+                  disabled
+                  className="w-full"
+                >
+                  {t('comingSoon')}
+                </Button>
+              </Card>
+
+              {/* Enterprise Plan */}
+              <Card className="border-2 border-slate-200 hover:border-emerald-400 transition-all space-y-4">
+                <div>
+                  <h4 className="font-bold text-slate-900">{t('planEnterprise')}</h4>
+                  <div className="mt-2 flex items-baseline gap-1">
+                    <span className="text-2xl font-extrabold text-slate-900">₹12,999</span>
+                    <span className="text-xs text-slate-600">/month+</span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-600">
+                  {t('planEnterpriseFeatures')}
+                </p>
+
+                <Button
+                  disabled
+                  variant="outline"
+                  className="w-full"
+                >
+                  {t('comingSoon')}
+                </Button>
+              </Card>
+            </div>
+          </Card>
+
+          {/* Current Subscription Info */}
+          <Card className="space-y-4">
+            <h3 className="font-heading font-extrabold text-sm text-slate-900">
+              Current Subscription
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-600">Active Plan:</span>
+                <Badge className="bg-emerald-100 text-emerald-800">
+                  {t('planBasic')}
+                </Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-600">Billing Cycle:</span>
+                <span className="font-semibold text-slate-900">Monthly</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-600">Next Billing Date:</span>
+                <span className="font-semibold text-slate-900">2026-09-18</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-600">Status:</span>
+                <Badge className="bg-emerald-100 text-emerald-800">
+                  Active
+                </Badge>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,8 +1,10 @@
 ﻿import React, { useState } from 'react';
-import { MAP_LOCATIONS } from '../../services/mockData';
 import { MapPin, AlertTriangle, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { clsx } from 'clsx';
 import { MapBooth } from '../../types';
+import { EmptyState } from '../ui/EmptyState';
+
+const MAP_LOCATIONS: Record<string, { name: string; district: string; totalWards: number; totalBooths: number; registeredVoters: string; turnoutTarget: string; sensitiveBooths: string; centerOffset: { x: number; y: number }; booths: MapBooth[] }> = {};
 
 export const InteractiveBoothMap: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState<string>('rampur');
@@ -10,6 +12,18 @@ export const InteractiveBoothMap: React.FC = () => {
   const [zoom, setZoom] = useState<number>(1);
 
   const loc = MAP_LOCATIONS[selectedLocation] || MAP_LOCATIONS.rampur;
+
+  if (!loc || !loc.booths?.length) {
+    return (
+      <div className="space-y-4">
+        <EmptyState
+          icon={MapPin}
+          title="No booth map available yet"
+          description="Once an election is active and booth data is synced, this map will populate automatically."
+        />
+      </div>
+    );
+  }
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.2, 1.8));
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.2, 0.7));

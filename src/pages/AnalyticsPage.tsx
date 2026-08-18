@@ -1,40 +1,66 @@
-﻿import React, { useState, useEffect } from 'react';
-import { api } from '../services/api';
+import React, { useState, useEffect, useCallback } from 'react';
+import { analyticsApi } from '../services/api';
+import { useElection } from '../context/ElectionContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { BarChart3, Download, PieChart, TrendingUp, Award } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { AnalyticsData } from '../types';
+import { EmptyState } from '../components/ui/EmptyState';
 
 export const AnalyticsPage: React.FC = () => {
   const { t } = useLanguage();
   const { showToast } = useToast();
+  const { activeElectionId } = useElection();
 
-  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [analytics, setAnalytics] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    loadAnalytics();
-  }, []);
+  const loadAnalytics = useCallback(async () => {
+    if (!activeElectionId) return;
+    setIsLoading(true);
+    try {
+      const data = await analyticsApi.getTurnout(activeElectionId);
+      setAnalytics(data);
+    } catch {
+      showToast(t('failedLoadingAnalytics'), 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeElectionId]);
 
-  const loadAnalytics = async () => {
-    const data = await api.getAnalytics();
-    setAnalytics(data);
-  };
+  useEffect(() => { loadAnalytics(); }, [loadAnalytics]);
 
   const handleExportReport = () => {
-    const reportContent = `ELECTWIN CAMPAIGN ANALYTICS REPORT\nGenerated on: ${new Date().toLocaleString()}\n\nWard Coverage:\n${analytics?.wardCoverage.map(w => `${w.ward}: ${w.percentage}%`).join('\n')}\n\nDelivery Metrics:\nWhatsApp: 2,850 (81.4%)\nSMS Fallback: 612 (17.5%)\nFailed: 38 (1.1%)\n`;
+    const reportContent = `ELECTWIN CAMPAIGN ANALYTICS REPORT\nGenerated on: ${new Date().toLocaleString()}\n\nElection: ${activeElectionId}\n\nTurnout Data:\n${JSON.stringify(analytics, null, 2)}`;
     const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `ElectWin_WarRoom_Analytics_${Date.now()}.txt`;
+    link.download = `ElectWin_Analytics_${Date.now()}.txt`;
     link.click();
-    showToast('War Room Analytics Report exported!', 'info');
+    showToast(t('analyticsReportExported'), 'info');
   };
 
-  if (!analytics) return <div className="p-6 text-xs text-slate-400">Loading analytics engine...</div>;
+  if (isLoading) return <div className="p-6 text-xs text-slate-400 flex items-center gap-2"><span className="w-4 h-4 border-2 border-slate-300 border-t-sky-500 rounded-full animate-spin" /> Loading analytics engine...</div>;
+
+  const hasAnalyticsData = !!analytics && (Array.isArray(analytics.wardCoverage) || Array.isArray(analytics.channelDelivery) || Array.isArray(analytics.materialPrints) || Array.isArray(analytics.volunteerProductivity));
+  if (!hasAnalyticsData) return (
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200/80">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-extrabold font-heading text-slate-900">{t('turnoutAnalytics')}</h1>
+          <p className="text-xs text-slate-500 mt-0.5">{t('analyticsDesc')}</p>
+        </div>
+      </div>
+      <EmptyState
+        icon={BarChart3}
+        title={t('emptyAnalyticsTitle')}
+        description={t('emptyAnalyticsDesc')}
+      />
+    </div>
+  );
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -69,7 +95,7 @@ export const AnalyticsPage: React.FC = () => {
           </div>
 
           <div className="space-y-3 pt-2">
-            {analytics.wardCoverage.map((item) => (
+            {analytics.wardCoverage.map((item: any) => (
               <div key={item.ward} className="space-y-1">
                 <div className="flex justify-between text-xs font-bold text-slate-700">
                   <span>{item.ward}</span>
@@ -96,7 +122,7 @@ export const AnalyticsPage: React.FC = () => {
           </div>
 
           <div className="p-4 bg-slate-50 rounded-2xl space-y-3">
-            {analytics.channelDelivery.map((ch) => (
+            {analytics.channelDelivery.map((ch: any) => (
               <div key={ch.channel} className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200">
                 <div className="flex items-center gap-2.5">
                   <span className="w-3 h-3 rounded-full" style={{ backgroundColor: ch.color }} />
@@ -123,7 +149,7 @@ export const AnalyticsPage: React.FC = () => {
           </h3>
 
           <div className="grid grid-cols-2 gap-3">
-            {analytics.materialPrints.map((mat) => (
+            {analytics.materialPrints.map((mat: any) => (
               <div key={mat.type} className="p-3 bg-slate-50 border border-slate-100 rounded-xl">
                 <div className="text-lg font-extrabold font-heading text-sky-600">
                   {mat.count.toLocaleString()}
@@ -141,7 +167,7 @@ export const AnalyticsPage: React.FC = () => {
           </h3>
 
           <div className="space-y-2">
-            {analytics.volunteerProductivity.map((vol) => (
+            {analytics.volunteerProductivity.map((vol: any) => (
               <div key={vol.name} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
                 <span className="font-bold text-slate-900">{vol.name}</span>
                 <div className="flex gap-3">

@@ -1,16 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { api } from '../services/api';
+import React, { useState, useEffect, useCallback } from 'react';
+import { votersApi } from '../services/api';
+import { useElection } from '../context/ElectionContext';
 import { useToast } from '../context/ToastContext';
 import { useLanguage } from '../context/LanguageContext';
 import {
-  Contact2,
-  Search,
-  Camera,
-  Download,
-  Phone,
-  MessageCircle,
-  Smartphone,
-  Plus
+  Contact2, Search, Camera, Download, Phone,
+  MessageCircle, Smartphone, Plus
 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -24,35 +19,67 @@ import { Voter, OcrStagedRow } from '../types';
 export const VotersPage: React.FC = () => {
   const { t } = useLanguage();
   const { showToast } = useToast();
+  const { activeElectionId } = useElection();
 
   const [voters, setVoters] = useState<Voter[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [segmentFilter, setSegmentFilter] = useState<'all' | 'whatsapp' | 'no-whatsapp' | 'youth' | 'women' | 'missing'>('all');
+  const [name, setName] = useState('');
+  const [channel, setChannel] = useState<'WhatsApp' | 'SMS Only'>('WhatsApp');
 
   // Modals
   const [isOcrModalOpen, setIsOcrModalOpen] = useState(false);
   const [isAddVoterModalOpen, setIsAddVoterModalOpen] = useState(false);
   const [stagedOcrRows, setStagedOcrRows] = useState<OcrStagedRow[]>([]);
+  const [isImportLoading, setIsImportLoading] = useState(false);
+
+  const isImportBusy = isImportLoading;
 
   // Manual Add Form
-  const [name, setName] = useState('');
+  const [voterId, setVoterId] = useState('');
   const [age, setAge] = useState(30);
   const [gender, setGender] = useState<'Male' | 'Female' | 'Other'>('Male');
-  const [ward, setWard] = useState('Ward 02');
+  const [ward, setWard] = useState('');
   const [mobile, setMobile] = useState('');
-  const [channel, setChannel] = useState<'WhatsApp' | 'SMS Only'>('WhatsApp');
+
+  const loadVoters = useCallback(async () => {
+    if (!activeElectionId) return;
+    setIsLoading(true);
+    try {
+      const { items } = await votersApi.list(activeElectionId, { search: searchQuery || undefined });
+      // Normalize: add computed `name` field
+      setVoters(items.map((v: any) => ({
+        ...v,
+        name: `${v.first_name ?? ''} ${v.last_name ?? ''}`.trim(),
+        ward: v.ward_name ?? v.ward ?? '',
+        mobile: v.phone_number ?? v.mobile ?? '',
+        channel: v.channel ?? (v.phone_number ? 'WhatsApp' : 'SMS Only'),
+        consent: v.status ?? 'Verified',
+        status: v.status ?? 'Valid'
+      })));
+    } catch {
+      showToast(t('failedLoadingVoters'), 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeElectionId, searchQuery]);
 
   useEffect(() => {
     loadVoters();
-  }, []);
+  }, [loadVoters]);
 
-  const loadVoters = async () => {
-    const data = await api.getVoters();
-    setVoters(data);
-  };
-
-  const handleFileUpload = (file: File) => {
-    showToast(`Uploaded ${file.name}. 14 voters synced successfully!`, 'success');
+  const handleFileUpload = async (file: File) => {
+    if (!activeElectionId) { showToast(t('noActiveElectionSelected'), 'error'); return; }
+    setIsImportLoading(true);
+    try {
+      const preview = await votersApi.uploadBatch(activeElectionId, file);
+      showToast(`Preview ready: ${preview.valid_rows ?? 0} valid rows found`, 'success');
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || 'Upload failed', 'error');
+    } finally {
+      setIsImportLoading(false);
+    }
   };
 
   const handleStartOcr = () => {
@@ -68,71 +95,85 @@ export const VotersPage: React.FC = () => {
   };
 
   const handleSaveOcrRows = async () => {
-    const newVoters = stagedOcrRows.map(row => ({
-      name: row.name,
-      age: row.age,
-      gender: row.gender,
-      ward: 'Ward 02',
-      mobile: row.mobile,
-      channel: (row.mobile ? 'WhatsApp' : 'SMS Only') as 'WhatsApp' | 'SMS Only',
-      consent: 'Verified' as const,
-      source: 'Camera OCR Scan',
-      status: 'Valid' as const
-    }));
-    await api.addVotersBatch(newVoters);
-    showToast(`${newVoters.length} scanned electors saved to official database!`, 'success');
+    if (!activeElectionId) return;
+    let saved = 0;
+    for (const row of stagedOcrRows) {
+      try {
+        await votersApi.create({
+          election_id: activeElectionId,
+          voter_id_number: row.epicNo,
+          first_name: row.name.split(' ')[0] || row.name,
+          last_name: row.name.split(' ').slice(1).join(' ') || '',
+          father_or_spouse_name: row.relativeName,
+          age: row.age,
+          gender: row.gender,
+          house_number: row.houseNo,
+          phone_number: row.mobile,
+          ward_name: 'Ward 02',
+        });
+        saved++;
+      } catch { /* skip duplicates */ }
+    }
+    showToast(`${saved} of ${stagedOcrRows.length} ${t('voterImportSuccess')}`, 'success');
     setIsOcrModalOpen(false);
     loadVoters();
   };
 
   const handleAddVoter = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name) return;
-    await api.addVoter({
-      name,
-      age,
-      gender,
-      ward,
-      mobile,
-      channel,
-      consent: 'Verified',
-      source: 'Manual Field Entry',
-      status: mobile ? 'Valid' : 'Missing Mobile'
-    });
-    showToast(`Voter ${name} added successfully!`, 'success');
-    setIsAddVoterModalOpen(false);
-    setName('');
-    setMobile('');
-    loadVoters();
+    if (!activeElectionId || !name) return;
+    try {
+      await votersApi.create({
+        election_id: activeElectionId,
+        voter_id_number: voterId || `${Date.now()}`,
+        first_name: name,
+        last_name: '',
+        age,
+        gender,
+        ward_name: ward,
+        phone_number: mobile || null,
+      });
+      showToast(`${t('voterAddedSuccess')}`, 'success');
+      setIsAddVoterModalOpen(false);
+      setName(''); setVoterId(''); setMobile('');
+      loadVoters();
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || t('errorSavingData'), 'error');
+    }
   };
 
   const handleExportCsv = () => {
     const headers = 'ID,Name,Age,Gender,Ward,Mobile,Channel,Consent,Status\n';
-    const rows = voters.map(v => `${v.id},"${v.name}",${v.age},${v.gender},${v.ward},"${v.mobile}",${v.channel},${v.consent},${v.status}`).join('\n');
+    const rows = voters.map(v => `${v.id},"${v.name ?? ''}",${v.age ?? ''},${v.gender ?? ''},${v.ward ?? ''},"${v.mobile ?? ''}",${v.channel ?? ''},${v.consent ?? ''},${v.status ?? ''}`).join('\n');
     const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = `ElectWin_Voter_Database_${Date.now()}.csv`;
     link.click();
-    showToast('Official Voter Roll CSV downloaded!', 'info');
+    showToast(t('officialVoterListDownloaded'), 'info');
   };
 
   const filteredVoters = voters.filter(v => {
-    // 1. Segment filter
-    if (segmentFilter === 'whatsapp' && v.channel !== 'WhatsApp') return false;
-    if (segmentFilter === 'no-whatsapp' && v.channel !== 'SMS Only') return false;
-    if (segmentFilter === 'youth' && (v.age < 18 || v.age > 25)) return false;
-    if (segmentFilter === 'women' && v.gender !== 'Female') return false;
-    if (segmentFilter === 'missing' && v.mobile) return false;
+    const safeName = v.name ?? `${v.first_name ?? ''} ${v.last_name ?? ''}`.trim();
+    const safeMobile = v.mobile ?? v.phone_number ?? '';
+    const safeWard = v.ward ?? v.ward_name ?? '';
+    const safeAge = v.age ?? 0;
+    const safeGender = v.gender ?? '';
+    const safeChannel = v.channel ?? 'SMS Only';
 
-    // 2. Search query
+    if (segmentFilter === 'whatsapp' && safeChannel !== 'WhatsApp') return false;
+    if (segmentFilter === 'no-whatsapp' && safeChannel !== 'SMS Only') return false;
+    if (segmentFilter === 'youth' && (safeAge < 18 || safeAge > 25)) return false;
+    if (segmentFilter === 'women' && safeGender !== 'Female') return false;
+    if (segmentFilter === 'missing' && safeMobile) return false;
+
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       return (
-        v.name.toLowerCase().includes(q) ||
-        v.mobile.toLowerCase().includes(q) ||
-        v.ward.toLowerCase().includes(q) ||
+        safeName.toLowerCase().includes(q) ||
+        safeMobile.toLowerCase().includes(q) ||
+        safeWard.toLowerCase().includes(q) ||
         v.id.toLowerCase().includes(q)
       );
     }
@@ -156,24 +197,27 @@ export const VotersPage: React.FC = () => {
             variant="outline"
             onClick={handleExportCsv}
             leftIcon={<Download className="w-3.5 h-3.5 text-slate-600" />}
+            disabled={isLoading}
           >
-            {t('exportCsv')}
+            {isLoading ? 'Loading...' : t('exportCsv')}
           </Button>
           <Button
             size="sm"
             variant="secondary"
             onClick={handleStartOcr}
             leftIcon={<Camera className="w-3.5 h-3.5 text-sky-600" />}
+            disabled={isImportBusy}
           >
-            {t('scanOcr')}
+            {isImportBusy ? 'Processing...' : t('scanOcr')}
           </Button>
           <Button
             size="sm"
             variant="primary"
             onClick={() => setIsAddVoterModalOpen(true)}
             leftIcon={<Plus className="w-3.5 h-3.5" />}
+            disabled={isLoading}
           >
-            + Add Elector
+            + {t('addVoterManually')}
           </Button>
         </div>
       </div>
@@ -193,12 +237,12 @@ export const VotersPage: React.FC = () => {
         {/* Filter Pills */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
           {[
-            { id: 'all', label: 'All Electors' },
-            { id: 'whatsapp', label: '🟢 WhatsApp Active' },
-            { id: 'no-whatsapp', label: '🔵 SMS Fallback Only' },
-            { id: 'youth', label: '⚡ Youth (18-25 Yrs)' },
-            { id: 'women', label: '🌸 Women SHG' },
-            { id: 'missing', label: '⚠️ Missing Mobile' }
+            { id: 'all', label: t('filterAllVoters') },
+            { id: 'whatsapp', label: `🟢 ${t('filterHasWhatsApp')}` },
+            { id: 'no-whatsapp', label: `🔵 ${t('filterNoWhatsApp')}` },
+            { id: 'youth', label: `⚡ ${t('filterYouth')}` },
+            { id: 'women', label: `🌸 ${t('filterWomen')}` },
+            { id: 'missing', label: `⚠️ ${t('filterMissingContact')}` }
           ].map((pill) => (
             <button
               key={pill.id}
@@ -216,6 +260,7 @@ export const VotersPage: React.FC = () => {
       </div>
 
       {/* Responsive Voter Table & Mobile Cards */}
+      {filteredVoters.length > 0 ? (
       <Card className="p-0 overflow-hidden">
         {/* Desktop Table View (Hidden on mobile) */}
         <div className="hidden md:block overflow-x-auto">
@@ -232,66 +277,98 @@ export const VotersPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
-              {filteredVoters.map((v) => (
-                <tr key={v.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-3 px-4 font-mono font-bold text-slate-600">{v.id}</td>
-                  <td className="py-3 px-4 font-bold text-slate-900">{v.name}</td>
-                  <td className="py-3 px-4 text-slate-600">{v.age} Yrs • {v.gender}</td>
-                  <td className="py-3 px-4 text-slate-700 font-medium">{v.ward}</td>
-                  <td className="py-3 px-4">
-                    {v.mobile ? (
-                      <a href={`tel:${v.mobile}`} className="font-bold text-sky-600 hover:underline inline-flex items-center gap-1">
-                        <Phone className="w-3 h-3" /> {v.mobile}
-                      </a>
-                    ) : (
-                      <span className="text-slate-400 italic">No Mobile</span>
-                    )}
-                  </td>
-                  <td className="py-3 px-4">
-                    <Badge variant={v.channel === 'WhatsApp' ? 'mint' : 'cyan'} size="sm">
-                      {v.channel === 'WhatsApp' ? <MessageCircle className="w-3 h-3" /> : <Smartphone className="w-3 h-3" />}
-                      <span>{v.channel}</span>
-                    </Badge>
-                  </td>
-                  <td className="py-3 px-4">
-                    <Badge variant={v.status === 'Valid' ? 'mint' : 'amber'} size="sm">
-                      {v.status}
-                    </Badge>
-                  </td>
-                </tr>
-              ))}
+              {filteredVoters.map((v) => {
+                const displayName = v.name ?? `${v.first_name ?? ''} ${v.last_name ?? ''}`.trim();
+                const displayWard = v.ward ?? v.ward_name ?? '';
+                const displayMobile = v.mobile ?? v.phone_number ?? '';
+                const displayChannel = v.channel ?? 'SMS Only';
+                const displayStatus = v.status ?? 'Valid';
+
+                return (
+                  <tr key={v.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-3 px-4 font-mono font-bold text-slate-600">{v.id}</td>
+                    <td className="py-3 px-4 font-bold text-slate-900">{displayName}</td>
+                    <td className="py-3 px-4 text-slate-600">{v.age ?? 0} Yrs • {v.gender ?? 'N/A'}</td>
+                    <td className="py-3 px-4 text-slate-700 font-medium">{displayWard}</td>
+                    <td className="py-3 px-4">
+                      {displayMobile ? (
+                        <a href={`tel:${displayMobile}`} className="font-bold text-sky-600 hover:underline inline-flex items-center gap-1">
+                          <Phone className="w-3 h-3" /> {displayMobile}
+                        </a>
+                      ) : (
+                        <span className="text-slate-400 italic">No Mobile</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
+                      <Badge variant={displayChannel === 'WhatsApp' ? 'mint' : 'cyan'} size="sm">
+                        {displayChannel === 'WhatsApp' ? <MessageCircle className="w-3 h-3" /> : <Smartphone className="w-3 h-3" />}
+                        <span>{displayChannel}</span>
+                      </Badge>
+                    </td>
+                    <td className="py-3 px-4">
+                      <Badge variant={displayStatus === 'Valid' ? 'mint' : 'amber'} size="sm">
+                        {displayStatus}
+                      </Badge>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
 
         {/* Mobile Stacked Card View (Hidden on desktop) */}
         <div className="md:hidden divide-y divide-slate-100 p-2">
-          {filteredVoters.map((v) => (
-            <div key={v.id} className="p-3 space-y-2">
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="text-sm font-extrabold text-slate-900 font-heading">{v.name}</div>
-                  <div className="text-xs text-slate-500 font-mono">{v.id} • {v.age} Yrs • {v.gender}</div>
-                </div>
-                <Badge variant={v.channel === 'WhatsApp' ? 'mint' : 'cyan'} size="sm">
-                  {v.channel}
-                </Badge>
-              </div>
+          {filteredVoters.map((v) => {
+            const displayName = v.name ?? `${v.first_name ?? ''} ${v.last_name ?? ''}`.trim();
+            const displayWard = v.ward ?? v.ward_name ?? '';
+            const displayMobile = v.mobile ?? v.phone_number ?? '';
+            const displayChannel = v.channel ?? 'SMS Only';
 
-              <div className="flex items-center justify-between text-xs pt-1">
-                <span className="font-medium text-slate-700">{v.ward}</span>
-                {v.mobile ? (
-                  <a href={`tel:${v.mobile}`} className="font-bold text-sky-600 flex items-center gap-1">
-                    <Phone className="w-3.5 h-3.5" /> {v.mobile}
-                  </a>
-                ) : (
-                  <span className="text-amber-600 font-bold">Missing Mobile</span>
-                )}
+            return (
+              <div key={v.id} className="p-3 space-y-2">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="text-sm font-extrabold text-slate-900 font-heading">{displayName}</div>
+                    <div className="text-xs text-slate-500 font-mono">{v.id} • {v.age ?? 0} Yrs • {v.gender ?? 'N/A'}</div>
+                  </div>
+                  <Badge variant={displayChannel === 'WhatsApp' ? 'mint' : 'cyan'} size="sm">
+                    {displayChannel}
+                  </Badge>
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-1">
+                  <span className="font-medium text-slate-700">{displayWard}</span>
+                  {displayMobile ? (
+                    <a href={`tel:${displayMobile}`} className="font-bold text-sky-600 flex items-center gap-1">
+                      <Phone className="w-3.5 h-3.5" /> {displayMobile}
+                    </a>
+                  ) : (
+                    <span className="text-amber-600 font-bold">Missing Mobile</span>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </Card>
+      ) : (
+        <Card className="p-12 text-center space-y-4">
+          <Contact2 className="w-12 h-12 mx-auto text-slate-300" />
+          <div>
+            <h3 className="text-base font-extrabold text-slate-800">{t('emptyVotersTitle')}</h3>
+            <p className="text-xs text-slate-500 mt-1">{t('emptyVotersDesc')}</p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 justify-center pt-2">
+            <Button variant="secondary" onClick={handleStartOcr} leftIcon={<Camera className="w-4 h-4" />}>
+              {t('startOCRScanner')}
+            </Button>
+            <Button variant="primary" onClick={() => setIsAddVoterModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />}>
+              {t('addVoterManually')}
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* OCR Scanner Review Modal */}
       <Modal
@@ -301,13 +378,13 @@ export const VotersPage: React.FC = () => {
         title={
           <div className="flex items-center gap-2">
             <Camera className="w-5 h-5 text-sky-600" />
-            <span>Review Scanned Voter Slip Table (OCR AI)</span>
+            <span>{t('ocrScannerTitle')}</span>
           </div>
         }
       >
         <div className="space-y-4">
           <p className="text-xs text-slate-600">
-            Verify extracted data below before committing to the official Gram Panchayat roll.
+            {t('ocrScannerDesc')}
           </p>
 
           <div className="overflow-x-auto border border-slate-200 rounded-xl">
@@ -343,10 +420,10 @@ export const VotersPage: React.FC = () => {
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setIsOcrModalOpen(false)}>
-              Discard
+              {t('noCancel')}
             </Button>
             <Button variant="success" onClick={handleSaveOcrRows}>
-              Save {stagedOcrRows.length} Voters to Roll
+              {t('addNew')} {stagedOcrRows.length} {t('voterAddedSuccess')}
             </Button>
           </div>
         </div>
@@ -359,13 +436,13 @@ export const VotersPage: React.FC = () => {
         title={
           <div className="flex items-center gap-2">
             <Contact2 className="w-5 h-5 text-sky-600" />
-            <span>Add New Voter / Elector</span>
+            <span>{t('addVoterManually')}</span>
           </div>
         }
       >
         <form onSubmit={handleAddVoter} className="space-y-4">
           <FormInput
-            label="Full Name"
+            label={t('voterDatabase')}
             placeholder="e.g. Rameshwar Patel"
             value={name}
             onChange={(e) => setName(e.target.value)}
