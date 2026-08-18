@@ -288,13 +288,14 @@ export const AuthPage: React.FC = () => {
           {/* Regular Login/Signup Form */}
           <>
             {isSignup ? (
-              <form onSubmit={handleSignup} className="space-y-4">
+              <form onSubmit={handleSignup} className="space-y-4" autoComplete="off">
                 <FormInput
                   label={t('firstName')}
                   type="text"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder={t('enterFirstName')}
+                  autoComplete="off"
                   required
                 />
                 <FormInput
@@ -303,6 +304,7 @@ export const AuthPage: React.FC = () => {
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   placeholder={t('enterLastName')}
+                  autoComplete="off"
                   required
                 />
                 <FormInput
@@ -312,6 +314,7 @@ export const AuthPage: React.FC = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={t('emailExample')}
                   leftIcon={<Mail className="w-4 h-4" />}
+                  autoComplete="off"
                   required
                 />
 
@@ -322,6 +325,7 @@ export const AuthPage: React.FC = () => {
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder={t('phoneExample')}
                   leftIcon={<Smartphone className="w-4 h-4" />}
+                  autoComplete="off"
                   required
                 />
 
@@ -332,6 +336,7 @@ export const AuthPage: React.FC = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={t('createPassword')}
                   leftIcon={<Lock className="w-4 h-4" />}
+                  autoComplete="new-password"
                   required
                 />
 
@@ -369,6 +374,7 @@ export const AuthPage: React.FC = () => {
                       onChange={(e) => setOtpContact(e.target.value)}
                       placeholder={t('otpContactExample')}
                       leftIcon={<Smartphone className="w-4 h-4" />}
+                      autoComplete="off"
                     />
 
                     <Button
