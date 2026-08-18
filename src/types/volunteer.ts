@@ -1,4 +1,4 @@
-﻿export type VolunteerVoterStatus = 'Visited' | 'Called' | 'Pending' | 'Not Reachable';
+export type VolunteerVoterStatus = 'Visited' | 'Called' | 'Pending' | 'Not Reachable';
 
 export interface Volunteer {
   id: string;
@@ -10,6 +10,17 @@ export interface Volunteer {
   callsMade: number;
   slipsDistributed: number;
   status: 'Active' | 'On-Duty' | 'Inactive';
+  
+  // Backend schema extensions
+  volunteer_code?: string;
+  email?: string;
+  daily_target?: number;
+  daily_collection?: number;
+  monthly_target?: number;
+  monthly_collection?: number;
+  approved_count?: number;
+  rejected_count?: number;
+  duplicate_count?: number;
 }
 
 export interface Booth {
@@ -19,6 +30,8 @@ export interface Booth {
   voters: number;
   slips: number;
   coverage: string;
+  target?: number;
+  collected?: number;
 }
 
 export interface VolunteerVoter {
@@ -29,6 +42,12 @@ export interface VolunteerVoter {
   house: string;
   status: VolunteerVoterStatus;
   slipHanded: boolean;
+  
+  // Backend data collection fields
+  voter_id_number?: string;
+  quality_score?: number;
+  ward_no?: string;
+  booth_no?: string;
 }
 
 export interface VolunteerActivityStats {
