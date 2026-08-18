@@ -1,4 +1,4 @@
-﻿import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { User, UserRole } from '../types';
 import { api } from '../services/api';
 
@@ -6,7 +6,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
   currentRole: UserRole;
-  login: (phone: string, role: UserRole) => Promise<void>;
+  login: (phoneOrEmail: string, role?: UserRole, password?: string) => Promise<void>;
   logout: () => void;
   switchRole: (role: UserRole) => void;
 }
@@ -30,14 +30,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return {
       id: 'usr_default',
       name: 'Rameshwar Patel (Owner)',
+      email: 'superadmin@electwin.com',
       role: 'superadmin',
       phone: '+91 98290 14285',
       ward: 'All Wards'
     };
   });
 
-  const login = async (phone: string, role: UserRole) => {
-    const { user: loggedInUser } = await api.login(phone, role);
+  const login = async (phoneOrEmail: string, role: UserRole = 'superadmin', password?: string) => {
+    const { user: loggedInUser } = await api.login(phoneOrEmail, role, password);
     setUser(loggedInUser);
     setCurrentRole(role);
     setIsAuthenticated(true);
@@ -51,6 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     localStorage.removeItem('electwin_isLoggedIn');
     localStorage.removeItem('electwin_user');
+    localStorage.removeItem('electwin_token');
   };
 
   const switchRole = (role: UserRole) => {

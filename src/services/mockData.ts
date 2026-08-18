@@ -1,4 +1,4 @@
-﻿import {
+import {
   Candidate,
   TeamMember,
   Voter,
@@ -11,7 +11,13 @@
   SymbolItem,
   LayoutStyle,
   FormatDimension,
-  LocationData
+  LocationData,
+  Task,
+  FieldActivity,
+  AttendanceRecord,
+  SubscriptionPlan,
+  CurrentSubscription,
+  Invoice
 } from '../types';
 
 export const INITIAL_CANDIDATES: Candidate[] = [
@@ -301,3 +307,248 @@ export const MAP_LOCATIONS: Record<string, LocationData> = {
     ]
   }
 };
+
+export const INITIAL_TASKS: Task[] = [
+  {
+    id: 'tsk_001',
+    title: 'Distribute 500 Panna Slips in Ward 02',
+    description: 'Ensure every verified family in Patel Basti receives their candidate serial number slip.',
+    priority: 'urgent',
+    status: 'in_progress',
+    deadline: 'Tomorrow, 05:00 PM',
+    assignedTo: 'kailash',
+    assignedVolunteerName: 'Kailash Saini',
+    wardOrBooth: 'Ward 02 – Patel Basti',
+    category: 'Slip Distribution',
+    createdDate: '17 Aug 2026'
+  },
+  {
+    id: 'tsk_002',
+    title: 'Setup 4 Flex Road Banners near Panchayat Bhawan',
+    description: 'Install 3x6 ft campaign hoardings approved by EC on main highway entry.',
+    priority: 'high',
+    status: 'completed',
+    deadline: '16 Aug 2026',
+    assignedTo: 'mukesh',
+    assignedVolunteerName: 'Mukesh Gurjar',
+    wardOrBooth: 'Booth 01 – Panchayat Bhawan',
+    category: 'Banner Setup',
+    createdDate: '15 Aug 2026',
+    completedDate: '16 Aug 2026'
+  },
+  {
+    id: 'tsk_003',
+    title: 'Door-to-Door Voter Verification in Ward 04',
+    description: 'Verify 120 staged OCR voters and collect active WhatsApp contact consent.',
+    priority: 'medium',
+    status: 'pending',
+    deadline: '20 Aug 2026',
+    assignedTo: 'priya',
+    assignedVolunteerName: 'Priya Sharma',
+    wardOrBooth: 'Ward 04 – Meena Mohalla',
+    category: 'Voter Contact',
+    createdDate: '18 Aug 2026'
+  },
+  {
+    id: 'tsk_004',
+    title: 'Corner Meeting Stage & Sound Coordination',
+    description: 'Organize sound mic and sitting arrangement for Evening Chopal meeting.',
+    priority: 'high',
+    status: 'pending',
+    deadline: '19 Aug 2026, 06:00 PM',
+    assignedTo: 'mahesh',
+    assignedVolunteerName: 'Mahesh Sharma',
+    wardOrBooth: 'Ward 01 – Main Chowk',
+    category: 'Rally Prep',
+    createdDate: '18 Aug 2026'
+  }
+];
+
+export const INITIAL_FIELD_ACTIVITIES: FieldActivity[] = [
+  {
+    id: 'act_101',
+    volunteerId: 'kailash',
+    volunteerName: 'Kailash Saini',
+    ward: 'Ward 02',
+    boothNo: 'Booth 01',
+    activityType: 'Door-to-Door',
+    location: 'Patel Basti, House No 12-45',
+    dateTime: 'Today, 10:30 AM',
+    description: 'Visited 35 households, verified voter serial numbers and explained tractor symbol manifesto.',
+    votersContacted: 35,
+    slipsDistributed: 42,
+    status: 'Verified',
+    photoUrl: 'https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?w=400&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'act_102',
+    volunteerId: 'priya',
+    volunteerName: 'Priya Sharma',
+    ward: 'Ward 04',
+    boothNo: 'Booth 03',
+    activityType: 'Panna Slip Handover',
+    location: 'Near Community Health Centre',
+    dateTime: 'Today, 09:15 AM',
+    description: 'Handed over 80 verified voting slips to senior citizens and women electors.',
+    votersContacted: 80,
+    slipsDistributed: 80,
+    status: 'Verified',
+    photoUrl: 'https://images.unsplash.com/photo-1577962917302-cd874c4e31d2?w=400&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'act_103',
+    volunteerId: 'mukesh',
+    volunteerName: 'Mukesh Gurjar',
+    ward: 'Ward 01',
+    boothNo: 'Booth 02',
+    activityType: 'Poster Pasting',
+    location: 'Main School Wall & Tea Stalls',
+    dateTime: 'Yesterday, 04:00 PM',
+    description: 'Affixed 25 official election posters with candidate symbol and meeting timings.',
+    votersContacted: 0,
+    slipsDistributed: 0,
+    status: 'Submitted'
+  }
+];
+
+export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
+  {
+    id: 'att_01',
+    volunteerId: 'kailash',
+    volunteerName: 'Kailash Saini',
+    ward: 'Ward 02',
+    date: '18 Aug 2026',
+    checkInTime: '08:45 AM',
+    location: 'Ward 02 Field Desk',
+    status: 'Present'
+  },
+  {
+    id: 'att_02',
+    volunteerId: 'priya',
+    volunteerName: 'Priya Sharma',
+    ward: 'Ward 04',
+    date: '18 Aug 2026',
+    checkInTime: '09:00 AM',
+    location: 'Booth 03 Center',
+    status: 'Present'
+  },
+  {
+    id: 'att_03',
+    volunteerId: 'mukesh',
+    volunteerName: 'Mukesh Gurjar',
+    ward: 'Ward 01',
+    date: '18 Aug 2026',
+    checkInTime: '09:30 AM',
+    location: 'Main Bazar Area',
+    status: 'On-Duty'
+  },
+  {
+    id: 'att_04',
+    volunteerId: 'mahesh',
+    volunteerName: 'Mahesh Sharma',
+    ward: 'Ward 03',
+    date: '18 Aug 2026',
+    checkInTime: '10:15 AM',
+    location: 'Anganwadi Center',
+    status: 'Present'
+  }
+];
+
+export const INITIAL_SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
+  {
+    id: 'basic',
+    name: 'Basic Plan',
+    priceMonthly: 1999,
+    priceAnnual: 19990,
+    tagline: 'Suitable for small campaigns & single ward candidates',
+    candidateLimit: 1,
+    volunteerLimit: 10,
+    features: [
+      '1 Candidate Account',
+      'Up to 10 Volunteers',
+      'Basic Task Management',
+      'Basic Command Dashboard',
+      'Standard Election Reports',
+      'Voter Roll Management',
+      'Email & Community Support'
+    ]
+  },
+  {
+    id: 'professional',
+    name: 'Professional Plan',
+    priceMonthly: 5999,
+    priceAnnual: 59990,
+    tagline: 'Suitable for medium-sized Gram Panchayat & Municipal campaigns',
+    candidateLimit: 5,
+    volunteerLimit: 50,
+    isPopular: true,
+    badge: 'MOST POPULAR',
+    features: [
+      'Multiple Candidates (Up to 5)',
+      'Up to 50 Volunteers Network',
+      'Area & Booth Level Management',
+      'Advanced War Room Dashboard',
+      'Field Activity & Photo Management',
+      'Reports & Deep Analytics',
+      'Automated SMS & Task Notifications',
+      'CSV/Excel Data Export Engines',
+      'Priority Phone Support'
+    ]
+  },
+  {
+    id: 'enterprise',
+    name: 'Enterprise / Campaign Plan',
+    priceMonthly: 12999,
+    priceAnnual: 129990,
+    tagline: 'Suitable for large-scale Vidhan Sabha & High-Stake Elections',
+    candidateLimit: 'Unlimited',
+    volunteerLimit: 'Unlimited',
+    badge: 'HIGH STAKES',
+    features: [
+      'Unlimited Candidates & Wards',
+      'Large Volunteer Network (Unlimited)',
+      'Multiple Campaign Areas & Constituencies',
+      'Real-Time Turnout & Heatmap Analytics',
+      'Multi-Channel WhatsApp & SMS Integration',
+      'Custom Branding & White-Label Option',
+      'Dedicated Cloud Infrastructure',
+      'Full API Access & Webhooks',
+      '24x7 Dedicated Campaign Manager'
+    ]
+  }
+];
+
+export const INITIAL_CURRENT_SUBSCRIPTION: CurrentSubscription = {
+  planId: 'professional',
+  planName: 'Professional Plan',
+  status: 'Active',
+  startDate: '01 Aug 2026',
+  expiryDate: '01 Sep 2026',
+  autoRenew: true,
+  activeCandidates: 3,
+  activeVolunteers: 24,
+  whatsappCredits: 8500,
+  smsCredits: 1200
+};
+
+export const INITIAL_INVOICES: Invoice[] = [
+  {
+    id: 'INV-2026-08',
+    date: '01 Aug 2026',
+    planName: 'Professional Plan (Monthly)',
+    amount: 5999,
+    status: 'Paid',
+    gateway: 'Razorpay',
+    transactionId: 'pay_RPZ94827501'
+  },
+  {
+    id: 'INV-2026-07',
+    date: '01 Jul 2026',
+    planName: 'Professional Plan (Monthly)',
+    amount: 5999,
+    status: 'Paid',
+    gateway: 'Razorpay',
+    transactionId: 'pay_RPZ81736209'
+  }
+];
+

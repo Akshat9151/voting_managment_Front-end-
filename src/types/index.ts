@@ -1,4 +1,4 @@
-﻿export * from './auth';
+export * from './auth';
 export * from './candidate';
 export * from './voter';
 export * from './team';
@@ -9,3 +9,5 @@ export * from './volunteer';
 export * from './studio';
 export * from './map';
 export * from './analytics';
+export * from './task';
+export * from './subscription';

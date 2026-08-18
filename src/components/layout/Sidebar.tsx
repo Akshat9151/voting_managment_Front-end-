@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -18,7 +18,9 @@ import {
   Activity,
   LogOut,
   X,
-  Sparkles
+  Sparkles,
+  CheckSquare,
+  Crown
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -35,26 +37,51 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { currentRole, logout } = useAuth();
 
-  // Navigation Items according to role
-  const mainNavItems = [
+  // Super Admin (Parshad) Full Platform Navigation
+  const superAdminNavItems = [
     { to: '/', label: 'War Room Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
-    { to: '/team', label: 'Team & Permissions', icon: <Users className="w-4 h-4" /> },
-    { to: '/candidates', label: 'Candidates & Symbols', icon: <Award className="w-4 h-4" /> },
+    { to: '/candidates', label: 'Candidate Management', icon: <Award className="w-4 h-4" /> },
+    { to: '/team', label: 'Team & Admin RBAC', icon: <Users className="w-4 h-4" /> },
+    { to: '/tasks', label: 'Task & Operations', icon: <CheckSquare className="w-4 h-4" /> },
+    { to: '/field-activities', label: 'Field Activity Stream', icon: <Activity className="w-4 h-4" /> },
     { to: '/voters', label: 'Voter Roll & OCR', icon: <Contact2 className="w-4 h-4" /> },
     { to: '/studio', label: 'Design Studio', icon: <Palette className="w-4 h-4" /> },
     { to: '/broadcast', label: 'Broadcast Center', icon: <Send className="w-4 h-4" /> },
-    { to: '/volunteers', label: 'Booth Operations', icon: <UserCheck className="w-4 h-4" /> },
-    { to: '/complaints', label: 'Surveys & Grievances', icon: <AlertCircle className="w-4 h-4" /> },
+    { to: '/volunteers', label: 'Booth & Area Ops', icon: <UserCheck className="w-4 h-4" /> },
+    { to: '/subscriptions', label: 'SaaS Subscriptions', icon: <Crown className="w-4 h-4 text-amber-500" /> },
     { to: '/expenses', label: 'EC Expenses Ledger', icon: <Receipt className="w-4 h-4" /> },
-    { to: '/analytics', label: 'Turnout Analytics', icon: <BarChart3 className="w-4 h-4" /> },
-    { to: '/settings', label: 'Settings & Branding', icon: <Settings className="w-4 h-4" /> }
+    { to: '/analytics', label: 'Reports & Analytics', icon: <BarChart3 className="w-4 h-4" /> },
+    { to: '/settings', label: 'System Settings', icon: <Settings className="w-4 h-4" /> }
   ];
 
+  // Admin (Candidate) Campaign Navigation
+  const candidateAdminNavItems = [
+    { to: '/', label: 'Campaign Command', icon: <LayoutDashboard className="w-4 h-4" /> },
+    { to: '/volunteers', label: 'Volunteer Management', icon: <UserCheck className="w-4 h-4" /> },
+    { to: '/tasks', label: 'Assign Field Tasks', icon: <CheckSquare className="w-4 h-4" /> },
+    { to: '/field-activities', label: 'Activities & Attendance', icon: <Activity className="w-4 h-4" /> },
+    { to: '/voters', label: 'Voter Roll & Slip Sync', icon: <Contact2 className="w-4 h-4" /> },
+    { to: '/broadcast', label: 'Broadcast Center', icon: <Send className="w-4 h-4" /> },
+    { to: '/complaints', label: 'Grievances & Surveys', icon: <AlertCircle className="w-4 h-4" /> },
+    { to: '/analytics', label: 'Campaign Progress', icon: <BarChart3 className="w-4 h-4" /> }
+  ];
+
+  // Volunteer Ground-Level Navigation
   const volunteerNavItems = [
+    { to: '/', label: 'Field Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
+    { to: '/tasks', label: 'My Assigned Tasks', icon: <CheckSquare className="w-4 h-4" /> },
+    { to: '/field-activities', label: 'Submit Field Report', icon: <Activity className="w-4 h-4" /> },
     { to: '/volunteer-ward', label: 'Ward 02 Field Desk', icon: <MapPin className="w-4 h-4" /> },
     { to: '/volunteer-add', label: 'Add Elector (Ward 02)', icon: <UserPlus className="w-4 h-4" /> },
     { to: '/volunteer-activity', label: 'My Field Record', icon: <Activity className="w-4 h-4" /> }
   ];
+
+  const currentNavItems =
+    currentRole === 'superadmin'
+      ? superAdminNavItems
+      : currentRole === 'admin'
+      ? candidateAdminNavItems
+      : volunteerNavItems;
 
   return (
     <>
@@ -92,7 +119,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="p-3 bg-gradient-to-br from-sky-50 to-slate-50 border border-sky-100 rounded-xl cursor-pointer hover:border-sky-300 transition-all flex items-center justify-between shadow-xs"
           >
             <div>
-              <div className="text-[10px] font-extrabold text-sky-600 uppercase tracking-wider">Active Role</div>
+              <div className="text-[10px] font-extrabold text-sky-600 uppercase tracking-wider">
+                {currentRole === 'superadmin' && 'SUPER ADMIN (PARSHAD)'}
+                {currentRole === 'admin' && 'CAMPAIGN ADMIN (CANDIDATE)'}
+                {currentRole === 'volunteer' && 'GROUND VOLUNTEER'}
+              </div>
               <div className="text-xs font-bold text-slate-900 capitalize">{currentRole} View</div>
             </div>
             <Sparkles className="w-4 h-4 text-sky-500" />
@@ -101,9 +132,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* Navigation Links */}
           <nav className="space-y-1">
             <div className="text-[11px] font-extrabold uppercase text-slate-400 px-3 py-1 tracking-wider">
-              Campaign Management
+              {currentRole === 'superadmin' && 'Central Master Platform'}
+              {currentRole === 'admin' && 'Candidate Management'}
+              {currentRole === 'volunteer' && 'Field Operations'}
             </div>
-            {mainNavItems.map((item) => (
+            {currentNavItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -121,31 +154,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <span>{item.label}</span>
               </NavLink>
             ))}
-
-            {/* Field Volunteer Section */}
-            <div className="pt-3">
-              <div className="text-[11px] font-extrabold uppercase text-slate-400 px-3 py-1 tracking-wider">
-                Field Volunteer Desk
-              </div>
-              {volunteerNavItems.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  onClick={onClose}
-                  className={({ isActive }) =>
-                    clsx(
-                      'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[42px]',
-                      isActive
-                        ? 'bg-emerald-600 text-white shadow-sm font-extrabold'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    )
-                  }
-                >
-                  {item.icon}
-                  <span>{item.label}</span>
-                </NavLink>
-              ))}
-            </div>
           </nav>
         </div>
 

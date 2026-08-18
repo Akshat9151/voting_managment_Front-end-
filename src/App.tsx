@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
@@ -24,6 +24,9 @@ import { SettingsPage } from './pages/SettingsPage';
 import { VolunteerWardPage } from './pages/VolunteerWardPage';
 import { VolunteerAddPage } from './pages/VolunteerAddPage';
 import { VolunteerActivityPage } from './pages/VolunteerActivityPage';
+import { TasksPage } from './pages/TasksPage';
+import { FieldActivitiesPage } from './pages/FieldActivitiesPage';
+import { SubscriptionsPage } from './pages/SubscriptionsPage';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
@@ -49,6 +52,9 @@ export const AppRoutes: React.FC = () => {
         <Route index element={<DashboardPage />} />
         <Route path="team" element={<TeamPage />} />
         <Route path="candidates" element={<CandidatesPage />} />
+        <Route path="tasks" element={<TasksPage />} />
+        <Route path="field-activities" element={<FieldActivitiesPage />} />
+        <Route path="subscriptions" element={<SubscriptionsPage />} />
         <Route path="voters" element={<VotersPage />} />
         <Route path="studio" element={<DesignStudioPage />} />
         <Route path="broadcast" element={<BroadcastPage />} />
