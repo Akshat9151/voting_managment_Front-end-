@@ -2,14 +2,15 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useNavigate } from 'react-router-dom';
-import { Vote, ArrowRight, ShieldCheck, CheckCircle2, Mail, Lock, UserPlus, Globe, Smartphone } from 'lucide-react';
+import { Vote, ArrowRight, ShieldCheck, CheckCircle2, Mail, Lock, UserPlus, Globe, Smartphone, KeyRound } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { FormInput } from '../components/ui/FormInput';
 import { useLanguage, SUPPORTED_LANGUAGES } from '../context/LanguageContext';
 
 export const AuthPage: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [loginMethod, setLoginMethod] = useState<'password' | 'otp'>('password');
+  const [email, setEmail] = useState('superadmin@electwin.com');
+  const [password, setPassword] = useState('SuperSecureAdminPassword123!');
   const [phone, setPhone] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -26,7 +27,7 @@ export const AuthPage: React.FC = () => {
   const [isOtpVerifying, setIsOtpVerifying] = useState(false);
   const otpInputsRef = useRef<Array<HTMLInputElement | null>>([]);
 
-  const { loginWithOtp } = useAuth();
+  const { login, loginDemo, loginWithOtp } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const { language, setLanguage, t } = useLanguage();
@@ -81,7 +82,7 @@ export const AuthPage: React.FC = () => {
     setIsOtpSending(true);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 700));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       setOtpStep(2);
       setOtpCode(Array(6).fill(''));
       setOtpExpiryAt(Date.now() + 180000);
@@ -111,7 +112,7 @@ export const AuthPage: React.FC = () => {
     setError(null);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
       if (entered !== '123456') {
         const nextAttempts = otpFailedAttempts + 1;
@@ -144,11 +145,33 @@ export const AuthPage: React.FC = () => {
     await handleSendOtp();
   };
 
+  const handlePasswordLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !password) {
+      setError('Please enter both email and password.');
+      return;
+    }
+
+    setError(null);
+    setIsLoading(true);
+    try {
+      await login(email.trim(), password);
+      showToast(t('enteredAsAdmin'), 'success');
+      navigate('/');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.response?.data?.detail || err?.message || 'Login failed. Please check credentials.';
+      setError(msg);
+      showToast(msg, 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleDemoLogin = async () => {
     setError(null);
     setIsLoading(true);
     try {
-      await loginWithOtp('superadmin@electwin.com', 'SUPER_ADMIN');
+      await loginDemo('SUPER_ADMIN');
       showToast(t('enteredAsAdmin'), 'info');
       navigate('/');
     } catch (err: any) {
@@ -356,100 +379,173 @@ export const AuthPage: React.FC = () => {
               </form>
             ) : (
               <div className="space-y-4">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                  {otpStep === 1 ? t('otpStepOne') : t('otpStepTwo')}
+                {/* Switch Login Mode (Password vs OTP) */}
+                <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-xl mb-2">
+                  <button
+                    type="button"
+                    onClick={() => setLoginMethod('password')}
+                    className={`py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                      loginMethod === 'password'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    <KeyRound className="w-3.5 h-3.5" />
+                    Password
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLoginMethod('otp')}
+                    className={`py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                      loginMethod === 'otp'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    <Smartphone className="w-3.5 h-3.5" />
+                    OTP Login
+                  </button>
                 </div>
 
-                {otpStep === 1 ? (
-                  <>
+                {loginMethod === 'password' ? (
+                  <form onSubmit={handlePasswordLogin} className="space-y-4">
                     <FormInput
-                      label={t('emailOrPhone')}
-                      type="text"
-                      value={otpContact}
-                      onChange={(e) => setOtpContact(e.target.value)}
-                      placeholder={t('otpContactExample')}
-                      leftIcon={<Smartphone className="w-4 h-4" />}
+                      label={t('emailAddress')}
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="superadmin@electwin.com"
+                      leftIcon={<Mail className="w-4 h-4" />}
+                      required
+                    />
+
+                    <FormInput
+                      label={t('password')}
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••••••"
+                      leftIcon={<Lock className="w-4 h-4" />}
+                      required
                     />
 
                     <Button
-                      type="button"
+                      type="submit"
                       variant="primary"
                       className="w-full"
-                      onClick={handleSendOtp}
-                      disabled={isOtpSending || !otpContact.trim()}
+                      disabled={isLoading || !email || !password}
                     >
-                      {isOtpSending ? (
+                      {isLoading ? (
                         <span className="flex items-center gap-2">
                           <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          {t('sendOtp')}
+                          Signing in...
                         </span>
                       ) : (
                         <span className="flex items-center gap-2">
-                          {t('sendOtp')}
+                          Sign In with Password
                           <ArrowRight className="w-4 h-4" />
                         </span>
                       )}
                     </Button>
-
-                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-700 font-semibold">
-                      {t('otpTestingHint')}
-                    </div>
-                  </>
+                  </form>
                 ) : (
-                  <>
-                    <div className="grid grid-cols-6 gap-2">
-                      {otpCode.map((digit, index) => (
-                        <input
-                          key={`otp-${index}`}
-                          ref={(el) => { otpInputsRef.current[index] = el; }}
+                  <div className="space-y-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                      {otpStep === 1 ? t('otpStepOne') : t('otpStepTwo')}
+                    </div>
+
+                    {otpStep === 1 ? (
+                      <>
+                        <FormInput
+                          label={t('emailOrPhone')}
                           type="text"
-                          inputMode="numeric"
-                          maxLength={1}
-                          value={digit}
-                          onChange={(e) => handleOtpChange(index, e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Backspace' && !digit && index > 0) {
-                              otpInputsRef.current[index - 1]?.focus();
-                            }
-                          }}
-                          className="h-12 rounded-xl border border-slate-300 bg-white text-center text-lg font-bold text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-100"
-                          aria-label={`${t('otpInputLabel')} ${index + 1}`}
+                          value={otpContact}
+                          onChange={(e) => setOtpContact(e.target.value)}
+                          placeholder={t('otpContactExample')}
+                          leftIcon={<Smartphone className="w-4 h-4" />}
                         />
-                      ))}
-                    </div>
 
-                    <Button
-                      type="button"
-                      variant="primary"
-                      className="w-full"
-                      onClick={handleVerifyOtp}
-                      disabled={isOtpVerifying || otpCode.join('').length !== 6}
-                    >
-                      {isOtpVerifying ? (
-                        <span className="flex items-center gap-2">
-                          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          {t('verifyOtp')}
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-2">
-                          {t('verifyAndLogin')}
-                          <ArrowRight className="w-4 h-4" />
-                        </span>
-                      )}
-                    </Button>
+                        <Button
+                          type="button"
+                          variant="primary"
+                          className="w-full"
+                          onClick={handleSendOtp}
+                          disabled={isOtpSending || !otpContact.trim()}
+                        >
+                          {isOtpSending ? (
+                            <span className="flex items-center gap-2">
+                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              {t('sendOtp')}
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-2">
+                              {t('sendOtp')}
+                              <ArrowRight className="w-4 h-4" />
+                            </span>
+                          )}
+                        </Button>
 
-                    <div className="flex items-center justify-between gap-2 text-[11px]">
-                      <button
-                        type="button"
-                        onClick={handleOtpResend}
-                        disabled={resendCountdown > 0}
-                        className="font-bold text-sky-600 disabled:text-slate-400"
-                      >
-                        {resendCountdown > 0 ? `${t('otpResendIn')} ${resendCountdown}s` : t('otpResend')}
-                      </button>
-                      <span className="text-slate-500">{t('otpTestingHint')}</span>
-                    </div>
-                  </>
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-700 font-semibold">
+                          {t('otpTestingHint')}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-6 gap-2">
+                          {otpCode.map((digit, index) => (
+                            <input
+                              key={`otp-${index}`}
+                              ref={(el) => { otpInputsRef.current[index] = el; }}
+                              type="text"
+                              inputMode="numeric"
+                              maxLength={1}
+                              value={digit}
+                              onChange={(e) => handleOtpChange(index, e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Backspace' && !digit && index > 0) {
+                                  otpInputsRef.current[index - 1]?.focus();
+                                }
+                              }}
+                              className="h-12 rounded-xl border border-slate-300 bg-white text-center text-lg font-bold text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-100"
+                              aria-label={`${t('otpInputLabel')} ${index + 1}`}
+                            />
+                          ))}
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant="primary"
+                          className="w-full"
+                          onClick={handleVerifyOtp}
+                          disabled={isOtpVerifying || otpCode.join('').length !== 6}
+                        >
+                          {isOtpVerifying ? (
+                            <span className="flex items-center gap-2">
+                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              {t('verifyOtp')}
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-2">
+                              {t('verifyAndLogin')}
+                              <ArrowRight className="w-4 h-4" />
+                            </span>
+                          )}
+                        </Button>
+
+                        <div className="flex items-center justify-between gap-2 text-[11px]">
+                          <button
+                            type="button"
+                            onClick={handleOtpResend}
+                            disabled={resendCountdown > 0}
+                            className="font-bold text-sky-600 disabled:text-slate-400"
+                          >
+                            {resendCountdown > 0 ? `${t('otpResendIn')} ${resendCountdown}s` : t('otpResend')}
+                          </button>
+                          <span className="text-slate-500">{t('otpTestingHint')}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
             )}
@@ -470,14 +566,15 @@ export const AuthPage: React.FC = () => {
                     type="button"
                     onClick={handleDemoLogin}
                     disabled={isLoading}
-                    className="w-full py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all disabled:opacity-50"
+                    className="w-full py-2.5 rounded-xl border border-sky-300 bg-sky-50 text-xs font-bold text-sky-700 hover:bg-sky-100 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-xs"
                   >
-                    {t('quickDemoLogin')}
+                    <ShieldCheck className="w-4 h-4 text-sky-600" />
+                    {t('quickDemoLogin')} (Super Admin)
                   </button>
                   <button
                     type="button"
                     onClick={() => setIsSignup(true)}
-                    className="mt-3 w-full py-2.5 rounded-xl border border-sky-200 bg-sky-50 text-xs font-bold text-sky-700 hover:bg-sky-100 transition-all flex items-center justify-center gap-2"
+                    className="mt-3 w-full py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-700 hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
                   >
                     <UserPlus className="w-4 h-4" />
                     {t('signUpNewAccount')}

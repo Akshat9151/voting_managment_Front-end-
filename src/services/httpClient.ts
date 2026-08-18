@@ -1,33 +1,66 @@
 /**
  * httpClient.ts
  * Axios instance for ElectWin Dashboard.
- * - Attaches JWT Bearer token from in-memory store on every request
+ * - Attaches JWT Bearer token on every request
  * - Auto-refreshes on 401 using stored refresh token
- * - On refresh failure → clears auth state and redirects to /login
+ * - Avoids hard window.location loops on mock demo sessions or network errors
  */
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 const BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1';
 
-// ─── Token store (in-memory; avoids XSS risk of storing access token in localStorage) ───
-let _accessToken: string | null = null;
+// ─── Token store ─────────────────────────────────────────────────────────────
+let _accessToken: string | null = localStorage.getItem('ew_at') ?? null;
 let _refreshToken: string | null = localStorage.getItem('ew_rt') ?? null;
+let _isMock: boolean = localStorage.getItem('ew_is_mock') === 'true';
 let _isRefreshing = false;
 let _refreshQueue: Array<(token: string) => void> = [];
 
 export const tokenStore = {
   getAccess: () => _accessToken,
-  setAccess: (t: string | null) => { _accessToken = t; },
+  setAccess: (t: string | null) => {
+    _accessToken = t;
+    if (t) localStorage.setItem('ew_at', t);
+    else localStorage.removeItem('ew_at');
+  },
   getRefresh: () => _refreshToken,
   setRefresh: (t: string | null) => {
     _refreshToken = t;
     if (t) localStorage.setItem('ew_rt', t);
     else localStorage.removeItem('ew_rt');
   },
+  getUser: () => {
+    try {
+      const raw = localStorage.getItem('ew_user');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  },
+  setUser: (u: any | null) => {
+    if (u) localStorage.setItem('ew_user', JSON.stringify(u));
+    else localStorage.removeItem('ew_user');
+  },
+  isMock: () => _isMock,
+  setMock: (m: boolean) => {
+    _isMock = m;
+    if (m) localStorage.setItem('ew_is_mock', 'true');
+    else localStorage.removeItem('ew_is_mock');
+  },
+  setSession: (access: string, refresh: string, user: any, isMock: boolean = false) => {
+    tokenStore.setAccess(access);
+    tokenStore.setRefresh(refresh);
+    tokenStore.setUser(user);
+    tokenStore.setMock(isMock);
+  },
   clear: () => {
     _accessToken = null;
     _refreshToken = null;
+    _isMock = false;
+    localStorage.removeItem('ew_at');
     localStorage.removeItem('ew_rt');
+    localStorage.removeItem('ew_user');
+    localStorage.removeItem('ew_is_mock');
   }
 };
 
@@ -41,7 +74,7 @@ export const httpClient = axios.create({
 // ─── Request interceptor: attach access token ─────────────────────────────────
 httpClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = tokenStore.getAccess();
-  if (token && config.headers) {
+  if (token && config.headers && !tokenStore.isMock()) {
     config.headers['Authorization'] = `Bearer ${token}`;
   }
   return config;
@@ -57,11 +90,15 @@ httpClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    // If mock session, do not trigger refresh loop
+    if (tokenStore.isMock()) {
+      return Promise.reject(error);
+    }
+
     const rt = tokenStore.getRefresh();
-    if (!rt) {
-      // No refresh token — force logout
+    if (!rt || rt.startsWith('mock_')) {
       tokenStore.clear();
-      window.location.href = '/login';
+      window.dispatchEvent(new CustomEvent('auth:unauthorized'));
       return Promise.reject(error);
     }
 
@@ -85,7 +122,10 @@ httpClient.interceptors.response.use(
       const resp = await axios.post(`${BASE_URL}/auth/refresh`, {
         refresh_token: rt
       });
-      const { access_token, refresh_token: newRt } = resp.data.data ?? resp.data;
+      const payload = resp.data.data ?? resp.data;
+      const access_token = payload.access_token ?? payload.token;
+      const newRt = payload.refresh_token ?? rt;
+
       tokenStore.setAccess(access_token);
       tokenStore.setRefresh(newRt);
 
@@ -97,11 +137,11 @@ httpClient.interceptors.response.use(
         originalRequest.headers['Authorization'] = `Bearer ${access_token}`;
       }
       return httpClient(originalRequest);
-    } catch {
+    } catch (refreshErr) {
       tokenStore.clear();
       _refreshQueue = [];
-      window.location.href = '/login';
-      return Promise.reject(error);
+      window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+      return Promise.reject(refreshErr);
     } finally {
       _isRefreshing = false;
     }

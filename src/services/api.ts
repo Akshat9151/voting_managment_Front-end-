@@ -441,10 +441,46 @@ class ApiService {
     return designTemplatesApi.list(params);
   }
 
+  // Subscriptions
+  async getSubscriptionPlans() {
+    return subscriptionsApi.listPlans();
+  }
+  async getCurrentSubscription() {
+    return subscriptionsApi.getCurrent();
+  }
+  async getInvoices() {
+    return subscriptionsApi.listInvoices();
+  }
+  async upgradeSubscription(planId: string, gateway: string) {
+    return subscriptionsApi.upgrade(planId, gateway);
+  }
+
   // Elections
   async getElections() {
     return electionsApi.list();
   }
 }
+
+// ─── Subscriptions API ────────────────────────────────────────────────────────
+export const subscriptionsApi = {
+  listPlans: async () => {
+    const res = await httpClient.get('/subscriptions/plans');
+    const data = unwrap<any>(res);
+    return (data?.items ?? data ?? []) as any[];
+  },
+  getCurrent: async () => {
+    const res = await httpClient.get('/subscriptions/current');
+    return unwrap<any>(res);
+  },
+  listInvoices: async () => {
+    const res = await httpClient.get('/subscriptions/invoices');
+    const data = unwrap<any>(res);
+    return (data?.items ?? data ?? []) as any[];
+  },
+  upgrade: async (planId: string, gateway: string) => {
+    const res = await httpClient.post('/subscriptions/upgrade', { planId, gateway });
+    return unwrap<any>(res);
+  },
+};
 
 export const api = new ApiService();
