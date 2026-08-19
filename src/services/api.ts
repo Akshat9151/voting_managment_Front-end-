@@ -79,12 +79,29 @@ export const orgsApi = {
   },
 };
 
-// ─── Candidates ───────────────────────────────────────────────────────────────
 export const candidatesApi = {
-  list: async (election_id: string, params?: Record<string, any>) => {
-    const res = await httpClient.get(`/candidates/election/${election_id}`, { params });
-    const data = unwrap<any>(res);
-    return { items: (data?.items ?? []) as any[], pagination: data?.pagination };
+  list: async (election_id?: string, params?: Record<string, any>) => {
+    try {
+      if (election_id) {
+        const res = await httpClient.get(`/candidates/election/${election_id}`, { params });
+        const data = unwrap<any>(res);
+        const items = (data?.items ?? (Array.isArray(data) ? data : [])) as any[];
+        if (items && items.length > 0) {
+          return { items, pagination: data?.pagination };
+        }
+      }
+    } catch {
+      // ignore and fallback
+    }
+
+    try {
+      const res = await httpClient.get('/candidates', { params });
+      const data = unwrap<any>(res);
+      const items = (Array.isArray(data) ? data : (data?.items ?? [])) as any[];
+      return { items, pagination: undefined };
+    } catch {
+      return { items: [], pagination: undefined };
+    }
   },
   create: async (payload: Record<string, any>) => {
     const res = await httpClient.post('/candidates/', payload);
@@ -458,20 +475,6 @@ class ApiService {
   // Elections
   async getElections() {
     return electionsApi.list();
-  }
-
-  // Subscriptions (Stub implementations)
-  async getSubscriptionPlans() {
-    return [];
-  }
-  async getCurrentSubscription() {
-    return null;
-  }
-  async getInvoices() {
-    return [];
-  }
-  async upgradeSubscription(_planId: string, _gateway: string) {
-    return null;
   }
 }
 

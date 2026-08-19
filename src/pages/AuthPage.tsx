@@ -432,13 +432,6 @@ export const AuthPage: React.FC = () => {
                       placeholder="••••••••••••"
                       leftIcon={<Lock className="w-4 h-4" />}
                       required
-                      label={t('emailOrPhone')}
-                      type="text"
-                      value={otpContact}
-                      onChange={(e) => setOtpContact(e.target.value)}
-                      placeholder={t('otpContactExample')}
-                      leftIcon={<Smartphone className="w-4 h-4" />}
-                      autoComplete="off"
                     />
 
                     <Button

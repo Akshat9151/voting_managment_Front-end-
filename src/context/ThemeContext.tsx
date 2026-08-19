@@ -1,4 +1,4 @@
-﻿import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 export type BrandColor = '#0284c7' | '#7c3aed' | '#059669' | '#d97706' | '#e11d48';
 export type Theme = 'light' | 'dark';
@@ -60,7 +60,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     root.style.setProperty('--text-secondary', textSecondary);
     root.style.setProperty('--border-color', border);
     root.style.setProperty('--brand-primary', primaryColor);
-    root.style.setProperty('--brand-primary-soft', primaryColor);
+    root.style.setProperty('--brand-primary-soft', `${primaryColor}20`);
+    root.style.setProperty('--brand-primary-border', `${primaryColor}4d`);
+    root.style.setProperty('--brand-primary-glow', `${primaryColor}33`);
 
     try {
       window.localStorage.setItem('electwin_theme_mode', theme);

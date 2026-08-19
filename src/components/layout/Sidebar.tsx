@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -85,13 +85,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       >
         <div className="p-4 space-y-4">
           {/* Mobile Drawer Header */}
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 lg:hidden">
-            <div className="font-heading font-extrabold text-lg text-slate-900">
-              Elect<span className="text-sky-600">Win</span>
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 lg:hidden dark:border-slate-800">
+            <div className="font-heading font-extrabold text-lg text-slate-900 dark:text-slate-100">
+              Elect<span style={{ color: 'var(--brand-primary)' }}>Win</span>
             </div>
             <button
               onClick={onClose}
-              className="p-1 text-slate-400 hover:text-slate-700 min-h-[36px] min-w-[36px] flex items-center justify-center"
+              className="p-1 text-slate-400 hover:text-slate-700 min-h-[36px] min-w-[36px] flex items-center justify-center dark:text-slate-400 dark:hover:text-slate-200"
             >
               <X className="w-5 h-5" />
             </button>
@@ -107,11 +107,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 key={item.to}
                 to={item.to}
                 onClick={onClose}
+                style={({ isActive }) => (isActive ? { backgroundColor: 'var(--brand-primary)' } : undefined)}
                 className={({ isActive }) =>
                   clsx(
                     'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[42px]',
                     isActive
-                      ? 'bg-sky-600 text-white shadow-sm font-extrabold'
+                      ? 'text-white shadow-sm font-extrabold'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-slate-100 dark:hover:bg-slate-800'
                   )
                 }

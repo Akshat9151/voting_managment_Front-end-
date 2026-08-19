@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -38,38 +38,52 @@ export const CandidatesPage: React.FC = () => {
   }, [activeElectionId]);
 
   const loadCandidates = async () => {
-    if (!activeElectionId) return;
-    const data = await api.getCandidates(activeElectionId);
-    setCandidates(data);
+    try {
+      const data = await api.getCandidates(activeElectionId || undefined);
+      if (Array.isArray(data)) {
+        setCandidates(data);
+      }
+    } catch (err) {
+      console.error('Error loading candidates:', err);
+    }
   };
 
   const handleAddCandidate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name) return;
-    await api.addCandidate({
-      name,
-      hindiName: hindiName || name,
-      post: postType === 'sarpanch' ? 'Sarpanch (Gram Panchayat)' : 'Panch (Ward)',
-      postType,
-      constituency,
-      symbol,
-      symbolName,
-      photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
-      slogan,
-      votersCount: postType === 'sarpanch' ? 3500 : 620,
-      volunteersCount: postType === 'sarpanch' ? 24 : 8,
-      manifesto
-    });
-    showToast(`${t('candidateAddedSuccess')}`, 'success');
-    setIsAddModalOpen(false);
-    setName('');
-    setHindiName('');
-    setSymbol('🚜');
-    setSymbolName('');
-    setSlogan('');
-    setManifesto('');
-    setConstituency('');
-    loadCandidates();
+    if (!name.trim()) return;
+
+    try {
+      await api.addCandidate({
+        election_id: activeElectionId || undefined,
+        name: name.trim(),
+        full_name: name.trim(),
+        hindiName: (hindiName || name).trim(),
+        post: postType === 'sarpanch' ? 'Sarpanch (Gram Panchayat)' : 'Panch (Ward)',
+        postType,
+        constituency: constituency.trim() || 'Ward 23',
+        symbol,
+        symbolName: symbolName.trim() || symbol,
+        photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
+        slogan: slogan.trim() || 'गांव का समग्र विकास, हर घर विश्वास और खुशहाली!',
+        votersCount: postType === 'sarpanch' ? 3500 : 620,
+        volunteersCount: postType === 'sarpanch' ? 24 : 8,
+        manifesto: manifesto.trim() || '1. स्वच्छ पेयजल और पक्की सड़कें\n2. शिक्षा और स्वास्थ्य सुविधाएं'
+      });
+
+      showToast('Candidate profile created successfully!', 'success');
+      setIsAddModalOpen(false);
+      setName('');
+      setHindiName('');
+      setSymbol('🚜');
+      setSymbolName('');
+      setSlogan('');
+      setManifesto('');
+      setConstituency('');
+      await loadCandidates();
+    } catch (err: any) {
+      console.error('Failed to create candidate:', err);
+      showToast(err?.response?.data?.detail || err?.response?.data?.message || 'Failed to create candidate profile', 'error');
+    }
   };
 
   const filtered = candidates.filter(c => {
@@ -193,11 +207,11 @@ export const CandidatesPage: React.FC = () => {
                 </Badge>
                 <Button
                   size="sm"
-                  variant="outline"
-                  onClick={() => navigate('/studio')}
-                  leftIcon={<Sparkles className="w-3.5 h-3.5 text-sky-600" />}
+                  variant="primary"
+                  onClick={() => navigate(`/studio?candidateId=${cand.id}`)}
+                  leftIcon={<Sparkles className="w-3.5 h-3.5" />}
                 >
-                  Generate Posters
+                  Generate Poster
                 </Button>
               </div>
             </Card>
@@ -211,7 +225,7 @@ export const CandidatesPage: React.FC = () => {
         title={
           <div className="flex items-center gap-2">
             <Award className="w-5 h-5 text-sky-600" />
-            <span>{t('candidateAddedSuccess')}</span>
+            <span>Add New Candidate Profile</span>
           </div>
         }
       >
@@ -255,7 +269,9 @@ export const CandidatesPage: React.FC = () => {
               value={symbol}
               onChange={(e) => {
                 setSymbol(e.target.value);
-                setSymbolName(e.target.options[e.target.selectedIndex].text);
+                const text = e.target.options[e.target.selectedIndex].text;
+                // Remove emoji prefix if any for cleaner display text
+                setSymbolName(text.replace(/^[^\w\u0900-\u097F\s()]+\s*/, ''));
               }}
             >
               <option value="🚜">🚜 Tractor (ट्रैक्टर)</option>
@@ -268,6 +284,7 @@ export const CandidatesPage: React.FC = () => {
 
             <FormInput
               label="Symbol Display Name"
+              placeholder="e.g. Tractor (ट्रैक्टर)"
               value={symbolName}
               onChange={(e) => setSymbolName(e.target.value)}
             />
