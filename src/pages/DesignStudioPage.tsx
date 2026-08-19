@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { designTemplatesApi } from '../services/api';
+import { useSearchParams } from 'react-router-dom';
+import { api, designTemplatesApi } from '../services/api';
+import { getCandidateStudioAutofill } from '../services/templateSelector';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { useElection } from '../context/ElectionContext';
@@ -19,7 +21,6 @@ import { Badge } from '../components/ui/Badge';
 import { FormInput } from '../components/ui/FormInput';
 import { FileDropzone } from '../components/ui/FileDropzone';
 import { Button } from '../components/ui/Button';
-import { EmptyState } from '../components/ui/EmptyState';
 import { SymbolItem, DesignTemplate } from '../types';
 
 const SYMBOLS_DATABASE: SymbolItem[] = [
@@ -46,6 +47,9 @@ const validateMediaFile = (file: File): { valid: boolean; error?: string } => {
 };
 
 export const DesignStudioPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const candidateIdParam = searchParams.get('candidateId');
+
   const { t } = useLanguage();
   const { showToast } = useToast();
   const { activeElectionId } = useElection();
@@ -55,28 +59,11 @@ export const DesignStudioPage: React.FC = () => {
   const [templates, setTemplates] = useState<DesignTemplate[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [isSavingDesign, setIsSavingDesign] = useState(false);
+  const [isRenderingCanvas, setIsRenderingCanvas] = useState(false);
 
   // View state
   const [view, setView] = useState<'gallery' | 'editor'>('gallery');
   const [selectedTemplate, setSelectedTemplate] = useState<DesignTemplate | null>(null);
-
-  useEffect(() => {
-    const fetchTemplates = async () => {
-      setIsLoadingTemplates(true);
-      try {
-        const data = await designTemplatesApi.list();
-        if (data && data.length > 0) {
-          setTemplates(data);
-        }
-      } catch (err: any) {
-        showToast(err?.response?.data?.detail || 'Unable to load studio templates.', 'error');
-      } finally {
-        setIsLoadingTemplates(false);
-      }
-    };
-    fetchTemplates();
-  }, [showToast]);
-
 
   // Form state
   const [candidateName, setCandidateName] = useState('');
@@ -90,6 +77,9 @@ export const DesignStudioPage: React.FC = () => {
   const [candidatePhotoUrl, setCandidatePhotoUrl] = useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
   // Symbol
   const [symbolTab, setSymbolTab] = useState<'preset' | 'custom'>('preset');
@@ -97,6 +87,81 @@ export const DesignStudioPage: React.FC = () => {
   const [symbolSearchQuery, setSymbolSearchQuery] = useState('');
   const [symbolPreview, setSymbolPreview] = useState<string | null>(null);
   const [isUploadingSymbol, setIsUploadingSymbol] = useState(false);
+
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      setIsLoadingTemplates(true);
+      try {
+        const data = await designTemplatesApi.list();
+        if (data && data.length > 0) {
+          setTemplates(data);
+          if (!selectedTemplate) {
+            setSelectedTemplate(data[0]);
+          }
+        }
+      } catch (err: any) {
+        showToast(err?.response?.data?.detail || 'Unable to load studio templates.', 'error');
+      } finally {
+        setIsLoadingTemplates(false);
+      }
+    };
+    fetchTemplates();
+  }, [showToast]);
+
+  // Handle Candidate Autofill from URL Query Param (?candidateId=...)
+  useEffect(() => {
+    if (!candidateIdParam) return;
+
+    const loadCandidateData = async () => {
+      try {
+        const candidates = await api.getCandidates(activeElectionId || undefined);
+        const cand = Array.isArray(candidates) ? candidates.find((c: any) => c.id === candidateIdParam) : null;
+        if (cand) {
+          const autofill = getCandidateStudioAutofill(cand, templates.length > 0 ? templates : undefined);
+          setCandidateName(autofill.candidateName);
+          setPosition(autofill.position);
+          setSlogan(autofill.slogan);
+
+          // Extract ward number from constituency if available
+          const wardMatch = cand.constituency?.match(/\d+/);
+          if (wardMatch) {
+            setWardNo(wardMatch[0]);
+          } else if (cand.ward_no) {
+            setWardNo(String(cand.ward_no));
+          }
+
+          if (cand.ballot_no || cand.ballotNo) {
+            setBallotNo(String(cand.ballot_no || cand.ballotNo));
+          }
+
+          if (autofill.photoPreview) {
+            setCandidatePhotoUrl(autofill.photoPreview);
+            setPhotoPreview(autofill.photoPreview);
+          }
+
+          if (cand.symbol) {
+            if (cand.symbol.startsWith('http') || cand.symbol.startsWith('/')) {
+              setSymbolTab('custom');
+              setSymbolPreview(toAssetUrl(cand.symbol));
+            } else {
+              setSymbolTab('preset');
+              setSelectedSymbol(autofill.symbolItem);
+            }
+          }
+
+          if (autofill.recommendedTemplate) {
+            setSelectedTemplate(autofill.recommendedTemplate);
+          }
+          setView('editor');
+          showToast(`Autofilled details for ${cand.name || 'Candidate'}`, 'info');
+        }
+      } catch (err) {
+        console.error('Error loading candidate for design studio:', err);
+      }
+    };
+
+    loadCandidateData();
+  }, [candidateIdParam, templates, activeElectionId]);
 
   const filteredSymbols = SYMBOLS_DATABASE.filter(s =>
     s.name.toLowerCase().includes(symbolSearchQuery.toLowerCase()) ||
@@ -106,18 +171,26 @@ export const DesignStudioPage: React.FC = () => {
   const handleSelectTemplate = (template: DesignTemplate) => {
     setSelectedTemplate(template);
     setView('editor');
-    // Reset form
-    setCandidateName('');
-    setPosition('');
-    setWardNo('');
-    setBallotNo('');
-    setSlogan('');
-    setContactNumber('');
-    setCandidatePhotoUrl(null);
-    setPhotoPreview(null);
-    setSymbolPreview(null);
-    setSelectedSymbol(SYMBOLS_DATABASE[0]);
-    setSymbolSearchQuery('');
+    // Keep user's entered form data when changing templates!
+  };
+
+  const handleLogoUpload = async (file: File) => {
+    setIsUploadingLogo(true);
+    try {
+      const validation = validateMediaFile(file);
+      if (!validation.valid) {
+        showToast(validation.error || 'Invalid file', 'error');
+        return;
+      }
+      const uploaded = await designTemplatesApi.uploadAsset(file);
+      const url = toAssetUrl(uploaded.url);
+      setLogoUrl(url);
+      setLogoPreview(url);
+    } catch {
+      showToast('Logo upload failed.', 'error');
+    } finally {
+      setIsUploadingLogo(false);
+    }
   };
 
   const handlePhotoUpload = async (file: File) => {
@@ -183,7 +256,7 @@ export const DesignStudioPage: React.FC = () => {
   };
 
   const handleSaveDesign = async () => {
-    if (!selectedTemplate) return;
+    if (!selectedTemplate || isRenderingCanvas) return;
     if (!validateForm()) return;
 
     setIsSavingDesign(true);
@@ -208,6 +281,7 @@ export const DesignStudioPage: React.FC = () => {
           slogan,
           contactNumber,
           candidatePhotoUrl,
+          logoUrl,
           symbol: symbolTab === 'preset' ? selectedSymbol?.symbol : symbolPreview,
           symbolName: symbolTab === 'preset' ? selectedSymbol?.name : 'Custom symbol',
         },
@@ -222,6 +296,7 @@ export const DesignStudioPage: React.FC = () => {
   };
 
   const handleDownload = async () => {
+    if (isRenderingCanvas) return;
     if (!validateForm()) return;
 
     const canvas = canvasRef.current;
@@ -240,22 +315,6 @@ export const DesignStudioPage: React.FC = () => {
       showToast(t('posterDownloadFailed'), 'error');
     }
   };
-
-  if (!activeElectionId) {
-    return (
-      <div className="space-y-6 animate-fade-in">
-        <div className="pb-2 border-b border-slate-200/80">
-          <h1 className="text-xl sm:text-2xl font-extrabold font-heading text-slate-900">{t('studioTitle')}</h1>
-          <p className="text-xs text-slate-500 mt-0.5">{t('studioSub')}</p>
-        </div>
-        <EmptyState
-          icon={Sparkles}
-          title={t('studioEmptyTitle')}
-          description={t('studioEmptyDesc')}
-        />
-      </div>
-    );
-  }
 
   // ──────────────────────────────────────────────────────────────────────────────
   // GALLERY VIEW
@@ -345,7 +404,7 @@ export const DesignStudioPage: React.FC = () => {
             variant="outline"
             size="sm"
             onClick={handleSaveDesign}
-            disabled={isSavingDesign}
+            disabled={isSavingDesign || isRenderingCanvas}
             leftIcon={<Save className="w-3.5 h-3.5" />}
           >
             {isSavingDesign ? 'Saving...' : 'Save Design'}
@@ -354,6 +413,7 @@ export const DesignStudioPage: React.FC = () => {
             variant="primary"
             size="sm"
             onClick={handleDownload}
+            disabled={isRenderingCanvas}
             leftIcon={<Download className="w-3.5 h-3.5" />}
           >
             Download
@@ -409,6 +469,24 @@ export const DesignStudioPage: React.FC = () => {
               onChange={(e) => setContactNumber(e.target.value)}
               placeholder="+91 98XXXX XXXX"
             />
+          </Card>
+
+          <Card className="space-y-3">
+            <h3 className="font-heading font-extrabold text-sm text-slate-900">Campaign Logo</h3>
+            {logoPreview ? (
+              <div className="flex items-center gap-3">
+                <img src={logoPreview} alt="Campaign logo" className="w-20 h-20 object-contain rounded-lg border border-slate-200 bg-white" />
+                <Button variant="outline" size="sm" onClick={() => { setLogoUrl(null); setLogoPreview(null); }} disabled={isUploadingLogo}>Remove</Button>
+              </div>
+            ) : (
+              <FileDropzone
+                onFileSelect={handleLogoUpload}
+                accept=".jpg,.jpeg,.png,.webp"
+                title={isUploadingLogo ? 'Uploading...' : 'Upload campaign logo'}
+                subtitle="Optional logo for the generated design"
+                className="min-h-[100px]"
+              />
+            )}
           </Card>
 
           {/* Campaign Message */}
@@ -610,7 +688,7 @@ export const DesignStudioPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Mock Canvas Renderer - Update canvas as form changes */}
+      {/* DB template renderer - updates as form and uploaded media change */}
       <RenderCanvas
         canvasRef={canvasRef}
         candidateName={candidateName}
@@ -622,7 +700,9 @@ export const DesignStudioPage: React.FC = () => {
         photoUrl={photoPreview}
         symbolMode={symbolTab}
         symbolValue={symbolTab === 'preset' ? selectedSymbol.symbol : (symbolPreview || '')}
+        logoUrl={logoPreview}
         templateLayout={selectedTemplate?.layout_json}
+        onRenderStateChange={setIsRenderingCanvas}
       />
     </div>
   );
@@ -643,7 +723,31 @@ interface RenderCanvasProps {
   symbolMode: 'preset' | 'custom';
   symbolValue: string;
   templateLayout?: any;
+  logoUrl: string | null;
+  onRenderStateChange: (isRendering: boolean) => void;
 }
+
+const drawCanvasRoundedRect = (
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number
+) => {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  ctx.lineTo(x + r, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+};
 
 const RenderCanvas: React.FC<RenderCanvasProps> = ({
   canvasRef,
@@ -656,16 +760,25 @@ const RenderCanvas: React.FC<RenderCanvasProps> = ({
   photoUrl,
   symbolMode,
   symbolValue,
-  templateLayout
+  templateLayout,
+  logoUrl,
+  onRenderStateChange
 }) => {
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !templateLayout) return;
+    if (!canvas || !templateLayout) {
+      onRenderStateChange(false);
+      return;
+    }
 
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      onRenderStateChange(false);
+      return;
+    }
+    onRenderStateChange(true);
 
-    // Set canvas size
+    // Set canvas high-res dimensions
     const w = templateLayout.width || 600;
     const h = templateLayout.height || 848;
     canvas.width = w;
@@ -674,6 +787,7 @@ const RenderCanvas: React.FC<RenderCanvasProps> = ({
     let cancelled = false;
     const loadImage = (src: string) => new Promise<HTMLImageElement>((resolve, reject) => {
       const image = new Image();
+      image.crossOrigin = 'anonymous';
       image.onload = () => resolve(image);
       image.onerror = reject;
       image.src = resolveAssetUrl(src);
@@ -683,60 +797,228 @@ const RenderCanvas: React.FC<RenderCanvasProps> = ({
       ctx.fillStyle = templateLayout.bg_color || '#ffffff';
       ctx.fillRect(0, 0, w, h);
 
+      // Data bindings dictionary
+      const values: Record<string, string> = {
+        candidate_name: candidateName.trim(),
+        candidateName: candidateName.trim(),
+        name: candidateName.trim(),
+        full_name: candidateName.trim(),
+        hindiName: candidateName.trim(),
+
+        position: position.trim(),
+        post: position.trim(),
+        post_title: position.trim(),
+        position_title: position.trim(),
+
+        ward_no: wardNo.trim(),
+        ward: wardNo.trim(),
+        wardNo: wardNo.trim(),
+
+        ballot_no: ballotNo.trim(),
+        ballot: ballotNo.trim(),
+        ballot_number: ballotNo.trim(),
+        ballotNo: ballotNo.trim(),
+        serial_number: ballotNo.trim(),
+        sequence_number: ballotNo.trim(),
+
+        slogan: slogan.trim(),
+        message: slogan.trim(),
+        tagline: slogan.trim(),
+        nara: slogan.trim(),
+
+        contact: contactNumber.trim(),
+        phone: contactNumber.trim(),
+        mobile: contactNumber.trim(),
+        contact_number: contactNumber.trim(),
+        contactNumber: contactNumber.trim(),
+
+        symbol_name: symbolMode === 'preset' ? (symbolValue ? (SYMBOLS_DATABASE.find(s => s.symbol === symbolValue)?.name || 'चुनाव चिह्न') : 'चुनाव चिह्न') : 'चुनाव चिह्न',
+        symbolName: symbolMode === 'preset' ? (symbolValue ? (SYMBOLS_DATABASE.find(s => s.symbol === symbolValue)?.name || 'चुनाव चिह्न') : 'चुनाव चिह्न') : 'चुनाव चिह्न',
+        symbol: symbolValue
+      };
+
       const elements = [...(templateLayout.elements || [])].sort((a: any, b: any) => (a.z_index || 0) - (b.z_index || 0));
       for (const el of elements) {
         if (cancelled) return;
         ctx.save();
-        if (el.type === 'shape') {
-          ctx.fillStyle = el.color || '#000000';
-          ctx.fillRect(el.x, el.y, el.width, el.height);
-        } else if (el.type === 'text') {
-          ctx.fillStyle = el.color || '#000000';
-          ctx.font = `${el.font_weight || 'normal'} ${el.font_size || 16}px sans-serif`;
-          const textAlign = (el.text_align as CanvasTextAlign) || 'left';
-          ctx.textAlign = textAlign;
-          ctx.textBaseline = 'top';
-          const values: Record<string, string> = {
-            candidate_name: candidateName,
-            position,
-            ward_no: wardNo,
-            ballot_no: ballotNo,
-            slogan,
-            contact: contactNumber,
-          };
-          const sourceText = el.placeholder || el.value || '';
-          const text = sourceText.replace(/\{\{\s*([\w]+)\s*\}\}/g, (_match: string, key: string) => values[key] ?? '').trim();
-          const textX = textAlign === 'center' ? el.x + (el.width || 0) / 2 : textAlign === 'right' ? el.x + (el.width || 0) : el.x;
-          if (text) ctx.fillText(text, textX, el.y, el.width || undefined);
-        } else if (el.type === 'symbol' && symbolValue) {
-          if (symbolMode === 'preset') {
-            ctx.font = `${el.font_size || 48}px sans-serif`;
+
+        // 1. IMAGE & LOGO ELEMENTS
+        if (el.type === 'image' || el.type === 'logo') {
+          const source = el.type === 'logo' ? logoUrl : (el.value || el.src);
+          if (source) {
+            try {
+              const image = await loadImage(source);
+              if (el.border_radius) {
+                drawCanvasRoundedRect(ctx, el.x, el.y, el.width, el.height, el.border_radius);
+                ctx.clip();
+              }
+              ctx.drawImage(image, el.x, el.y, el.width, el.height);
+            } catch {
+              if (el.type !== 'logo') {
+                ctx.fillStyle = templateLayout.bg_color || '#ffffff';
+                ctx.fillRect(el.x, el.y, el.width, el.height);
+              }
+            }
+          }
+        }
+        // 2. MASK & SHAPE ELEMENTS (Used to cleanly wipe baked placeholder graphics & render custom frames)
+        else if (el.type === 'mask' || el.type === 'shape') {
+          const color = el.color || el.bg_color || '#ffffff';
+          const radius = el.border_radius || 0;
+          if (radius > 0) {
+            drawCanvasRoundedRect(ctx, el.x, el.y, el.width, el.height, radius);
+            ctx.fillStyle = color;
+            ctx.fill();
+            if (el.border_width && el.border_color) {
+              ctx.lineWidth = el.border_width;
+              ctx.strokeStyle = el.border_color;
+              ctx.stroke();
+            }
+          } else {
+            ctx.fillStyle = color;
+            ctx.fillRect(el.x, el.y, el.width, el.height);
+            if (el.border_width && el.border_color) {
+              ctx.lineWidth = el.border_width;
+              ctx.strokeStyle = el.border_color;
+              ctx.strokeRect(el.x, el.y, el.width, el.height);
+            }
+          }
+        }
+        // 3. CANDIDATE PHOTO ELEMENT
+        else if (el.type === 'photo') {
+          const radius = el.border_radius !== undefined ? el.border_radius : 24;
+          const photoSrc = photoUrl;
+          if (photoSrc) {
+            try {
+              const image = await loadImage(photoSrc);
+              drawCanvasRoundedRect(ctx, el.x, el.y, el.width, el.height, radius);
+              ctx.clip();
+
+              // Cover mode math
+              const imgRatio = image.width / image.height;
+              const boxRatio = el.width / el.height;
+              let renderW = el.width;
+              let renderH = el.height;
+              let offsetX = 0;
+              let offsetY = 0;
+
+              if (imgRatio > boxRatio) {
+                renderW = el.height * imgRatio;
+                offsetX = -(renderW - el.width) / 2;
+              } else {
+                renderH = el.width / imgRatio;
+                offsetY = -(renderH - el.height) / 2;
+              }
+
+              ctx.drawImage(image, el.x + offsetX, el.y + offsetY, renderW, renderH);
+            } catch {
+              // Neutral background placeholder
+              drawCanvasRoundedRect(ctx, el.x, el.y, el.width, el.height, radius);
+              ctx.fillStyle = '#f1f5f9';
+              ctx.fill();
+            }
+          } else {
+            // Neutral placeholder with candidate initials
+            drawCanvasRoundedRect(ctx, el.x, el.y, el.width, el.height, radius);
+            ctx.fillStyle = '#f8fafc';
+            ctx.fill();
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            const initial = (candidateName.trim().charAt(0) || 'उ').toUpperCase();
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = `bold ${Math.min(el.width, el.height) * 0.35}px "Noto Sans Devanagari", sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillStyle = '#000000';
-            ctx.fillText(symbolValue, el.x + el.width / 2, el.y + el.height / 2);
-          } else {
-            try {
-              const image = await loadImage(symbolValue);
-              ctx.drawImage(image, el.x, el.y, el.width, el.height);
-            } catch { /* Keep rendering the rest of the template. */ }
+            ctx.fillText(initial, el.x + el.width / 2, el.y + el.height / 2);
           }
-        } else if (el.type === 'photo' && photoUrl) {
-          try {
-            const image = await loadImage(photoUrl);
-            ctx.beginPath();
-            ctx.arc(el.x + el.width / 2, el.y + el.height / 2, Math.min(el.width, el.height) / 2, 0, Math.PI * 2);
-            ctx.clip();
-            ctx.drawImage(image, el.x, el.y, el.width, el.height);
-          } catch { /* Keep rendering the rest of the template. */ }
         }
+        // 4. ELECTION SYMBOL ELEMENT
+        else if (el.type === 'symbol') {
+          const symbolVal = symbolValue;
+          if (symbolVal) {
+            if (symbolMode === 'preset' || (!symbolVal.startsWith('http') && !symbolVal.startsWith('data:') && !symbolVal.startsWith('/'))) {
+              ctx.font = `${el.font_size || 64}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillStyle = el.color || '#000000';
+              ctx.fillText(symbolVal, el.x + el.width / 2, el.y + el.height / 2);
+            } else {
+              try {
+                const image = await loadImage(symbolVal);
+                const scale = Math.min(el.width / image.width, el.height / image.height) * 0.9;
+                const destW = image.width * scale;
+                const destH = image.height * scale;
+                const destX = el.x + (el.width - destW) / 2;
+                const destY = el.y + (el.height - destH) / 2;
+                ctx.drawImage(image, destX, destY, destW, destH);
+              } catch { /* graceful fallback */ }
+            }
+          }
+        }
+        // 5. TEXT ELEMENT WITH COMPREHENSIVE BINDING & SAFETY CHECKS
+        else if (el.type === 'text') {
+          const sourceText = el.placeholder || el.value || '';
+          // Replace {{variable}} tokens
+          let text = sourceText.replace(/\{\{\s*([\w]+)\s*\}\}/g, (_match: string, key: string) => values[key] ?? '').trim();
+
+          // Safety: Don't render empty labels or un-substituted placeholders
+          if (sourceText.includes('{{') && !text) {
+            ctx.restore();
+            continue;
+          }
+
+          if (text) {
+            const fontWeight = el.font_weight || 'normal';
+            let fontSize = el.font_size || 24;
+            const fontFamilies = '"Noto Sans Devanagari", "Outfit", "Plus Jakarta Sans", "Mangal", "Nirmala UI", sans-serif';
+
+            // Auto-fit font size to prevent overflow
+            ctx.font = `${fontWeight} ${fontSize}px ${fontFamilies}`;
+            let textMetrics = ctx.measureText(text);
+            const maxW = (el.width || w) - 4;
+            if (textMetrics.width > maxW && maxW > 20) {
+              const scale = maxW / textMetrics.width;
+              fontSize = Math.max(12, Math.floor(fontSize * scale));
+              ctx.font = `${fontWeight} ${fontSize}px ${fontFamilies}`;
+            }
+
+            ctx.fillStyle = el.color || '#111111';
+            const textAlign = (el.text_align as CanvasTextAlign) || 'left';
+            ctx.textAlign = textAlign;
+            ctx.textBaseline = 'middle';
+
+            const textX = textAlign === 'center' ? el.x + el.width / 2 : textAlign === 'right' ? el.x + el.width : el.x;
+            const textY = el.y + (el.height || fontSize * 1.2) / 2;
+
+            ctx.fillText(text, textX, textY);
+          }
+        }
+
         ctx.restore();
       }
     };
 
-    void render();
+    void render().finally(() => {
+      if (!cancelled) onRenderStateChange(false);
+    });
     return () => { cancelled = true; };
-  }, [canvasRef, candidateName, position, wardNo, ballotNo, slogan, contactNumber, photoUrl, symbolMode, symbolValue, templateLayout]);
+  }, [
+    canvasRef,
+    candidateName,
+    position,
+    wardNo,
+    ballotNo,
+    slogan,
+    contactNumber,
+    photoUrl,
+    symbolMode,
+    symbolValue,
+    logoUrl,
+    templateLayout,
+    onRenderStateChange
+  ]);
 
   return null;
 };
@@ -759,3 +1041,4 @@ const canvasToFile = (canvas: HTMLCanvasElement, fileName: string): Promise<File
     resolve(new File([blob], fileName, { type: 'image/png' }));
   }, 'image/png');
 });
+

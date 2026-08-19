@@ -39,7 +39,10 @@ export const AuthPage: React.FC = () => {
       if (!otpChallengeId) {
         const challenge = await authApi.requestLoginOtp(email.trim(), password);
         setOtpChallengeId(challenge.challenge_id);
-        showToast(`Verification code sent to ${challenge.destination}.`, 'success');
+        showToast(
+          challenge.dev_code ? `Development OTP: ${challenge.dev_code}` : `Verification code sent to ${challenge.destination}.`,
+          'success'
+        );
         return;
       }
       const session = await authApi.verifyLoginOtp(otpChallengeId, otpCode, email.trim(), password);
@@ -84,24 +87,26 @@ export const AuthPage: React.FC = () => {
     try {
       if (!otpChallengeId) {
         const challenge = await authApi.requestSignupOtp({
-        organization_name: organizationName.trim(),
-        email: email.trim(),
-        password,
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        phone: normalizedPhone
+          organization_name: organizationName.trim(),
+          email: email.trim(),
+          password,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          phone: normalizedPhone
         });
         setOtpChallengeId(challenge.challenge_id);
-        showToast(`Verification code sent to ${challenge.destination}.`, 'success');
+        showToast(
+          challenge.dev_code ? `Development OTP: ${challenge.dev_code}` : `Verification code sent to ${challenge.destination}.`,
+          'success'
+        );
         return;
       }
-      await authApi.verifySignupOtp(otpChallengeId, otpCode);
-
-      showToast('Workspace created. Please sign in with your new account.', 'success');
-      setIsSignup(false);
-      setPassword('');
+      const session = await authApi.verifySignupOtp(otpChallengeId, otpCode);
+      loginWithSession(session, email);
+      showToast('Workspace created. You are signed in as Super Admin.', 'success');
       setOtpChallengeId(null);
       setOtpCode('');
+      navigate('/');
     } catch (err: any) {
       const isConflict = err?.response?.status === 409;
       const msg = isConflict

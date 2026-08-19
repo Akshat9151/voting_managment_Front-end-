@@ -21,6 +21,7 @@ export const TeamPage: React.FC = () => {
   const [memberFilter, setMemberFilter] = useState<'ALL' | 'ADMIN' | 'VOLUNTEER'>('ALL');
   const [isLoading, setIsLoading] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [wardName, setWardName] = useState('All Wards (Campaign HQ)');
 
   // Form State
@@ -30,6 +31,7 @@ export const TeamPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [roleCode, setRoleCode] = useState<'ADMIN' | 'VOLUNTEER'>('ADMIN');
+  const [isActive, setIsActive] = useState(true);
 
   const normalizeRole = (value?: string | null): 'SUPER_ADMIN' | 'ADMIN' | 'VOLUNTEER' => {
     const raw = (value ?? '').toString().toUpperCase();
@@ -63,8 +65,8 @@ export const TeamPage: React.FC = () => {
           roleTitle: u.roles?.[0] ? u.roles[0].replace('_', ' ') : (derivedRole === 'SUPER_ADMIN' ? 'Super Admin' : derivedRole === 'ADMIN' ? 'Admin' : 'Volunteer'),
           status: u.is_active ? 'Active' : 'Inactive',
           addedDate: u.created_at ? new Date(u.created_at).toLocaleDateString('en-IN') : 'N/A',
-          ward: u.ward ?? 'Campaign HQ',
-          phone: u.phone ?? '+91 00000 00000',
+          ward: u.ward ?? '',
+          phone: u.phone ?? '',
           votersHandled: u.votersHandled ?? 0,
         } as TeamMember;
       });
@@ -108,28 +110,40 @@ export const TeamPage: React.FC = () => {
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!firstName || !lastName || !email || !password || !phone) return;
-    if (password.length < 8) {
+    if (!firstName || !lastName || !phone || (!editingMember && (!email || !password))) return;
+    if (!editingMember && password.length < 8) {
       showToast('Password must be at least 8 characters long.', 'error');
       return;
     }
-    const authorizedRole = allowedAddRoles.includes(roleCode as 'ADMIN' | 'VOLUNTEER');
+    const authorizedRole = editingMember || allowedAddRoles.includes(roleCode as 'ADMIN' | 'VOLUNTEER');
     if (!authorizedRole) {
       showToast(t('notAuthorizedAddRole'), 'error');
       return;
     }
     try {
-      await usersApi.create({
-        first_name: firstName,
-        last_name: lastName,
-        email,
-        password,
-        phone: phone || null,
-        role_code: roleCode.toUpperCase(),
-      });
-      showToast(`${t('teamMemberAddedSuccessPrefix')} ${firstName} ${lastName} ${t('teamMemberAddedSuccessSuffix')}`, 'success');
+      if (editingMember) {
+        await usersApi.update(editingMember.id, {
+          first_name: firstName,
+          last_name: lastName,
+          phone: phone || null,
+          is_active: isActive,
+        });
+        showToast(`${firstName} ${lastName} updated successfully.`, 'success');
+      } else {
+        await usersApi.create({
+          first_name: firstName,
+          last_name: lastName,
+          email,
+          password,
+          phone: phone || null,
+          role_code: roleCode.toUpperCase(),
+        });
+        showToast(`${t('teamMemberAddedSuccessPrefix')} ${firstName} ${lastName} ${t('teamMemberAddedSuccessSuffix')}`, 'success');
+      }
       setIsAddModalOpen(false);
+      setEditingMember(null);
       setFirstName(''); setLastName(''); setEmail(''); setPassword(''); setPhone('');
+      setIsActive(true);
       loadTeam();
     } catch (err: any) {
       showToast(
@@ -143,7 +157,13 @@ export const TeamPage: React.FC = () => {
   };
 
   const handleEditMember = (member: TeamMember) => {
-    showToast(`${t('teamMemberEditReadyPrefix')} ${member.name || 'team member'} ${t('teamMemberEditReadySuffix')}`, 'info');
+    setEditingMember(member);
+    setFirstName(member.first_name || member.name?.split(' ')[0] || '');
+    setLastName(member.last_name || member.name?.split(' ').slice(1).join(' ') || '');
+    setEmail(member.email || '');
+    setPhone(member.phone || '');
+    setIsActive(member.is_active !== false);
+    setIsAddModalOpen(true);
   };
 
   const handleRemoveMember = async (member: TeamMember) => {
@@ -190,7 +210,12 @@ export const TeamPage: React.FC = () => {
           <Button
             variant="primary"
             size="sm"
-            onClick={() => setIsAddModalOpen(true)}
+            onClick={() => {
+              setEditingMember(null);
+              setFirstName(''); setLastName(''); setEmail(''); setPassword(''); setPhone('');
+              setIsActive(true);
+              setIsAddModalOpen(true);
+            }}
             leftIcon={<UserPlus className="w-4 h-4" />}
             disabled={isLoading}
           >
@@ -312,11 +337,11 @@ export const TeamPage: React.FC = () => {
       {/* Add Team Member Modal */}
       <Modal
         isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        onClose={() => { setIsAddModalOpen(false); setEditingMember(null); }}
         title={
           <div className="flex items-center gap-2">
             <UserPlus className="w-5 h-5 text-sky-600" />
-            <span>{t('addCampaignTeamMember')}</span>
+            <span>{editingMember ? 'Edit Team Member' : t('addCampaignTeamMember')}</span>
           </div>
         }
       >
@@ -337,7 +362,7 @@ export const TeamPage: React.FC = () => {
             required
           />
 
-          <div className="grid grid-cols-2 gap-3">
+          {!editingMember && <div className="grid grid-cols-2 gap-3">
             <Select
               label={t('formLabelRoleHierarchy')}
               value={roleCode}
@@ -355,19 +380,29 @@ export const TeamPage: React.FC = () => {
               onChange={(e) => setEmail(e.target.value)}
               required
             />
-          </div>
+          </div>}
 
-          <FormInput
-            label="Password"
-            type="password"
-            placeholder="Create a password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            minLength={8}
-            required
-          />
+          {editingMember ? (
+            <FormInput
+              label="Email"
+              type="email"
+              value={email}
+              readOnly
+              className="bg-slate-50"
+            />
+          ) : (
+            <FormInput
+              label="Password"
+              type="password"
+              placeholder="Create a password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              minLength={8}
+              required
+            />
+          )}
 
-          <Select
+          {!editingMember && <Select
             label={t('formLabelWardName')}
             value={wardName}
             onChange={(e) => setWardName(e.target.value)}
@@ -379,7 +414,7 @@ export const TeamPage: React.FC = () => {
             <option value="Ward 04 – Rampur HQ">Ward 04 – Rampur HQ</option>
             <option value="Ward 05 – South Colony">Ward 05 – South Colony</option>
             <option value="Ward 06 – Krishi Upaj">Ward 06 – Krishi Upaj</option>
-          </Select>
+          </Select>}
 
           <FormInput
             label="Mobile Number"
@@ -389,12 +424,19 @@ export const TeamPage: React.FC = () => {
             required
           />
 
+          {editingMember && (
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+              <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
+              Account active
+            </label>
+          )}
+
           <div className="flex justify-end gap-2 pt-3">
-            <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => { setIsAddModalOpen(false); setEditingMember(null); }}>
               {t('cancel')}
             </Button>
             <Button type="submit" variant="primary">
-              {t('memberSave')}
+              {editingMember ? 'Save Changes' : t('memberSave')}
             </Button>
           </div>
         </form>

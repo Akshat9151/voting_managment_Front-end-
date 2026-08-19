@@ -13,7 +13,7 @@ export interface LayoutStyle {
 
 // ── DB-backed template types (from backend DesignTemplateResponse) ────────────
 export interface TemplateElement {
-  type: 'text' | 'image' | 'shape' | 'symbol' | 'photo';
+  type: 'text' | 'image' | 'shape' | 'mask' | 'symbol' | 'photo';
   x: number;
   y: number;
   width: number;

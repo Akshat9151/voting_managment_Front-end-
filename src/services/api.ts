@@ -21,11 +21,11 @@ export const authApi = {
   },
   requestSignupOtp: async (payload: { organization_name: string; email: string; password: string; first_name: string; last_name: string; phone?: string }) => {
     const res = await httpClient.post('/auth/signup/request-otp', payload);
-    return unwrap<{ challenge_id: string; destination: string; expires_in: number }>(res);
+    return unwrap<{ challenge_id: string; destination: string; expires_in: number; dev_code?: string }>(res);
   },
   verifySignupOtp: async (challenge_id: string, code: string) => {
     const res = await httpClient.post('/auth/signup/verify-otp', { challenge_id, code });
-    return unwrap<boolean>(res);
+    return unwrap<{ access_token: string; refresh_token: string; expires_in: number; user: Record<string, any> }>(res);
   },
   register: async (payload: { email: string; password: string; first_name: string; last_name: string; phone?: string }) => {
     const res = await httpClient.post('/auth/register', payload);
@@ -42,7 +42,7 @@ export const authApi = {
   },
   requestLoginOtp: async (email: string, password: string) => {
     const res = await httpClient.post('/auth/login/request-otp', { email, password });
-    return unwrap<{ challenge_id: string; destination: string; expires_in: number }>(res);
+    return unwrap<{ challenge_id: string; destination: string; expires_in: number; dev_code?: string }>(res);
   },
   verifyLoginOtp: async (challenge_id: string, code: string, email: string, password: string) => {
     const res = await httpClient.post('/auth/login/verify-otp', { challenge_id, code, email, password });
@@ -79,9 +79,16 @@ export const tasksApi = {
     const res = await httpClient.post('/tasks', payload);
     return unwrap<any>(res);
   },
+  update: async (id: string, payload: Record<string, any>) => {
+    const res = await httpClient.put(`/tasks/${id}`, payload);
+    return unwrap<any>(res);
+  },
   updateStatus: async (id: string, status: string) => {
     const res = await httpClient.patch(`/tasks/${id}/status`, { status });
     return unwrap<any>(res);
+  },
+  remove: async (id: string) => {
+    await httpClient.delete(`/tasks/${id}`);
   },
 };
 
@@ -166,6 +173,10 @@ export const candidatesApi = {
     const res = await httpClient.put(`/candidates/${id}`, payload);
     return unwrap<any>(res);
   },
+  remove: async (id: string) => {
+    const res = await httpClient.delete(`/candidates/${id}`);
+    return unwrap<boolean>(res);
+  },
   updateStatus: async (id: string, status: string, rejection_reason?: string) => {
     const res = await httpClient.post(`/candidates/${id}/status`, { status, rejection_reason });
     return unwrap<any>(res);
@@ -174,10 +185,20 @@ export const candidatesApi = {
 
 // ─── Voters ───────────────────────────────────────────────────────────────────
 export const votersApi = {
-  list: async (election_id: string, params?: Record<string, any>) => {
-    const res = await httpClient.get(`/voters/election/${election_id}`, { params });
+  list: async (election_id?: string, params?: Record<string, any>) => {
+    try {
+      if (election_id) {
+        const res = await httpClient.get(`/voters/election/${election_id}`, { params });
+        const data = unwrap<any>(res);
+        return { items: (data?.items ?? (Array.isArray(data) ? data : [])) as any[], pagination: data?.pagination };
+      }
+    } catch {
+      // Fall through to organization-scoped list for stale election selections.
+    }
+
+    const res = await httpClient.get('/voters/', { params });
     const data = unwrap<any>(res);
-    return { items: (data?.items ?? (Array.isArray(data) ? data : [])) as any[], pagination: data?.pagination };
+    return { items: (Array.isArray(data) ? data : (data?.items ?? [])) as any[], pagination: data?.pagination };
   },
 
   create: async (payload: Record<string, any>) => {
@@ -188,6 +209,10 @@ export const votersApi = {
     const res = await httpClient.put(`/voters/${id}`, payload);
     return unwrap<any>(res);
   },
+  delete: async (id: string) => {
+    const res = await httpClient.delete(`/voters/${id}`);
+    return unwrap<any>(res);
+  },
   verify: async (voter_id: string, payload: Record<string, any>) => {
     const res = await httpClient.post(`/voters/${voter_id}/verify`, payload);
     return unwrap<any>(res);
@@ -196,9 +221,7 @@ export const votersApi = {
     const form = new FormData();
     form.append('election_id', election_id);
     form.append('file', file);
-    const res = await httpClient.post('/imports/upload', form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const res = await httpClient.post('/imports/upload', form);
     return unwrap<any>(res); // ImportPreviewResponse
   },
   confirmImport: async (job_id: string) => {
@@ -282,6 +305,22 @@ export const volunteersApi = {
   },
 };
 
+// ─── Volunteer Voters (Field Canvassing) ──────────────────────────────────────
+export const volunteerVotersApi = {
+  list: async () => {
+    const res = await httpClient.get('/volunteer-voters');
+    return (unwrap<any>(res) ?? []) as any[];
+  },
+  create: async (payload: { name: string; age: number; mobile?: string; house?: string; status?: string; slipHanded?: boolean }) => {
+    const res = await httpClient.post('/volunteer-voters', payload);
+    return unwrap<any>(res);
+  },
+  updateStatus: async (id: string, status: string, slipHanded?: boolean) => {
+    const res = await httpClient.put(`/volunteer-voters/${id}/status`, { status, slipHanded });
+    return unwrap<any>(res);
+  },
+};
+
 // ─── Notifications / Broadcast ────────────────────────────────────────────────
 export const notificationsApi = {
   listTemplates: async () => {
@@ -308,7 +347,7 @@ export const notificationsApi = {
 
 export const broadcastApi = {
   audience: async () => {
-    const res = await httpClient.get('/broadcast/audience');
+    const res = await httpClient.get('/broadcast/audience-split');
     return unwrap<any>(res);
   },
   send: async (payload: Record<string, any>) => {
@@ -518,10 +557,13 @@ class ApiService {
     return volunteersApi.listPollingStations(election_id);
   }
   async getVolunteerVoters() {
-    return [] as any[];
+    return volunteerVotersApi.list();
   }
-  async updateVolunteerVoterStatus(id: string, status: string, _slipHanded?: boolean) {
-    return { id, status, slipHanded: _slipHanded ?? false };
+  async addVolunteerVoter(payload: { name: string; age: number; mobile?: string; house?: string; status?: string; slipHanded?: boolean }) {
+    return volunteerVotersApi.create(payload);
+  }
+  async updateVolunteerVoterStatus(id: string, status: string, slipHanded?: boolean) {
+    return volunteerVotersApi.updateStatus(id, status, slipHanded);
   }
 
   // Notifications / Broadcast

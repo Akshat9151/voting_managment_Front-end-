@@ -62,7 +62,7 @@ export const VolunteersPage: React.FC = () => {
           status: u.is_active ? 'Active' : 'Inactive',
           addedDate: u.created_at ? new Date(u.created_at).toLocaleDateString('en-IN') : 'N/A',
           ward: u.ward ?? 'Campaign HQ',
-          phone: u.phone ?? '+91 00000 00000',
+          phone: u.phone ?? '',
           votersHandled: u.votersHandled ?? 0,
         } as TeamMember;
       });

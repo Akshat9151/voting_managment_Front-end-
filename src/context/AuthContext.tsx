@@ -26,7 +26,6 @@ interface AuthContextType {
   currentRole: UserRole;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  switchRole: (role: UserRole) => void;
   loginWithSession: (data: any, fallbackEmail?: string) => void;
   logout: () => Promise<void>;
   hasPermission: (perm: string) => boolean;
@@ -111,20 +110,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsAuthenticated(false);
   };
 
-  // ── Switch Role for quick testing/toggle ──────────────────────────────────
-  const switchRole = (newRole: UserRole) => {
-    if (!user) return;
-    const updatedUser: AuthUser = {
-      ...user,
-      roles: [newRole],
-      is_superuser: newRole === 'SUPER_ADMIN',
-    };
-    tokenStore.setUser(updatedUser);
-    setUser(updatedUser);
-  };
-
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, permissions, currentRole, isLoading, login, loginWithSession, switchRole, logout, hasPermission }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, permissions, currentRole, isLoading, login, loginWithSession, logout, hasPermission }}>
       {children}
     </AuthContext.Provider>
   );

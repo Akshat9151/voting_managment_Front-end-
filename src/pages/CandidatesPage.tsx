@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { useLanguage } from '../context/LanguageContext';
-import { Award, Plus, Sparkles, FileText } from 'lucide-react';
+import { Award, Plus, Sparkles, FileText, PencilLine, Trash2 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -13,9 +13,11 @@ import { Textarea } from '../components/ui/Textarea';
 import { Candidate, PostType } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { useElection } from '../context/ElectionContext';
+import { candidatesApi, designTemplatesApi } from '../services/api';
+import { FileDropzone } from '../components/ui/FileDropzone';
 
 export const CandidatesPage: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const { activeElectionId } = useElection();
@@ -23,15 +25,33 @@ export const CandidatesPage: React.FC = () => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [filter, setFilter] = useState<'all' | 'sarpanch' | 'panch'>('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingCandidate, setEditingCandidate] = useState<Candidate | null>(null);
 
   const [name, setName] = useState('');
   const [hindiName, setHindiName] = useState('');
   const [postType, setPostType] = useState<PostType>('sarpanch');
   const [constituency, setConstituency] = useState('');
-  const [symbol, setSymbol] = useState('🚜');
   const [symbolName, setSymbolName] = useState('');
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [photoPreview, setPhotoPreview] = useState('');
+  const [symbolUrl, setSymbolUrl] = useState('');
+  const [symbolPreview, setSymbolPreview] = useState('');
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [isUploadingSymbol, setIsUploadingSymbol] = useState(false);
   const [slogan, setSlogan] = useState('');
   const [manifesto, setManifesto] = useState('');
+
+  const labels: Record<string, Record<string, string>> = {
+    en: { englishName: 'Candidate Name (English)', hindiName: 'Candidate Name (Hindi)', post: 'Contesting Post', ward: 'Constituency / Ward', symbol: 'Election Symbol', symbolName: 'Symbol Display Name', photo: 'Candidate Photo', uploadPhoto: 'Upload candidate photo', uploadSymbol: 'Upload election symbol', slogan: 'Campaign Slogan', manifesto: 'Key Manifesto Points (One per line)', choose: 'Choose file or drag and drop' },
+    hi: { englishName: 'उम्मीदवार का नाम (अंग्रेज़ी)', hindiName: 'उम्मीदवार का नाम (हिंदी)', post: 'प्रतिस्पर्धी पद', ward: 'निर्वाचन क्षेत्र / वार्ड', symbol: 'चुनाव चिह्न', symbolName: 'चिह्न का नाम', photo: 'उम्मीदवार की फोटो', uploadPhoto: 'उम्मीदवार की फोटो अपलोड करें', uploadSymbol: 'चुनाव चिह्न अपलोड करें', slogan: 'अभियान का नारा', manifesto: 'घोषणापत्र के मुख्य बिंदु (हर पंक्ति में एक)', choose: 'फाइल चुनें या खींचकर छोड़ें' },
+    pa: { englishName: 'ਉਮੀਦਵਾਰ ਦਾ ਨਾਮ (ਅੰਗਰੇਜ਼ੀ)', hindiName: 'ਉਮੀਦਵਾਰ ਦਾ ਨਾਮ (ਹਿੰਦੀ)', post: 'ਚੋਣ ਅਹੁਦਾ', ward: 'ਹਲਕਾ / ਵਾਰਡ', symbol: 'ਚੋਣ ਨਿਸ਼ਾਨ', symbolName: 'ਨਿਸ਼ਾਨ ਦਾ ਨਾਮ', photo: 'ਉਮੀਦਵਾਰ ਦੀ ਫੋਟੋ', uploadPhoto: 'ਉਮੀਦਵਾਰ ਦੀ ਫੋਟੋ ਅੱਪਲੋਡ ਕਰੋ', uploadSymbol: 'ਚੋਣ ਨਿਸ਼ਾਨ ਅੱਪਲੋਡ ਕਰੋ', slogan: 'ਮੁਹਿੰਮ ਦਾ ਨਾਅਰਾ', manifesto: 'ਘੋਸ਼ਣਾ ਪੱਤਰ ਦੇ ਮੁੱਖ ਬਿੰਦੂ', choose: 'ਫਾਈਲ ਚੁਣੋ ਜਾਂ ਖਿੱਚ ਕੇ ਛੱਡੋ' },
+    bn: { englishName: 'প্রার্থীর নাম (ইংরেজি)', hindiName: 'প্রার্থীর নাম (হিন্দি)', post: 'প্রতিদ্বন্দ্বী পদ', ward: 'নির্বাচনী এলাকা / ওয়ার্ড', symbol: 'নির্বাচনী প্রতীক', symbolName: 'প্রতীকের নাম', photo: 'প্রার্থীর ছবি', uploadPhoto: 'প্রার্থীর ছবি আপলোড করুন', uploadSymbol: 'নির্বাচনী প্রতীক আপলোড করুন', slogan: 'প্রচার স্লোগান', manifesto: 'ইশতেহারের মূল বিষয়', choose: 'ফাইল বেছে নিন বা টেনে আনুন' },
+    mr: { englishName: 'उमेदवाराचे नाव (इंग्रजी)', hindiName: 'उमेदवाराचे नाव (हिंदी)', post: 'निवडणूक पद', ward: 'मतदारसंघ / प्रभाग', symbol: 'निवडणूक चिन्ह', symbolName: 'चिन्हाचे नाव', photo: 'उमेदवाराचा फोटो', uploadPhoto: 'उमेदवाराचा फोटो अपलोड करा', uploadSymbol: 'निवडणूक चिन्ह अपलोड करा', slogan: 'प्रचार घोषणा', manifesto: 'जाहीरनाम्याचे मुख्य मुद्दे', choose: 'फाइल निवडा किंवा ओढून सोडा' },
+    te: { englishName: 'అభ్యర్థి పేరు (ఆంగ్లం)', hindiName: 'అభ్యర్థి పేరు (హిందీ)', post: 'పోటీ చేసే పదవి', ward: 'నియోజకవర్గం / వార్డు', symbol: 'ఎన్నికల గుర్తు', symbolName: 'గుర్తు పేరు', photo: 'అభ్యర్థి ఫోటో', uploadPhoto: 'అభ్యర్థి ఫోటోను అప్‌లోడ్ చేయండి', uploadSymbol: 'ఎన్నికల గుర్తును అప్‌లోడ్ చేయండి', slogan: 'ప్రచార నినాదం', manifesto: 'మ్యానిఫెస్టో ముఖ్యాంశాలు', choose: 'ఫైల్ ఎంచుకోండి లేదా లాగండి' },
+    ta: { englishName: 'வேட்பாளர் பெயர் (ஆங்கிலம்)', hindiName: 'வேட்பாளர் பெயர் (இந்தி)', post: 'போட்டியிடும் பதவி', ward: 'தொகுதி / வார்டு', symbol: 'தேர்தல் சின்னம்', symbolName: 'சின்னத்தின் பெயர்', photo: 'வேட்பாளர் புகைப்படம்', uploadPhoto: 'வேட்பாளர் புகைப்படத்தைப் பதிவேற்றவும்', uploadSymbol: 'தேர்தல் சின்னத்தைப் பதிவேற்றவும்', slogan: 'பிரச்சார முழக்கம்', manifesto: 'அறிக்கையின் முக்கிய குறிப்புகள்', choose: 'கோப்பைத் தேர்ந்தெடுக்கவும் அல்லது இழுக்கவும்' },
+    gu: { englishName: 'ઉમેદવારનું નામ (અંગ્રેજી)', hindiName: 'ઉમેદવારનું નામ (હિન્દી)', post: 'ચૂંટણી પદ', ward: 'મતવિસ્તાર / વોર્ડ', symbol: 'ચૂંટણી ચિહ્ન', symbolName: 'ચિહ્નનું નામ', photo: 'ઉમેદવારનો ફોટો', uploadPhoto: 'ઉમેદવારનો ફોટો અપલોડ કરો', uploadSymbol: 'ચૂંટણી ચિહ્ન અપલોડ કરો', slogan: 'પ્રચાર સૂત્ર', manifesto: 'ઘોષણાપત્રના મુખ્ય મુદ્દા', choose: 'ફાઇલ પસંદ કરો અથવા ખેંચો' }
+  };
+  const l = labels[language] || labels.en;
 
   useEffect(() => {
     loadCandidates();
@@ -50,32 +70,41 @@ export const CandidatesPage: React.FC = () => {
 
   const handleAddCandidate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || !hindiName.trim() || !photoUrl || !symbolUrl) {
+      showToast('English name, Hindi name, candidate photo and symbol are required.', 'error');
+      return;
+    }
 
     try {
-      await api.addCandidate({
+      const payload = {
         election_id: activeElectionId || undefined,
         name: name.trim(),
         full_name: name.trim(),
         hindiName: (hindiName || name).trim(),
         post: postType === 'sarpanch' ? 'Sarpanch (Gram Panchayat)' : 'Panch (Ward)',
         postType,
-        constituency: constituency.trim() || 'Ward 23',
-        symbol,
-        symbolName: symbolName.trim() || symbol,
-        photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
-        slogan: slogan.trim() || 'गांव का समग्र विकास, हर घर विश्वास और खुशहाली!',
-        votersCount: postType === 'sarpanch' ? 3500 : 620,
-        volunteersCount: postType === 'sarpanch' ? 24 : 8,
-        manifesto: manifesto.trim() || '1. स्वच्छ पेयजल और पक्की सड़कें\n2. शिक्षा और स्वास्थ्य सुविधाएं'
-      });
+        constituency: constituency.trim(),
+        symbol: symbolUrl,
+        symbolName: symbolName.trim(),
+        photo: photoUrl,
+        slogan: slogan.trim(),
+        votersCount: 0,
+        volunteersCount: 0,
+        manifesto: manifesto.trim()
+      };
+      if (editingCandidate) {
+        await candidatesApi.update(editingCandidate.id, payload);
+      } else {
+        await api.addCandidate(payload);
+      }
 
-      showToast('Candidate profile created successfully!', 'success');
+      showToast(editingCandidate ? 'Candidate profile updated successfully!' : 'Candidate profile created successfully!', 'success');
       setIsAddModalOpen(false);
+      setEditingCandidate(null);
       setName('');
       setHindiName('');
-      setSymbol('🚜');
       setSymbolName('');
+      setPhotoUrl(''); setPhotoPreview(''); setSymbolUrl(''); setSymbolPreview('');
       setSlogan('');
       setManifesto('');
       setConstituency('');
@@ -84,6 +113,44 @@ export const CandidatesPage: React.FC = () => {
       console.error('Failed to create candidate:', err);
       showToast(err?.response?.data?.detail || err?.response?.data?.message || 'Failed to create candidate profile', 'error');
     }
+  };
+
+  const handleEditCandidate = (candidate: Candidate) => {
+    setEditingCandidate(candidate);
+    setName(candidate.name || '');
+    setHindiName(candidate.hindiName || '');
+    setPostType((candidate.postType as PostType) || 'sarpanch');
+    setConstituency(candidate.constituency || '');
+    setSymbolName(candidate.symbolName || '');
+    setPhotoUrl(candidate.photo || '');
+    setPhotoPreview(candidate.photo || '');
+    setSymbolUrl(candidate.symbol || '');
+    setSymbolPreview(candidate.symbol || '');
+    setSlogan(candidate.slogan || '');
+    setManifesto(candidate.manifesto || '');
+    setIsAddModalOpen(true);
+  };
+
+  const handleDeleteCandidate = async (candidate: Candidate) => {
+    if (!window.confirm(`Delete candidate ${candidate.name || 'profile'}? This cannot be undone.`)) return;
+    try {
+      await candidatesApi.remove(candidate.id);
+      showToast('Candidate profile deleted successfully.', 'success');
+      await loadCandidates();
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || err?.response?.data?.detail || 'Failed to delete candidate profile.', 'error');
+    }
+  };
+
+  const uploadCandidateAsset = async (file: File, kind: 'photo' | 'symbol') => {
+    const setter = kind === 'photo' ? setIsUploadingPhoto : setIsUploadingSymbol;
+    setter(true);
+    try {
+      const uploaded = await designTemplatesApi.uploadAsset(file);
+      const url = uploaded.url.startsWith('http') ? uploaded.url : `http://localhost:8000${uploaded.url}`;
+      if (kind === 'photo') { setPhotoUrl(url); setPhotoPreview(url); } else { setSymbolUrl(url); setSymbolPreview(url); }
+    } catch { showToast(kind === 'photo' ? 'Candidate photo upload failed.' : 'Symbol upload failed.', 'error'); }
+    finally { setter(false); }
   };
 
   const filtered = candidates.filter(c => {
@@ -170,7 +237,11 @@ export const CandidatesPage: React.FC = () => {
                     className="w-12 h-12 rounded-2xl bg-amber-50 border-2 border-amber-300 flex flex-col items-center justify-center shadow-xs shrink-0"
                     title={cand.symbolName}
                   >
-                    <span className="text-2xl leading-none">{cand.symbol}</span>
+                    {cand.symbol?.startsWith('http') || cand.symbol?.startsWith('/') ? (
+                      <img src={cand.symbol} alt={cand.symbolName || 'Symbol'} className="h-8 w-8 object-contain" />
+                    ) : (
+                      <span className="text-2xl leading-none">{cand.symbol}</span>
+                    )}
                     <span className="text-[8px] font-extrabold text-amber-900 mt-0.5">SYMBOL</span>
                   </div>
                 </div>
@@ -201,7 +272,8 @@ export const CandidatesPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+              <div className="pt-3 border-t border-slate-100 space-y-2">
+                <div className="flex items-center justify-between gap-2">
                 <Badge variant={cand.postType === 'sarpanch' ? 'purple' : 'cyan'}>
                   {cand.post}
                 </Badge>
@@ -213,6 +285,15 @@ export const CandidatesPage: React.FC = () => {
                 >
                   Generate Poster
                 </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" className="flex-1" onClick={() => handleEditCandidate(cand)} leftIcon={<PencilLine className="w-3.5 h-3.5" />}>
+                    Edit
+                  </Button>
+                  <Button size="sm" variant="outline" className="flex-1 text-rose-600 border-rose-200 hover:bg-rose-50" onClick={() => handleDeleteCandidate(cand)} leftIcon={<Trash2 className="w-3.5 h-3.5" />}>
+                    Delete
+                  </Button>
+                </div>
               </div>
             </Card>
           ))
@@ -221,26 +302,26 @@ export const CandidatesPage: React.FC = () => {
 
       <Modal
         isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        onClose={() => { setIsAddModalOpen(false); setEditingCandidate(null); }}
         title={
           <div className="flex items-center gap-2">
             <Award className="w-5 h-5 text-sky-600" />
-            <span>Add New Candidate Profile</span>
+            <span>{editingCandidate ? 'Edit Candidate Profile' : 'Add New Candidate Profile'}</span>
           </div>
         }
       >
         <form onSubmit={handleAddCandidate} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <FormInput
-              label="Candidate Name (English)"
-              placeholder="e.g. Rameshwar Patel"
+              label={l.englishName}
+              placeholder={l.englishName}
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
             />
             <FormInput
-              label="नाम (हिंदी में)"
-              placeholder="उदा. रामेश्वर पटेल"
+              label={l.hindiName}
+              placeholder={l.hindiName}
               value={hindiName}
               onChange={(e) => setHindiName(e.target.value)}
             />
@@ -248,7 +329,7 @@ export const CandidatesPage: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <Select
-              label="Contesting Post"
+              label={l.post}
               value={postType}
               onChange={(e) => setPostType(e.target.value as PostType)}
             >
@@ -257,47 +338,43 @@ export const CandidatesPage: React.FC = () => {
             </Select>
 
             <FormInput
-              label="Constituency / Ward"
+              label={l.ward}
               value={constituency}
               onChange={(e) => setConstituency(e.target.value)}
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Select
-              label="Official Election Symbol"
-              value={symbol}
-              onChange={(e) => {
-                setSymbol(e.target.value);
-                const text = e.target.options[e.target.selectedIndex].text;
-                // Remove emoji prefix if any for cleaner display text
-                setSymbolName(text.replace(/^[^\w\u0900-\u097F\s()]+\s*/, ''));
-              }}
-            >
-              <option value="🚜">🚜 Tractor (ट्रैक्टर)</option>
-              <option value="🌾">🌾 Farmer (किसान)</option>
-              <option value="☀️">☀️ Sun (सूरज)</option>
-              <option value="🔦">🔦 Torch (मशाल)</option>
-              <option value="🪁">🪁 Kite (पतंग)</option>
-              <option value="☕">☕ Cup & Saucer (कप-प्लेट)</option>
-            </Select>
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-700">{l.symbol}</label>
+              {symbolPreview ? <img src={symbolPreview} alt={l.symbol} className="h-20 w-20 rounded-lg border object-contain" /> : (
+                <FileDropzone onFileSelect={(file) => uploadCandidateAsset(file, 'symbol')} accept=".jpg,.jpeg,.png,.webp" title={isUploadingSymbol ? 'Uploading...' : l.uploadSymbol} subtitle={l.choose} className="min-h-[90px]" />
+              )}
+            </div>
 
             <FormInput
-              label="Symbol Display Name"
-              placeholder="e.g. Tractor (ट्रैक्टर)"
+              label={l.symbolName}
+              placeholder={l.symbolName}
               value={symbolName}
               onChange={(e) => setSymbolName(e.target.value)}
             />
           </div>
 
+          <div className="space-y-2">
+            <label className="block text-xs font-bold text-slate-700">{l.photo}</label>
+            {photoPreview ? <img src={photoPreview} alt={l.photo} className="h-28 w-28 rounded-xl border-2 border-sky-300 object-cover" /> : (
+              <FileDropzone onFileSelect={(file) => uploadCandidateAsset(file, 'photo')} accept=".jpg,.jpeg,.png,.webp" title={isUploadingPhoto ? 'Uploading...' : l.uploadPhoto} subtitle={l.choose} className="min-h-[110px]" />
+            )}
+          </div>
+
           <FormInput
-            label="Campaign Slogan"
+            label={l.slogan}
             value={slogan}
             onChange={(e) => setSlogan(e.target.value)}
           />
 
           <Textarea
-            label="Key Manifesto Points (One per line)"
+            label={l.manifesto}
             rows={3}
             value={manifesto}
             onChange={(e) => setManifesto(e.target.value)}
@@ -308,7 +385,7 @@ export const CandidatesPage: React.FC = () => {
               {t('noCancel')}
             </Button>
             <Button type="submit" variant="primary">
-              {t('addCandidate')}
+              {editingCandidate ? 'Save Changes' : t('addCandidate')}
             </Button>
           </div>
         </form>

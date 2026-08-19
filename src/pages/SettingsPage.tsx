@@ -17,10 +17,10 @@ export const SettingsPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'branding' | 'billing'>('branding');
 
-  const [campaignName, setCampaignName] = useState('Gram Panchayat Rampur Election War Room');
-  const [candidateName, setCandidateName] = useState('Rameshwar Patel');
-  const [electionDate, setElectionDate] = useState('2026-08-28');
-  const [officialSymbol, setOfficialSymbol] = useState('🚜');
+  const [campaignName, setCampaignName] = useState('');
+  const [candidateName, setCandidateName] = useState('');
+  const [electionDate, setElectionDate] = useState('');
+  const [officialSymbol, setOfficialSymbol] = useState('');
 
   const swatches: { color: BrandColor; label: string }[] = [
     { color: '#0284c7', label: 'Sky Blue (Official)' },

@@ -36,7 +36,6 @@ export const ExpensesPage: React.FC = () => {
   const [category, setCategory] = useState('PRINTING');
   const [amount, setAmount] = useState<number>(5000);
   const [vendorName, setVendorName] = useState('');
-  const [notes, setNotes] = useState('');
   const [mode, setMode] = useState('UPI / Online');
   const [note, setNote] = useState('');
 
@@ -71,12 +70,13 @@ export const ExpensesPage: React.FC = () => {
         amount,
         category,
         vendor_name: vendorName || null,
-        notes: notes || null,
+        note: note || null,
+        mode,
       });
       showToast(`Expense of ₹${amount.toLocaleString()} recorded successfully!`, 'success');
       setIsAddModalOpen(false);
-      setTitle(''); setNotes(''); setVendorName('');
-      loadData();
+      setTitle(''); setNote(''); setMode('UPI / Online'); setVendorName('');
+      await loadData();
     } catch (err: any) {
       showToast(err?.response?.data?.message || 'Failed to record expense', 'error');
     }

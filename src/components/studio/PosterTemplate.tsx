@@ -43,17 +43,39 @@ export const PosterTemplate = forwardRef<HTMLDivElement, PosterTemplateProps>(
       (a, b) => (a.z_index ?? 0) - (b.z_index ?? 0)
     );
 
-    // Resolve placeholders in text (e.g., "{{candidate_name}}" or "Ward {{ward_no}}")
+    // Resolve placeholders in text with alias normalization and empty safety
     const resolveText = (el: TemplateElement): string => {
       let text = el.value || el.placeholder || '';
       
+      const normalizedValues: Record<string, string> = {
+        candidate_name: values.candidate_name || values.candidateName || values.name || values.full_name || values.hindiName || '',
+        candidateName: values.candidate_name || values.candidateName || values.name || values.full_name || values.hindiName || '',
+        name: values.candidate_name || values.candidateName || values.name || values.full_name || values.hindiName || '',
+        
+        position: values.position || values.post || values.post_title || values.position_title || '',
+        post: values.position || values.post || values.post_title || values.position_title || '',
+        
+        ward_no: values.ward_no || values.ward || values.wardNo || '',
+        ward: values.ward_no || values.ward || values.wardNo || '',
+        
+        ballot_no: values.ballot_no || values.ballot || values.ballot_number || values.ballotNo || values.serial_number || values.sequence_number || '',
+        ballot: values.ballot_no || values.ballot || values.ballot_number || values.ballotNo || values.serial_number || values.sequence_number || '',
+        
+        slogan: values.slogan || values.message || values.tagline || values.nara || '',
+        contact: values.contact || values.phone || values.mobile || values.contact_number || values.contactNumber || '',
+        phone: values.contact || values.phone || values.mobile || values.contact_number || values.contactNumber || '',
+        symbol_name: values.symbol_name || values.symbolName || 'चुनाव चिह्न',
+        ...values
+      };
+
       // Replace all {{key}} tokens
-      Object.keys(values).forEach((key) => {
-        const token = `{{${key}}}`;
-        if (text.includes(token)) {
-          text = text.split(token).join(values[key] ?? '');
-        }
-      });
+      text = text.replace(/\{\{\s*([\w]+)\s*\}\}/g, (_match, key) => {
+        return normalizedValues[key] ?? '';
+      }).trim();
+
+      if ((el.placeholder || '').includes('{{') && !text) {
+        return '';
+      }
 
       return text;
     };
@@ -257,14 +279,14 @@ export const PosterTemplate = forwardRef<HTMLDivElement, PosterTemplateProps>(
             );
           }
 
-          // 4. SHAPE ELEMENT (Colored / decorative box)
-          if (el.type === 'shape') {
+          // 4. SHAPE & MASK ELEMENTS (Colored / decorative box or redaction mask)
+          if (el.type === 'shape' || el.type === 'mask') {
             return (
               <div
-                key={`el-shape-${index}`}
+                key={`el-${el.type}-${index}`}
                 style={{
                   ...baseStyle,
-                  backgroundColor: el.color || el.bg_color || '#000000',
+                  backgroundColor: el.color || el.bg_color || '#ffffff',
                   borderRadius: el.border_radius ? `${el.border_radius}px` : undefined,
                   border: el.border_width
                     ? `${el.border_width}px solid ${el.border_color || 'transparent'}`

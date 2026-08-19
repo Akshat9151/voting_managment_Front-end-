@@ -26,10 +26,11 @@ import { SettingsPage } from './pages/SettingsPage';
 import { VolunteerWardPage } from './pages/VolunteerWardPage';
 import { VolunteerAddPage } from './pages/VolunteerAddPage';
 import { VolunteerActivityPage } from './pages/VolunteerActivityPage';
+import { VolunteersPage } from './pages/VolunteersPage';
 
 const ROLE_ROUTE_ALLOWLIST: Record<'SUPER_ADMIN' | 'ADMIN' | 'VOLUNTEER', readonly string[]> = {
-  SUPER_ADMIN: ['/', '/team', '/candidates', '/voters', '/tasks', '/field-activities', '/studio', '/broadcast', '/complaints', '/expenses', '/analytics', '/settings', '/volunteer-ward', '/volunteer-add', '/volunteer-activity'],
-  ADMIN: ['/', '/team', '/candidates', '/voters', '/tasks', '/field-activities', '/studio', '/broadcast', '/complaints', '/expenses', '/analytics', '/settings'],
+  SUPER_ADMIN: ['/', '/team', '/volunteers', '/candidates', '/voters', '/tasks', '/field-activities', '/studio', '/broadcast', '/complaints', '/expenses', '/analytics', '/settings', '/volunteer-ward', '/volunteer-add', '/volunteer-activity'],
+  ADMIN: ['/', '/team', '/volunteers', '/candidates', '/voters', '/tasks', '/field-activities', '/studio', '/broadcast', '/complaints', '/expenses', '/analytics', '/settings'],
   VOLUNTEER: ['/', '/volunteer-ward', '/volunteer-add', '/volunteer-activity', '/field-activities', '/tasks']
 };
 
@@ -102,6 +103,7 @@ export const AppRoutes: React.FC = () => {
       >
         <Route index element={<DashboardPage />} />
         <Route path="team" element={<TeamPage />} />
+        <Route path="volunteers" element={<VolunteersPage />} />
         <Route path="candidates" element={<CandidatesPage />} />
         <Route path="voters" element={<VotersPage />} />
         <Route path="tasks" element={<TasksPage />} />

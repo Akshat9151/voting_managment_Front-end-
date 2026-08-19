@@ -28,19 +28,35 @@ export const VolunteerAddPage: React.FC = () => {
       showToast(t('selectActiveElectionBeforeAdding'), 'error');
       return;
     }
-    await api.addVoter({
-      election_id: activeElectionId,
-      voter_id_number: `V-02-${Date.now()}`,
-      first_name: name,
-      last_name: '',
-      age,
-      gender: 'Male',
-      ward_name: 'Ward 02',
-      phone_number: mobile || '+91 94140 00000',
-      house_number: house,
-      status: 'Valid',
-      source: 'Volunteer Entry',
-    });
+    try {
+      await Promise.all([
+        api.addVoter({
+        election_id: activeElectionId,
+        voter_id_number: `V-02-${Date.now()}`,
+        first_name: name,
+        last_name: '',
+        age,
+        gender: 'Male',
+        ward_name: 'Ward 02',
+        phone_number: mobile || '+91 94140 00000',
+        house_number: house,
+        status: 'Valid',
+        source: 'Volunteer Entry',
+        }),
+        api.addVolunteerVoter({
+        name,
+        age,
+        mobile: mobile || '',
+        house: house || '',
+        status: 'Pending',
+        slipHanded
+        })
+      ]);
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || err?.response?.data?.detail || t('errorSavingData'), 'error');
+      return;
+    }
+
     showToast(`Elector ${name} logged directly into Ward 02!`, 'success');
     navigate('/volunteer-ward');
   };

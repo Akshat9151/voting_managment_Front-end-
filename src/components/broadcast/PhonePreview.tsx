@@ -15,7 +15,7 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
 }) => {
   // Replace template variables with sample values for live preview
   const interpolated = (message || '')
-    .replace(/{{name}}/g, 'Rameshwar Patel')
+    .replace(/{{name}}/g, '')
     .replace(/{{ward}}/g, 'Ward 04')
     .replace(/{{booth}}/g, 'Govt School Booth 01')
     .replace(/{{symbol}}/g, '🚜 Tractor');
@@ -47,7 +47,7 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
             {isWhatsApp ? <MessageCircle className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
           </div>
           <div>
-            <div className="text-xs font-bold leading-tight">ElectWin Rampur HQ</div>
+            <div className="text-xs font-bold leading-tight">ElectWin</div>
             <div className="text-[9px] text-emerald-200">Official Campaign Channel</div>
           </div>
         </div>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { CheckSquare, Plus } from 'lucide-react';
+import { CheckSquare, Plus, PencilLine, Trash2 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { FormInput } from '../components/ui/FormInput';
@@ -24,6 +24,8 @@ interface Task {
   createdAt: string;
 }
 
+type TaskPriority = 'high' | 'medium' | 'low';
+
 export const TasksPage: React.FC = () => {
   const { t } = useLanguage();
   const { user, currentRole } = useAuth();
@@ -32,12 +34,13 @@ export const TasksPage: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'in-progress' | 'completed'>('all');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     assignedTo: '',
-    priority: 'medium' as const,
+    priority: 'medium' as TaskPriority,
     deadline: ''
   });
 
@@ -72,13 +75,16 @@ export const TasksPage: React.FC = () => {
     }
 
     try {
-      const created = await tasksApi.create({
+      const payload = {
         title: formData.title,
         description: formData.description,
         assigned_volunteer_name: formData.assignedTo,
         priority: formData.priority,
         deadline: formData.deadline,
-      });
+      };
+      const created = editingTask
+        ? await tasksApi.update(editingTask.id, payload)
+        : await tasksApi.create(payload);
       setTasks((current) => [{
         id: created.id,
         title: created.title,
@@ -91,9 +97,39 @@ export const TasksPage: React.FC = () => {
       }, ...current]);
       setFormData({ title: '', description: '', assignedTo: '', priority: 'medium', deadline: '' });
       setShowCreateModal(false);
-      showToast(t('taskCreated'), 'success');
+      setEditingTask(null);
+      showToast(editingTask ? t('taskUpdated') : t('taskCreated'), 'success');
     } catch (err: any) {
       showToast(err?.response?.data?.detail || 'Unable to create task.', 'error');
+    }
+  };
+
+  const openCreateTask = () => {
+    setEditingTask(null);
+    setFormData({ title: '', description: '', assignedTo: '', priority: 'medium', deadline: '' });
+    setShowCreateModal(true);
+  };
+
+  const openEditTask = (task: Task) => {
+    setEditingTask(task);
+    setFormData({
+      title: task.title,
+      description: task.description,
+      assignedTo: task.assignedTo === 'Unassigned' ? '' : task.assignedTo,
+      priority: task.priority,
+      deadline: task.deadline,
+    });
+    setShowCreateModal(true);
+  };
+
+  const handleDeleteTask = async (task: Task) => {
+    if (!window.confirm(`Delete task "${task.title}"? This cannot be undone.`)) return;
+    try {
+      await tasksApi.remove(task.id);
+      setTasks((current) => current.filter((item) => item.id !== task.id));
+      showToast('Task deleted successfully.', 'success');
+    } catch (err: any) {
+      showToast(err?.response?.data?.detail || 'Unable to delete task.', 'error');
     }
   };
 
@@ -159,7 +195,7 @@ export const TasksPage: React.FC = () => {
 
         {isAdmin && (
           <Button 
-            onClick={() => setShowCreateModal(true)}
+            onClick={openCreateTask}
             className="gap-2"
           >
             <Plus className="w-4 h-4" />
@@ -267,6 +303,16 @@ export const TasksPage: React.FC = () => {
                     <option value="completed">{t('taskCompleted')}</option>
                   </Select>
                 )}
+                {isAdmin && (
+                  <div className="flex gap-1">
+                    <button type="button" title="Edit task" onClick={() => openEditTask(task)} className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">
+                      <PencilLine className="w-3.5 h-3.5" />
+                    </button>
+                    <button type="button" title="Delete task" onClick={() => handleDeleteTask(task)} className="p-2 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
             </Card>
           ))}
@@ -278,7 +324,7 @@ export const TasksPage: React.FC = () => {
         <Modal
           isOpen={showCreateModal}
           onClose={() => setShowCreateModal(false)}
-          title={t('createTask')}
+          title={editingTask ? 'Edit Task' : t('createTask')}
         >
           <form onSubmit={handleCreateTask} className="space-y-4">
             <FormInput
@@ -310,7 +356,7 @@ export const TasksPage: React.FC = () => {
               <Select
                 label={t('taskPriority')}
                 value={formData.priority}
-                onChange={(val) => setFormData({ ...formData, priority: val as any })}
+                onChange={(e) => setFormData({ ...formData, priority: e.target.value as TaskPriority })}
               >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -327,14 +373,14 @@ export const TasksPage: React.FC = () => {
             </div>
 
             <div className="flex gap-3 pt-4 border-t border-slate-200">
-              <Button 
+              <Button type="button"
                 variant="outline" 
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => { setShowCreateModal(false); setEditingTask(null); }}
               >
                 {t('cancel')}
               </Button>
               <Button type="submit">
-                {t('createTask')}
+                {editingTask ? 'Save Changes' : t('createTask')}
               </Button>
             </div>
           </form>

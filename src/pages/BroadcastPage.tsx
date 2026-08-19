@@ -17,7 +17,7 @@ export const BroadcastPage: React.FC = () => {
   const [message, setMessage] = useState(
     'प्रिय {{name}} जी,\n\nआपके वार्ड {{ward}} में चुनाव संबंधी महत्वपूर्ण सूचना है।\n\nमतदान केंद्र: {{booth}}'
   );
-  const [channel] = useState<BroadcastChannel>('all');
+  const [channel, setChannel] = useState<BroadcastChannel>('all');
   const [includePoster, setIncludePoster] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [audienceSplit, setAudienceSplit] = useState<AudienceSplit>({ total: 0, whatsapp: 0, sms: 0, whatsappPercent: 0, smsPercent: 0 });
@@ -132,6 +132,12 @@ export const BroadcastPage: React.FC = () => {
                 <span>{t('attachPoster')}</span>
               </label>
             </div>
+
+            <select value={channel} onChange={(e) => setChannel(e.target.value as BroadcastChannel)} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+              <option value="all">WhatsApp with SMS fallback</option>
+              <option value="whatsapp">WhatsApp only</option>
+              <option value="sms">SMS only</option>
+            </select>
 
             <div className="space-y-1.5">
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">

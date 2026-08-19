@@ -5,7 +5,7 @@ import { useToast } from '../context/ToastContext';
 import { useLanguage } from '../context/LanguageContext';
 import {
   Contact2, Search, Download, Phone,
-  MessageCircle, Smartphone, Plus
+  MessageCircle, Smartphone, Plus, Trash2
 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -24,6 +24,7 @@ export const VotersPage: React.FC = () => {
   const [voters, setVoters] = useState<Voter[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [pendingImportJobId, setPendingImportJobId] = useState<string | null>(null);
   const [segmentFilter, setSegmentFilter] = useState<'all' | 'whatsapp' | 'no-whatsapp' | 'youth' | 'women' | 'missing'>('all');
   const [name, setName] = useState('');
   const [channel, setChannel] = useState<'WhatsApp' | 'SMS Only'>('WhatsApp');
@@ -39,10 +40,9 @@ export const VotersPage: React.FC = () => {
   const [mobile, setMobile] = useState('');
 
   const loadVoters = useCallback(async () => {
-    if (!activeElectionId) return;
     setIsLoading(true);
     try {
-      const { items } = await votersApi.list(activeElectionId, { search: searchQuery || undefined });
+      const { items } = await votersApi.list(activeElectionId ?? undefined, { search: searchQuery || undefined });
       // Normalize: add computed `name` field
       setVoters(items.map((v: any) => ({
         ...v,
@@ -68,10 +68,29 @@ export const VotersPage: React.FC = () => {
     if (!activeElectionId) { showToast(t('noActiveElectionSelected'), 'error'); return; }
     try {
       const preview = await votersApi.uploadBatch(activeElectionId, file);
-      showToast(`Preview ready: ${preview.valid_rows ?? 0} valid rows found`, 'success');
+      setPendingImportJobId(preview.job_id);
+      showToast(`Preview ready: ${preview.valid_count ?? 0} valid rows found. Confirm the import to add them.`, 'success');
     } catch (err: any) {
-      showToast(err?.response?.data?.message || 'Upload failed', 'error');
+      showToast(
+        err?.response?.data?.error?.message
+          || err?.response?.data?.message
+          || err?.response?.data?.detail
+          || 'Upload failed',
+        'error'
+      );
     } finally {
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (!pendingImportJobId) return;
+    try {
+      const report = await votersApi.confirmImport(pendingImportJobId);
+      setPendingImportJobId(null);
+      showToast(`${report.successfully_imported ?? 0} voters imported successfully.`, 'success');
+      await loadVoters();
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || 'Import confirmation failed', 'error');
     }
   };
 
@@ -95,6 +114,19 @@ export const VotersPage: React.FC = () => {
       loadVoters();
     } catch (err: any) {
       showToast(err?.response?.data?.message || t('errorSavingData'), 'error');
+    }
+  };
+
+  const handleDeleteVoter = async (voter: Voter) => {
+    const displayName = voter.name ?? `${voter.first_name ?? ''} ${voter.last_name ?? ''}`.trim();
+    if (!window.confirm(`Delete ${displayName || 'this voter'} from the database?`)) return;
+
+    try {
+      await votersApi.delete(voter.id);
+      showToast('Voter deleted successfully.', 'success');
+      await loadVoters();
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || err?.response?.data?.detail || 'Unable to delete voter.', 'error');
     }
   };
 
@@ -170,7 +202,18 @@ export const VotersPage: React.FC = () => {
       </div>
 
       {/* File Dropzone Quick Upload */}
-      <FileDropzone onFileSelect={handleFileUpload} />
+      <FileDropzone
+        onFileSelect={handleFileUpload}
+        accept=".csv,.pdf,.xlsx,.xls"
+        title="Upload official voter roll PDF or CSV"
+        subtitle="PDF rows are extracted into a preview before import"
+      />
+      {pendingImportJobId && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm">
+          <span className="font-semibold text-amber-900">Voter preview is ready for confirmation.</span>
+          <Button size="sm" variant="primary" onClick={handleConfirmImport}>Confirm Import</Button>
+        </div>
+      )}
 
       {/* Search & Segment Filters */}
       <div className="space-y-3">
@@ -221,6 +264,7 @@ export const VotersPage: React.FC = () => {
                 <th className="py-3 px-4">Mobile Number</th>
                 <th className="py-3 px-4">Delivery Route</th>
                 <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
@@ -256,6 +300,18 @@ export const VotersPage: React.FC = () => {
                       <Badge variant={displayStatus === 'Valid' ? 'mint' : 'amber'} size="sm">
                         {displayStatus}
                       </Badge>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() => handleDeleteVoter(v)}
+                        leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+                        aria-label={`Delete ${displayName || 'voter'}`}
+                        title="Delete voter"
+                      >
+                        Delete
+                      </Button>
                     </td>
                   </tr>
                 );
@@ -294,6 +350,15 @@ export const VotersPage: React.FC = () => {
                     <span className="text-amber-600 font-bold">Missing Mobile</span>
                   )}
                 </div>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onClick={() => handleDeleteVoter(v)}
+                  leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+                  aria-label={`Delete ${displayName || 'voter'}`}
+                >
+                  Delete voter
+                </Button>
               </div>
             );
           })}
