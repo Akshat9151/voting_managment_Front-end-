@@ -37,34 +37,16 @@ export const VolunteersPage: React.FC = () => {
   };
 
   const visibilityMap: Record<string, Array<'SUPER_ADMIN' | 'ADMIN' | 'VOLUNTEER'>> = {
-    SUPER_ADMIN: ['SUPER_ADMIN', 'ADMIN', 'VOLUNTEER'],
+    SUPER_ADMIN: ['VOLUNTEER'],
     ADMIN: ['VOLUNTEER'],
     VOLUNTEER: []
   };
 
   const permissionMap: Record<string, { add: Array<'ADMIN' | 'VOLUNTEER'>; remove: Array<'ADMIN' | 'VOLUNTEER'> }> = {
-    SUPER_ADMIN: { add: ['ADMIN', 'VOLUNTEER'], remove: ['ADMIN', 'VOLUNTEER'] },
+    SUPER_ADMIN: { add: ['VOLUNTEER'], remove: ['VOLUNTEER'] },
     ADMIN: { add: ['VOLUNTEER'], remove: ['VOLUNTEER'] },
     VOLUNTEER: { add: [], remove: [] }
   };
-
-  const fallbackMembers = [
-    {
-      id: 'seed-super-admin', first_name: 'Super', last_name: 'Administrator', name: 'Super Administrator',
-      role: 'SUPER_ADMIN', roleTitle: 'Super Admin', phone: '+91 98765 43210', ward: 'Campaign HQ', status: 'Active',
-      votersHandled: 0, addedDate: '18/8/2026'
-    },
-    {
-      id: 'seed-admin-1', first_name: 'Rohit', last_name: 'Sharma', name: 'Rohit Sharma',
-      role: 'ADMIN', roleTitle: 'Admin', phone: '+91 98765 12345', ward: 'Ward 01', status: 'Active',
-      votersHandled: 1200, addedDate: '12/8/2026'
-    },
-    {
-      id: 'seed-vol-1', first_name: 'Amit', last_name: 'Kumar', name: 'Amit Kumar',
-      role: 'VOLUNTEER', roleTitle: 'Volunteer', phone: '+91 91234 56789', ward: 'Ward 03', status: 'Active',
-      votersHandled: 320, addedDate: '17/8/2026'
-    }
-  ] as TeamMember[];
 
   const loadTeam = useCallback(async () => {
     setIsLoading(true);
@@ -90,12 +72,9 @@ export const VolunteersPage: React.FC = () => {
         ? normalizedUsers.filter((member) => allowedRoles.includes(normalizeRole(member.role ?? member.roleTitle ?? 'VOLUNTEER')))
         : [];
 
-      const fallbackTeam = fallbackMembers.filter((member) => allowedRoles.includes(normalizeRole(member.role ?? member.roleTitle ?? 'VOLUNTEER')));
-      const merged = normalizedTeam.length ? normalizedTeam : fallbackTeam;
-      setTeam(merged.length ? merged : []);
+      setTeam(normalizedTeam);
     } catch {
-      const fallbackTeam = fallbackMembers.filter((member) => (visibilityMap[currentRole] ?? []).includes(normalizeRole(member.role ?? member.roleTitle ?? 'VOLUNTEER')));
-      setTeam(fallbackTeam);
+      setTeam([]);
       showToast(t('failedLoadingTeamMembers'), 'error');
     } finally {
       setIsLoading(false);
@@ -105,7 +84,7 @@ export const VolunteersPage: React.FC = () => {
   useEffect(() => { loadTeam(); }, [loadTeam]);
 
   useEffect(() => {
-    const allowedRoles = currentRole === 'SUPER_ADMIN' ? ['ADMIN', 'VOLUNTEER'] : ['VOLUNTEER'];
+    const allowedRoles = ['VOLUNTEER'];
     if (!allowedRoles.includes(roleCode)) {
       setRoleCode(allowedRoles[0] as 'ADMIN' | 'VOLUNTEER');
     }
@@ -155,12 +134,19 @@ export const VolunteersPage: React.FC = () => {
     showToast(`${t('teamMemberEditReadyPrefix')} ${member.name || 'team member'} ${t('teamMemberEditReadySuffix')}`, 'info');
   };
 
-  const handleRemoveMember = (member: TeamMember) => {
+  const handleRemoveMember = async (member: TeamMember) => {
     if (!canManageRole(member.role ?? 'VOLUNTEER')) {
       showToast(t('noPermissionRemoveRole'), 'error');
       return;
     }
-    showToast(`${member.name || 'Team member'} ${t('teamMemberRemovePrefix')}`, 'info');
+    if (!window.confirm(`Remove ${member.name || 'this volunteer'}? They will no longer be able to sign in.`)) return;
+    try {
+      await usersApi.remove(member.id);
+      setTeam((current) => current.filter((item) => item.id !== member.id));
+      showToast(`${member.name || 'Volunteer'} removed successfully.`, 'success');
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || err?.response?.data?.detail || 'Failed to remove volunteer.', 'error');
+    }
   };
 
   const filteredTeam = team.filter((m) => {

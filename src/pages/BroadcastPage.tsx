@@ -15,12 +15,12 @@ export const BroadcastPage: React.FC = () => {
   const { showToast } = useToast();
 
   const [message, setMessage] = useState(
-    'प्रिय {{name}} जी,\n\nग्राम पंचायत रामपुर के समग्र विकास और खुशहाली के लिए 28 अगस्त को चुनाव चिह्न "{{symbol}}" के सामने वाला बटन दबाकर रामेश्वर पटेल को भारी मतों से विजयी बनाएं!\n\nवार्ड: {{ward}} • मतदान केंद्र: {{booth}}'
+    'प्रिय {{name}} जी,\n\nआपके वार्ड {{ward}} में चुनाव संबंधी महत्वपूर्ण सूचना है।\n\nमतदान केंद्र: {{booth}}'
   );
   const [channel] = useState<BroadcastChannel>('all');
   const [includePoster, setIncludePoster] = useState(true);
   const [isSending, setIsSending] = useState(false);
-  const [audienceSplit, setAudienceSplit] = useState<AudienceSplit>({ total: 3500, whatsapp: 2850, sms: 650, whatsappPercent: 81, smsPercent: 19 });
+  const [audienceSplit, setAudienceSplit] = useState<AudienceSplit>({ total: 0, whatsapp: 0, sms: 0, whatsappPercent: 0, smsPercent: 0 });
   const [deliveryLogs, setDeliveryLogs] = useState<DeliveryLog[]>([]);
   const [reportFilter, setReportFilter] = useState<'all' | 'WhatsApp' | 'SMS Fallback'>('all');
 
@@ -29,12 +29,13 @@ export const BroadcastPage: React.FC = () => {
   }, []);
 
   const loadData = async () => {
-    const [split, logs] = await Promise.all([
-      api.getAudienceSplit(),
-      api.getDeliveryLogs()
-    ]);
-    setAudienceSplit(split);
-    setDeliveryLogs(logs);
+    try {
+      const [split, logs] = await Promise.all([api.getAudienceSplit(), api.getDeliveryLogs()]);
+      setAudienceSplit(split);
+      setDeliveryLogs(logs);
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || err?.response?.data?.detail || 'Unable to load broadcast audience.', 'error');
+    }
   };
 
   const handleInsertTag = (tag: string) => {
@@ -42,17 +43,22 @@ export const BroadcastPage: React.FC = () => {
   };
 
   const handleDispatch = async () => {
+    if (!message.trim() || audienceSplit.total === 0) {
+      showToast(audienceSplit.total === 0 ? 'No voters with a reachable phone number found.' : 'Enter a message before sending.', 'error');
+      return;
+    }
     setIsSending(true);
     try {
-      // [Frontend-ready] Backend call simulated with local state
       await api.sendBroadcast({
         message,
         channel,
         includePoster,
-        selectedWards: ['All Wards']
+        selectedWards: []
       });
       showToast(`🚀 Broadcast successfully dispatched to ${audienceSplit.total} electors!\n${audienceSplit.whatsapp} via WhatsApp + ${audienceSplit.sms} via SMS`, 'success');
       loadData();
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || err?.response?.data?.detail || 'Broadcast failed to send.', 'error');
     } finally {
       setIsSending(false);
     }
@@ -73,9 +79,7 @@ export const BroadcastPage: React.FC = () => {
           <p className="text-xs text-slate-500 mt-0.5">{t('broadcastSub')}</p>
         </div>
 
-        <Badge variant="mint" className="px-3 py-1 text-xs">
-          Smart Dual Pipeline: WhatsApp + SMS Fallback
-        </Badge>
+        <Badge variant="mint" className="px-3 py-1 text-xs">{t('primaryWhatsApp')} + {t('smsGateway')}</Badge>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -85,13 +89,13 @@ export const BroadcastPage: React.FC = () => {
               <MessageCircle className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-xs font-extrabold uppercase text-emerald-800 tracking-wider">Primary Channel (WhatsApp)</div>
+              <div className="text-xs font-extrabold uppercase text-emerald-800 tracking-wider">{t('primaryWhatsApp')}</div>
               <div className="text-base font-extrabold text-emerald-950 font-heading">
-                {audienceSplit.whatsapp.toLocaleString()} Electors ({audienceSplit.whatsappPercent}%)
+                {audienceSplit.whatsapp.toLocaleString()} {t('electors')} ({audienceSplit.whatsappPercent}%)
               </div>
             </div>
           </div>
-          <Badge variant="mint">Rich Media + Blue Tick</Badge>
+          <Badge variant="mint">{t('richMedia')}</Badge>
         </div>
 
         <div className="p-4 rounded-2xl bg-sky-50 border border-sky-200 flex items-center justify-between">
@@ -100,13 +104,13 @@ export const BroadcastPage: React.FC = () => {
               <Smartphone className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-xs font-extrabold uppercase text-sky-800 tracking-wider">Auto Fallback (SMS Gateway)</div>
+              <div className="text-xs font-extrabold uppercase text-sky-800 tracking-wider">{t('smsGateway')}</div>
               <div className="text-base font-extrabold text-sky-950 font-heading">
-                {audienceSplit.sms.toLocaleString()} Electors ({audienceSplit.smsPercent}%)
+                {audienceSplit.sms.toLocaleString()} {t('electors')} ({audienceSplit.smsPercent}%)
               </div>
             </div>
           </div>
-          <Badge variant="cyan">100% Deliverability</Badge>
+          <Badge variant="cyan">{t('delivery')}</Badge>
         </div>
       </div>
 
@@ -116,7 +120,7 @@ export const BroadcastPage: React.FC = () => {
             <div className="flex items-center justify-between">
               <h3 className="font-heading font-extrabold text-sm text-slate-900 flex items-center gap-2">
                 <Send className="w-4 h-4 text-sky-600" />
-                <span>Compose Campaign Broadcast</span>
+                <span>{t('composeBroadcast')}</span>
               </h3>
               <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
                 <input
@@ -125,20 +129,20 @@ export const BroadcastPage: React.FC = () => {
                   onChange={(e) => setIncludePoster(e.target.checked)}
                   className="rounded text-sky-600 focus:ring-sky-500 w-4 h-4"
                 />
-                <span>Attach Poster Card</span>
+                <span>{t('attachPoster')}</span>
               </label>
             </div>
 
             <div className="space-y-1.5">
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                Insert Dynamic Voter Tags:
+                {t('insertTags')}:
               </label>
               <div className="flex flex-wrap gap-1.5">
                 {[
-                  { tag: 'name', label: '+ Voter Name' },
-                  { tag: 'ward', label: '+ Ward No.' },
-                  { tag: 'booth', label: '+ Polling Booth' },
-                  { tag: 'symbol', label: '+ Symbol' }
+                  { tag: 'name', label: t('voterNameTag') },
+                  { tag: 'ward', label: t('wardTag') },
+                  { tag: 'booth', label: t('boothTag') },
+                  { tag: 'symbol', label: t('symbolTag') }
                 ].map((item) => (
                   <button
                     key={item.tag}
@@ -174,7 +178,7 @@ export const BroadcastPage: React.FC = () => {
           <Card className="space-y-3 p-0 overflow-hidden">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between">
               <h3 className="font-heading font-extrabold text-sm text-slate-900">
-                Live Delivery Reports &amp; Blue Ticks
+                {t('liveReports')}
               </h3>
               <div className="flex gap-1">
                 {(['all', 'WhatsApp', 'SMS Fallback'] as const).map(tab => (
@@ -195,11 +199,11 @@ export const BroadcastPage: React.FC = () => {
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 text-[11px] font-extrabold uppercase text-slate-500">
                   <tr>
-                    <th className="p-3">Elector</th>
+                    <th className="p-3">{t('elector')}</th>
                     <th className="p-3">Ward</th>
-                    <th className="p-3">Route</th>
+                    <th className="p-3">{t('route')}</th>
                     <th className="p-3">Status</th>
-                    <th className="p-3">Time</th>
+                    <th className="p-3">{t('sentTime')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -227,7 +231,7 @@ export const BroadcastPage: React.FC = () => {
         <div className="lg:col-span-5 flex flex-col items-center">
           <div className="w-full max-w-sm sticky top-20">
             <div className="text-center text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">
-              Live Voter Phone Screen Simulator
+              {t('livePhonePreview')}
             </div>
             <PhonePreview
               message={message}

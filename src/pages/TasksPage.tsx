@@ -11,6 +11,7 @@ import { Select } from '../components/ui/Select';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
+import { tasksApi } from '../services/api';
 
 interface Task {
   id: string;
@@ -28,28 +29,7 @@ export const TasksPage: React.FC = () => {
   const { user, currentRole } = useAuth();
   const { showToast } = useToast();
 
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: '1',
-      title: 'Survey voter database for Ward A',
-      description: 'Complete voter survey and update records in the system',
-      assignedTo: 'Volunteer A',
-      status: 'in-progress',
-      priority: 'high',
-      deadline: '2026-08-25',
-      createdAt: '2026-08-18'
-    },
-    {
-      id: '2',
-      title: 'Distribute campaign materials',
-      description: 'Distribute posters and flyers to booth 45-50',
-      assignedTo: 'Volunteer B',
-      status: 'pending',
-      priority: 'medium',
-      deadline: '2026-08-26',
-      createdAt: '2026-08-18'
-    }
-  ]);
+  const [tasks, setTasks] = useState<Task[]>([]);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'in-progress' | 'completed'>('all');
@@ -64,35 +44,70 @@ export const TasksPage: React.FC = () => {
   const isAdmin = currentRole === 'ADMIN' || currentRole === 'SUPER_ADMIN';
   const isVolunteer = currentRole === 'VOLUNTEER';
 
-  const handleCreateTask = (e: React.FormEvent) => {
+  React.useEffect(() => {
+    let active = true;
+    tasksApi.list()
+      .then((items) => {
+        if (!active) return;
+        setTasks(items.map((item) => ({
+          id: item.id,
+          title: item.title,
+          description: item.description || '',
+          assignedTo: item.assigned_volunteer_name || item.assigned_to_id || 'Unassigned',
+          status: item.status === 'in_progress' ? 'in-progress' : item.status,
+          priority: item.priority === 'urgent' ? 'high' : item.priority,
+          deadline: item.deadline || '',
+          createdAt: item.created_at || '',
+        })));
+      })
+      .catch((err) => showToast(err?.response?.data?.detail || 'Unable to load tasks.', 'error'));
+    return () => { active = false; };
+  }, [showToast]);
+
+  const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title || !formData.assignedTo || !formData.deadline) {
       showToast(t('fillAllRequiredFields'), 'error');
       return;
     }
 
-    // [Frontend-ready] TODO: Connect to POST /tasks/create endpoint
-    // const newTask = await tasksApi.create(formData);
-
-    const newTask: Task = {
-      id: Date.now().toString(),
-      ...formData,
-      status: 'pending',
-      createdAt: new Date().toISOString().split('T')[0]
-    };
-
-    setTasks([...tasks, newTask]);
-    setFormData({ title: '', description: '', assignedTo: '', priority: 'medium', deadline: '' });
-    setShowCreateModal(false);
-    showToast(t('taskCreated'), 'success');
+    try {
+      const created = await tasksApi.create({
+        title: formData.title,
+        description: formData.description,
+        assigned_volunteer_name: formData.assignedTo,
+        priority: formData.priority,
+        deadline: formData.deadline,
+      });
+      setTasks((current) => [{
+        id: created.id,
+        title: created.title,
+        description: created.description || '',
+        assignedTo: created.assigned_volunteer_name || 'Unassigned',
+        status: created.status === 'in_progress' ? 'in-progress' : created.status,
+        priority: created.priority === 'urgent' ? 'high' : created.priority,
+        deadline: created.deadline || '',
+        createdAt: created.created_at || '',
+      }, ...current]);
+      setFormData({ title: '', description: '', assignedTo: '', priority: 'medium', deadline: '' });
+      setShowCreateModal(false);
+      showToast(t('taskCreated'), 'success');
+    } catch (err: any) {
+      showToast(err?.response?.data?.detail || 'Unable to create task.', 'error');
+    }
   };
 
-  const handleStatusChange = (taskId: string, newStatus: Task['status']) => {
-    // [Frontend-ready] TODO: Connect to PUT /tasks/{id}/status endpoint
-    // await tasksApi.updateStatus(taskId, newStatus);
-
-    setTasks(tasks.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
-    showToast(t('taskUpdated'), 'success');
+  const handleStatusChange = async (taskId: string, newStatus: Task['status']) => {
+    try {
+      const updated = await tasksApi.updateStatus(taskId, newStatus === 'in-progress' ? 'in_progress' : newStatus);
+      setTasks((current) => current.map((task) => task.id === taskId ? {
+        ...task,
+        status: updated.status === 'in_progress' ? 'in-progress' : updated.status,
+      } : task));
+      showToast(t('taskUpdated'), 'success');
+    } catch (err: any) {
+      showToast(err?.response?.data?.detail || 'Unable to update task.', 'error');
+    }
   };
 
   const filteredTasks = filterStatus === 'all' 

@@ -4,7 +4,7 @@ import { useElection } from '../context/ElectionContext';
 import { useToast } from '../context/ToastContext';
 import { useLanguage } from '../context/LanguageContext';
 import {
-  Contact2, Search, Camera, Download, Phone,
+  Contact2, Search, Download, Phone,
   MessageCircle, Smartphone, Plus
 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
@@ -14,7 +14,7 @@ import { Modal } from '../components/ui/Modal';
 import { FormInput } from '../components/ui/FormInput';
 import { Select } from '../components/ui/Select';
 import { FileDropzone } from '../components/ui/FileDropzone';
-import { Voter, OcrStagedRow } from '../types';
+import { Voter } from '../types';
 
 export const VotersPage: React.FC = () => {
   const { t } = useLanguage();
@@ -29,12 +29,7 @@ export const VotersPage: React.FC = () => {
   const [channel, setChannel] = useState<'WhatsApp' | 'SMS Only'>('WhatsApp');
 
   // Modals
-  const [isOcrModalOpen, setIsOcrModalOpen] = useState(false);
   const [isAddVoterModalOpen, setIsAddVoterModalOpen] = useState(false);
-  const [stagedOcrRows, setStagedOcrRows] = useState<OcrStagedRow[]>([]);
-  const [isImportLoading, setIsImportLoading] = useState(false);
-
-  const isImportBusy = isImportLoading;
 
   // Manual Add Form
   const [voterId, setVoterId] = useState('');
@@ -71,52 +66,13 @@ export const VotersPage: React.FC = () => {
 
   const handleFileUpload = async (file: File) => {
     if (!activeElectionId) { showToast(t('noActiveElectionSelected'), 'error'); return; }
-    setIsImportLoading(true);
     try {
       const preview = await votersApi.uploadBatch(activeElectionId, file);
       showToast(`Preview ready: ${preview.valid_rows ?? 0} valid rows found`, 'success');
     } catch (err: any) {
       showToast(err?.response?.data?.message || 'Upload failed', 'error');
     } finally {
-      setIsImportLoading(false);
     }
-  };
-
-  const handleStartOcr = () => {
-    // Generate mock OCR staged rows extracted from voter slip photo
-    const mockExtracted: OcrStagedRow[] = [
-      { id: '1', epicNo: 'RJ/04/10928', name: 'Rameshwar Patel', relativeName: 'Chhitar Mal Patel', age: 48, gender: 'Male', houseNo: '14', mobile: '+91 98290 14285', confidence: 98 },
-      { id: '2', epicNo: 'RJ/04/10929', name: 'Sita Devi Patel', relativeName: 'Rameshwar Patel', age: 42, gender: 'Female', houseNo: '14', mobile: '+91 98290 14286', confidence: 96 },
-      { id: '3', epicNo: 'RJ/02/10450', name: 'Gopal Lal Gurjar', relativeName: 'Moti Ram Gurjar', age: 58, gender: 'Male', houseNo: '22', mobile: '+91 97840 55190', confidence: 94 },
-      { id: '4', epicNo: 'RJ/02/10451', name: 'Kamla Devi Gurjar', relativeName: 'Gopal Lal Gurjar', age: 38, gender: 'Female', houseNo: '22', mobile: '+91 96021 44556', confidence: 95 }
-    ];
-    setStagedOcrRows(mockExtracted);
-    setIsOcrModalOpen(true);
-  };
-
-  const handleSaveOcrRows = async () => {
-    if (!activeElectionId) return;
-    let saved = 0;
-    for (const row of stagedOcrRows) {
-      try {
-        await votersApi.create({
-          election_id: activeElectionId,
-          voter_id_number: row.epicNo,
-          first_name: row.name.split(' ')[0] || row.name,
-          last_name: row.name.split(' ').slice(1).join(' ') || '',
-          father_or_spouse_name: row.relativeName,
-          age: row.age,
-          gender: row.gender,
-          house_number: row.houseNo,
-          phone_number: row.mobile,
-          ward_name: 'Ward 02',
-        });
-        saved++;
-      } catch { /* skip duplicates */ }
-    }
-    showToast(`${saved} of ${stagedOcrRows.length} ${t('voterImportSuccess')}`, 'success');
-    setIsOcrModalOpen(false);
-    loadVoters();
   };
 
   const handleAddVoter = async (e: React.FormEvent) => {
@@ -200,15 +156,6 @@ export const VotersPage: React.FC = () => {
             disabled={isLoading}
           >
             {isLoading ? 'Loading...' : t('exportCsv')}
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={handleStartOcr}
-            leftIcon={<Camera className="w-3.5 h-3.5 text-sky-600" />}
-            disabled={isImportBusy}
-          >
-            {isImportBusy ? 'Processing...' : t('scanOcr')}
           </Button>
           <Button
             size="sm"
@@ -360,74 +307,12 @@ export const VotersPage: React.FC = () => {
             <p className="text-xs text-slate-500 mt-1">{t('emptyVotersDesc')}</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 justify-center pt-2">
-            <Button variant="secondary" onClick={handleStartOcr} leftIcon={<Camera className="w-4 h-4" />}>
-              {t('startOCRScanner')}
-            </Button>
             <Button variant="primary" onClick={() => setIsAddVoterModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />}>
               {t('addVoterManually')}
             </Button>
           </div>
         </Card>
       )}
-
-      {/* OCR Scanner Review Modal */}
-      <Modal
-        isOpen={isOcrModalOpen}
-        onClose={() => setIsOcrModalOpen(false)}
-        maxWidth="2xl"
-        title={
-          <div className="flex items-center gap-2">
-            <Camera className="w-5 h-5 text-sky-600" />
-            <span>{t('ocrScannerTitle')}</span>
-          </div>
-        }
-      >
-        <div className="space-y-4">
-          <p className="text-xs text-slate-600">
-            {t('ocrScannerDesc')}
-          </p>
-
-          <div className="overflow-x-auto border border-slate-200 rounded-xl">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-[11px] font-extrabold uppercase text-slate-500">
-                <tr>
-                  <th className="p-2.5">EPIC No.</th>
-                  <th className="p-2.5">Name</th>
-                  <th className="p-2.5">Relative</th>
-                  <th className="p-2.5">Age/Sex</th>
-                  <th className="p-2.5">Mobile</th>
-                  <th className="p-2.5">AI Conf.</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {stagedOcrRows.map((row) => (
-                  <tr key={row.id}>
-                    <td className="p-2.5 font-mono font-bold text-slate-700">{row.epicNo}</td>
-                    <td className="p-2.5 font-bold text-slate-900">{row.name}</td>
-                    <td className="p-2.5 text-slate-600">{row.relativeName}</td>
-                    <td className="p-2.5">{row.age} / {row.gender.charAt(0)}</td>
-                    <td className="p-2.5 text-sky-600 font-mono">{row.mobile}</td>
-                    <td className="p-2.5">
-                      <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                        {row.confidence}%
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setIsOcrModalOpen(false)}>
-              {t('noCancel')}
-            </Button>
-            <Button variant="success" onClick={handleSaveOcrRows}>
-              {t('addNew')} {stagedOcrRows.length} {t('voterAddedSuccess')}
-            </Button>
-          </div>
-        </div>
-      </Modal>
 
       {/* Add Elector Modal */}
       <Modal

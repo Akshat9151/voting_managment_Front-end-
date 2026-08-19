@@ -47,18 +47,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   // Navigation Items according to role
   const mainNavItems = [
-    { to: '/', label: t('navItemDashboard'), icon: <LayoutDashboard className="w-4 h-4" /> },
-    { to: '/team', label: t('navItemTeam'), icon: <Users className="w-4 h-4" /> },
-    { to: '/candidates', label: t('navItemCandidates'), icon: <Award className="w-4 h-4" /> },
-    { to: '/voters', label: t('navItemVoters'), icon: <Contact2 className="w-4 h-4" /> },
-    { to: '/tasks', label: t('navItemTasks'), icon: <CheckSquare className="w-4 h-4" /> },
-    { to: '/field-activities', label: t('navItemFieldActivities'), icon: <Map className="w-4 h-4" /> },
-    { to: '/studio', label: t('navItemDesignStudio'), icon: <Palette className="w-4 h-4" /> },
-    { to: '/broadcast', label: t('navItemBroadcast'), icon: <Send className="w-4 h-4" /> },
-    { to: '/complaints', label: t('navItemComplaints'), icon: <AlertCircle className="w-4 h-4" /> },
-    { to: '/expenses', label: t('navItemExpenses'), icon: <Receipt className="w-4 h-4" /> },
-    { to: '/analytics', label: t('navItemAnalytics'), icon: <BarChart3 className="w-4 h-4" /> },
-    { to: '/settings', label: t('navItemSettings'), icon: <Settings className="w-4 h-4" /> }
+    { to: '/', label: t('navItemDashboard'), icon: <LayoutDashboard className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN', 'VOLUNTEER'] },
+    { to: '/team', label: t('navItemTeam'), icon: <Users className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN'] },
+    { to: '/candidates', label: t('navItemCandidates'), icon: <Award className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN'] },
+    { to: '/voters', label: t('navItemVoters'), icon: <Contact2 className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN'] },
+    { to: '/tasks', label: t('navItemTasks'), icon: <CheckSquare className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN', 'VOLUNTEER'] },
+    { to: '/field-activities', label: t('navItemFieldActivities'), icon: <Map className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN', 'VOLUNTEER'] },
+    { to: '/studio', label: t('navItemDesignStudio'), icon: <Palette className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN'] },
+    { to: '/broadcast', label: t('navItemBroadcast'), icon: <Send className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN'] },
+    { to: '/complaints', label: t('navItemComplaints'), icon: <AlertCircle className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN'] },
+    { to: '/expenses', label: t('navItemExpenses'), icon: <Receipt className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN'] },
+    { to: '/analytics', label: t('navItemAnalytics'), icon: <BarChart3 className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN'] },
+    { to: '/settings', label: t('navItemSettings'), icon: <Settings className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN', 'VOLUNTEER'] }
   ];
 
   const volunteerNavItems = [
@@ -66,6 +66,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { to: '/volunteer-add', label: t('navItemAddVoter'), icon: <UserPlus className="w-4 h-4" /> },
     { to: '/volunteer-activity', label: t('navItemFieldRecord'), icon: <Activity className="w-4 h-4" /> }
   ];
+
+  const visibleMainNavItems = mainNavItems.filter((item) => item.roles.includes(currentRole));
 
   return (
     <>
@@ -102,7 +104,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="text-[11px] font-extrabold uppercase text-slate-400 px-3 py-1 tracking-wider">
               {t('navigationSidebarCampaignMgmt')}
             </div>
-            {mainNavItems.map((item) => (
+            {visibleMainNavItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -123,7 +125,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             ))}
 
             {/* Field Volunteer Section */}
-            <div className="pt-3">
+            {currentRole === 'VOLUNTEER' && <div className="pt-3">
               <div className="text-[11px] font-extrabold uppercase text-slate-400 px-3 py-1 tracking-wider">
                 {t('navigationSidebarFieldVolunteer')}
               </div>
@@ -145,7 +147,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <span>{item.label}</span>
                 </NavLink>
               ))}
-            </div>
+            </div>}
           </nav>
         </div>
 

@@ -12,6 +12,7 @@ import { FileDropzone } from '../components/ui/FileDropzone';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
+import { designTemplatesApi, fieldActivitiesApi } from '../services/api';
 
 interface FieldActivity {
   id: string;
@@ -31,32 +32,7 @@ export const FieldActivitiesPage: React.FC = () => {
   const { user, currentRole } = useAuth();
   const { showToast } = useToast();
 
-  const [activities, setActivities] = useState<FieldActivity[]>([
-    {
-      id: '1',
-      volunteerId: 'v1',
-      volunteerName: 'Rajesh Kumar',
-      activityType: 'door-to-door-campaign',
-      location: 'Ward A, Block 1-5',
-      dateTime: '2026-08-18T14:30',
-      description: 'Visited 25 households for campaign awareness',
-      status: 'approved',
-      photosCount: 3,
-      createdAt: '2026-08-18'
-    },
-    {
-      id: '2',
-      volunteerId: 'v2',
-      volunteerName: 'Priya Singh',
-      activityType: 'event-participation',
-      location: 'Community Center',
-      dateTime: '2026-08-18T10:00',
-      description: 'Organized and participated in campaign rally',
-      status: 'pending',
-      photosCount: 5,
-      createdAt: '2026-08-18'
-    }
-  ]);
+  const [activities, setActivities] = useState<FieldActivity[]>([]);
 
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
@@ -71,56 +47,92 @@ export const FieldActivitiesPage: React.FC = () => {
   const isAdmin = currentRole === 'ADMIN' || currentRole === 'SUPER_ADMIN';
   const isVolunteer = currentRole === 'VOLUNTEER';
 
-  const handleSubmitActivity = (e: React.FormEvent) => {
+  React.useEffect(() => {
+    let active = true;
+    fieldActivitiesApi.list()
+      .then((items) => {
+        if (!active) return;
+        setActivities(items.map((item) => ({
+          id: item.id,
+          volunteerId: item.volunteer_id || '',
+          volunteerName: item.volunteer_name,
+          activityType: item.activity_type,
+          location: item.location,
+          dateTime: item.created_at,
+          description: item.description,
+          status: item.status === 'Verified' ? 'approved' : item.status === 'Flagged' ? 'rejected' : 'pending',
+          photosCount: item.photo_url ? 1 : 0,
+          createdAt: item.created_at,
+        })));
+      })
+      .catch((err) => showToast(err?.response?.data?.detail || 'Unable to load field activities.', 'error'));
+    return () => { active = false; };
+  }, [showToast]);
+
+  const handleSubmitActivity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.location || !formData.dateTime || !formData.description) {
       showToast(t('fillAllRequiredFields'), 'error');
       return;
     }
 
-    // [Frontend-ready] TODO: Connect to POST /field-activities/submit endpoint
-    // const newActivity = await fieldActivitiesApi.submit(formData);
-    // TODO: Handle photo uploads to backend storage
-
-    const newActivity: FieldActivity = {
-      id: Date.now().toString(),
-      volunteerId: user?.id || 'unknown',
-      volunteerName: `${user?.first_name} ${user?.last_name}`,
-      activityType: formData.activityType,
-      location: formData.location,
-      dateTime: formData.dateTime,
-      description: formData.description,
-      status: 'pending',
-      photosCount: formData.photos.length,
-      createdAt: new Date().toISOString().split('T')[0]
-    };
-
-    setActivities([...activities, newActivity]);
-    setFormData({
-      activityType: 'door-to-door-campaign',
-      location: '',
-      dateTime: '',
-      description: '',
-      photos: []
-    });
-    setShowSubmitModal(false);
-    showToast(t('activitySubmitted'), 'success');
+    try {
+      let photoUrl: string | undefined;
+      if (formData.photos[0]) {
+        const uploaded = await designTemplatesApi.uploadAsset(formData.photos[0]);
+        photoUrl = uploaded.url;
+      }
+      const created = await fieldActivitiesApi.submit({
+        volunteer_name: `${user?.first_name || ''} ${user?.last_name || ''}`.trim(),
+        activity_type: formData.activityType,
+        location: formData.location,
+        description: formData.description,
+        photo_url: photoUrl,
+      });
+      setActivities((current) => [{
+        id: created.id,
+        volunteerId: created.volunteer_id || '',
+        volunteerName: created.volunteer_name,
+        activityType: created.activity_type,
+        location: created.location,
+        dateTime: created.created_at,
+        description: created.description,
+        status: 'pending',
+        photosCount: created.photo_url ? 1 : 0,
+        createdAt: created.created_at,
+      }, ...current]);
+      setFormData({ activityType: 'door-to-door-campaign', location: '', dateTime: '', description: '', photos: [] });
+      setShowSubmitModal(false);
+      showToast(t('activitySubmitted'), 'success');
+    } catch (err: any) {
+      showToast(err?.response?.data?.detail || 'Unable to submit activity.', 'error');
+    }
   };
 
-  const handleStatusChange = (activityId: string, newStatus: FieldActivity['status']) => {
-    // [Frontend-ready] TODO: Connect to PUT /field-activities/{id}/status endpoint
-    // await fieldActivitiesApi.updateStatus(activityId, newStatus);
-    
-    setActivities(activities.map(a => a.id === activityId ? { ...a, status: newStatus } : a));
-    showToast(t('taskUpdated'), 'success');
+  const handleStatusChange = async (activityId: string, newStatus: FieldActivity['status']) => {
+    const backendStatus = newStatus === 'approved' ? 'Verified' : newStatus === 'rejected' ? 'Flagged' : 'Submitted';
+    try {
+      const updated = await fieldActivitiesApi.updateStatus(activityId, backendStatus);
+      setActivities((current) => current.map((activity) => activity.id === activityId ? {
+        ...activity,
+        status: updated.status === 'Verified' ? 'approved' : updated.status === 'Flagged' ? 'rejected' : 'pending',
+      } : activity));
+      showToast(t('taskUpdated'), 'success');
+    } catch (err: any) {
+      showToast(err?.response?.data?.detail || 'Unable to update activity.', 'error');
+    }
   };
 
   const filteredActivities = filterStatus === 'all'
     ? activities
     : activities.filter(a => a.status === filterStatus);
 
+  const currentVolunteerName = `${user?.first_name || ''} ${user?.last_name || ''}`.trim().toLowerCase();
   const displayActivities = isVolunteer
-    ? activities.filter(a => a.volunteerId === user?.id)
+    ? activities.filter((activity) =>
+        activity.volunteerId === user?.id ||
+        activity.volunteerName.trim().toLowerCase() === currentVolunteerName
+      )
     : filteredActivities;
 
   const getStatusColor = (status: FieldActivity['status']) => {
@@ -144,8 +156,8 @@ export const FieldActivitiesPage: React.FC = () => {
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             {isVolunteer
-              ? 'Submit and track your field activities'
-              : 'Review and manage field activity reports from volunteers'}
+              ? t('submitTrackActivities')
+              : t('reviewManageActivities')}
           </p>
         </div>
 
@@ -181,7 +193,7 @@ export const FieldActivitiesPage: React.FC = () => {
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
-            Pending
+            {t('pending')}
           </button>
           <button
             onClick={() => setFilterStatus('approved')}
@@ -191,7 +203,7 @@ export const FieldActivitiesPage: React.FC = () => {
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
-            Approved
+            {t('approved')}
           </button>
           <button
             onClick={() => setFilterStatus('rejected')}
@@ -201,7 +213,7 @@ export const FieldActivitiesPage: React.FC = () => {
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
-            Rejected
+            {t('rejected')}
           </button>
         </div>
       )}
@@ -250,9 +262,9 @@ export const FieldActivitiesPage: React.FC = () => {
 
                 <div className="flex items-center gap-2 sm:flex-col">
                   <Badge className={`text-[11px] ${getStatusColor(activity.status)}`}>
-                    {activity.status === 'pending' && 'Pending'}
-                    {activity.status === 'approved' && 'Approved'}
-                    {activity.status === 'rejected' && 'Rejected'}
+                    {activity.status === 'pending' && t('pending')}
+                    {activity.status === 'approved' && t('approved')}
+                    {activity.status === 'rejected' && t('rejected')}
                   </Badge>
 
                   {isAdmin && (
@@ -295,11 +307,11 @@ export const FieldActivitiesPage: React.FC = () => {
             </Select>
 
             <FormInput
-              label={t('activityLocation')}
+              label={t('activityLocation') || t('activityLocation')}
               type="text"
               value={formData.location}
               onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              placeholder="Enter location or address"
+              placeholder={t('activityLocation')}
               required
             />
 
@@ -315,7 +327,7 @@ export const FieldActivitiesPage: React.FC = () => {
               label={t('activityDescription')}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Describe the activity in detail"
+              placeholder={t('activityDescription')}
               required
             />
 
@@ -327,7 +339,7 @@ export const FieldActivitiesPage: React.FC = () => {
 
             {formData.photos.length > 0 && (
               <p className="text-xs text-slate-600">
-                {formData.photos.length} file(s) selected
+                {formData.photos.length} {t('filesSelected')}
               </p>
             )}
 
