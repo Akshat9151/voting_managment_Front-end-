@@ -15,6 +15,22 @@ function unwrap<T>(res: { data: { data: T; success?: boolean; message?: string }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 export const authApi = {
+  onboard: async (payload: { organization_name: string; email: string; password: string; first_name: string; last_name: string; phone?: string }) => {
+    const res = await httpClient.post('/auth/onboard', payload);
+    return unwrap<{ access_token: string; refresh_token: string; expires_in: number; user: Record<string, any> }>(res);
+  },
+  requestSignupOtp: async (payload: { organization_name: string; email: string; password: string; first_name: string; last_name: string; phone?: string }) => {
+    const res = await httpClient.post('/auth/signup/request-otp', payload);
+    return unwrap<{ challenge_id: string; destination: string; expires_in: number }>(res);
+  },
+  verifySignupOtp: async (challenge_id: string, code: string) => {
+    const res = await httpClient.post('/auth/signup/verify-otp', { challenge_id, code });
+    return unwrap<boolean>(res);
+  },
+  register: async (payload: { email: string; password: string; first_name: string; last_name: string; phone?: string }) => {
+    const res = await httpClient.post('/auth/register', payload);
+    return unwrap<Record<string, any>>(res);
+  },
   login: async (email: string, password: string) => {
     const res = await httpClient.post('/auth/login', { email, password });
     return unwrap<{
@@ -23,6 +39,14 @@ export const authApi = {
       expires_in: number;
       user: Record<string, any>;
     }>(res);
+  },
+  requestLoginOtp: async (email: string, password: string) => {
+    const res = await httpClient.post('/auth/login/request-otp', { email, password });
+    return unwrap<{ challenge_id: string; destination: string; expires_in: number }>(res);
+  },
+  verifyLoginOtp: async (challenge_id: string, code: string, email: string, password: string) => {
+    const res = await httpClient.post('/auth/login/verify-otp', { challenge_id, code, email, password });
+    return unwrap<{ access_token: string; refresh_token: string; expires_in: number; user: Record<string, any> }>(res);
   },
   refresh: async (refresh_token: string) => {
     const res = await httpClient.post('/auth/refresh', { refresh_token });
@@ -42,6 +66,37 @@ export const authApi = {
   confirmMfa: async (totp_code: string) => {
     const res = await httpClient.post('/auth/mfa/confirm', { totp_code });
     return unwrap<boolean>(res);
+  },
+};
+
+// ─── Tasks & Field Activities ────────────────────────────────────────────────
+export const tasksApi = {
+  list: async (params?: { status?: string; priority?: string }) => {
+    const res = await httpClient.get('/tasks', { params });
+    return (unwrap<any>(res) ?? []) as any[];
+  },
+  create: async (payload: Record<string, any>) => {
+    const res = await httpClient.post('/tasks', payload);
+    return unwrap<any>(res);
+  },
+  updateStatus: async (id: string, status: string) => {
+    const res = await httpClient.patch(`/tasks/${id}/status`, { status });
+    return unwrap<any>(res);
+  },
+};
+
+export const fieldActivitiesApi = {
+  list: async (params?: { ward?: string; activity_type?: string }) => {
+    const res = await httpClient.get('/field-activities', { params });
+    return (unwrap<any>(res) ?? []) as any[];
+  },
+  submit: async (payload: Record<string, any>) => {
+    const res = await httpClient.post('/field-activities', payload);
+    return unwrap<any>(res);
+  },
+  updateStatus: async (id: string, status: string) => {
+    const res = await httpClient.patch(`/field-activities/${id}/status`, null, { params: { status_value: status } });
+    return unwrap<any>(res);
   },
 };
 
@@ -122,8 +177,9 @@ export const votersApi = {
   list: async (election_id: string, params?: Record<string, any>) => {
     const res = await httpClient.get(`/voters/election/${election_id}`, { params });
     const data = unwrap<any>(res);
-    return { items: (data?.items ?? []) as any[], pagination: data?.pagination };
+    return { items: (data?.items ?? (Array.isArray(data) ? data : [])) as any[], pagination: data?.pagination };
   },
+
   create: async (payload: Record<string, any>) => {
     const res = await httpClient.post('/voters/', payload);
     return unwrap<any>(res);
@@ -168,11 +224,25 @@ export const usersApi = {
     return { items: (data?.items ?? data ?? []) as any[], pagination: data?.pagination };
   },
   create: async (payload: Record<string, any>) => {
-    const res = await httpClient.post('/users/', payload);
+    // Sanitize payload to match backend `UserCreate` schema
+    const body = {
+      email: payload.email,
+      first_name: payload.first_name,
+      last_name: payload.last_name,
+      password: payload.password,
+      phone: payload.phone ?? null,
+      role_code: (payload.role_code ?? payload.role ?? 'VOLUNTEER').toString().toUpperCase(),
+      organization_id: payload.organization_id ?? null,
+    };
+    const res = await httpClient.post('/users/', body);
     return unwrap<any>(res);
   },
   update: async (id: string, payload: Record<string, any>) => {
     const res = await httpClient.put(`/users/${id}`, payload);
+    return unwrap<any>(res);
+  },
+  remove: async (id: string) => {
+    const res = await httpClient.delete(`/users/${id}`);
     return unwrap<any>(res);
   },
   getRoles: async () => {
@@ -236,12 +306,27 @@ export const notificationsApi = {
   },
 };
 
+export const broadcastApi = {
+  audience: async () => {
+    const res = await httpClient.get('/broadcast/audience');
+    return unwrap<any>(res);
+  },
+  send: async (payload: Record<string, any>) => {
+    const res = await httpClient.post('/broadcast/send', payload);
+    return unwrap<any>(res);
+  },
+  deliveryLogs: async () => {
+    const res = await httpClient.get('/broadcast/delivery-logs');
+    return (unwrap<any>(res) ?? []) as any[];
+  },
+};
+
 // ─── Complaints ───────────────────────────────────────────────────────────────
 export const complaintsApi = {
   list: async (election_id: string, params?: Record<string, any>) => {
     const res = await httpClient.get(`/complaints/election/${election_id}`, { params });
     const data = unwrap<any>(res);
-    return { items: (data?.items ?? []) as any[], pagination: data?.pagination };
+    return { items: (data?.items ?? (Array.isArray(data) ? data : [])) as any[], pagination: data?.pagination };
   },
   create: async (election_id: string, payload: Record<string, any>) => {
     const res = await httpClient.post(`/complaints/election/${election_id}`, payload);
@@ -258,23 +343,26 @@ export const expensesApi = {
   list: async (election_id: string, params?: Record<string, any>) => {
     const res = await httpClient.get(`/expenses/election/${election_id}`, { params });
     const data = unwrap<any>(res);
-    return { items: (data?.items ?? []) as any[], pagination: data?.pagination };
+    return { items: (data?.items ?? (Array.isArray(data) ? data : [])) as any[], pagination: data?.pagination };
   },
   create: async (election_id: string, payload: Record<string, any>) => {
     const res = await httpClient.post(`/expenses/election/${election_id}`, payload);
     return unwrap<any>(res);
   },
+
   getBudgetSummary: async (election_id: string) => {
     const res = await httpClient.get(`/expenses/election/${election_id}/summary`);
-    return unwrap<{
-      budget_limit: number;
-      total_spent: number;
-      remaining: number;
-      utilized_percent: number;
-      expense_count: number;
-    }>(res);
+    const d = unwrap<any>(res);
+    return {
+      budget_limit: d?.budgetLimit ?? d?.budget_limit ?? 150000,
+      total_spent: d?.totalSpent ?? d?.total_spent ?? 0,
+      remaining: d?.remaining ?? 0,
+      utilized_percent: d?.utilizedPercent ?? d?.utilized_percent ?? 0,
+      expense_count: d?.expenseCount ?? d?.expense_count ?? 0,
+    };
   },
 };
+
 
 // ─── Analytics & Dashboard ────────────────────────────────────────────────────
 export const analyticsApi = {
@@ -321,7 +409,7 @@ export const auditApi = {
   },
 };
 
-// ─── Design Templates ─────────────────────────────────────────────────────────
+// ─── Design Templates & Digital Studio ────────────────────────────────────────
 export const designTemplatesApi = {
   list: async (params?: { election_type?: string; category?: string }) => {
     const res = await httpClient.get('/design-templates/', { params });
@@ -335,7 +423,32 @@ export const designTemplatesApi = {
     const res = await httpClient.post('/design-templates/', payload);
     return unwrap<any>(res);
   },
+  saveDesign: async (payload: {
+    template_id: string;
+    election_id?: string;
+    candidate_id?: string;
+    title: string;
+    form_data: Record<string, any>;
+    preview_image_url?: string;
+    canvas_json?: Record<string, any>;
+  }) => {
+    const res = await httpClient.post('/design-templates/designs', payload);
+    return unwrap<any>(res);
+  },
+  listMyDesigns: async () => {
+    const res = await httpClient.get('/design-templates/designs/my');
+    return (unwrap<any>(res) ?? []) as any[];
+  },
+  uploadAsset: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await httpClient.post('/design-templates/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return unwrap<{ url: string; filename: string }>(res);
+  },
 };
+
 
 // ─── Positions & Constituencies ───────────────────────────────────────────────
 export const positionsApi = {
@@ -413,15 +526,14 @@ class ApiService {
 
   // Notifications / Broadcast
   async sendBroadcast(payload: Record<string, any>) {
-    return notificationsApi.createCampaign(payload);
+    return broadcastApi.send(payload);
   }
   async getDeliveryLogs(campaign_id?: string) {
-    if (!campaign_id) return [] as any[];
-    return notificationsApi.getCampaignReport(campaign_id);
+    if (campaign_id) return notificationsApi.getCampaignReport(campaign_id);
+    return broadcastApi.deliveryLogs();
   }
   async getAudienceSplit(_election_id?: string) {
-    // Derived from analytics — return basic structure
-    return { total: 0, whatsapp: 0, sms: 0, whatsappPercent: 0, smsPercent: 0 };
+    return broadcastApi.audience();
   }
 
   // Complaints

@@ -26,9 +26,8 @@ interface AuthContextType {
   currentRole: UserRole;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  loginWithOtp: (contact: string, role?: UserRole) => Promise<void>;
-  loginDemo: (role?: UserRole) => Promise<void>;
   switchRole: (role: UserRole) => void;
+  loginWithSession: (data: any, fallbackEmail?: string) => void;
   logout: () => Promise<void>;
   hasPermission: (perm: string) => boolean;
 }
@@ -47,8 +46,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ── Derive role from backend user data ──────────────────────────────────────
   const currentRole: UserRole = (() => {
     if (!user) return 'VOLUNTEER';
-    if (user.is_superuser || user.roles?.includes('SUPER_ADMIN')) return 'SUPER_ADMIN';
-    if (user.roles?.includes('ADMIN')) return 'ADMIN';
+    const normalizedRoles = (user.roles ?? []).map((role) => role.toUpperCase().replace('-', '_').replace(' ', '_'));
+    if (user.is_superuser || normalizedRoles.includes('SUPER_ADMIN')) return 'SUPER_ADMIN';
+    if (normalizedRoles.includes('ADMIN')) return 'ADMIN';
     return 'VOLUNTEER';
   })();
 
@@ -73,115 +73,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const data = await authApi.login(email.trim(), password);
+      loginWithSession(data, email);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loginWithSession = (data: any, fallbackEmail = '') => {
       const rawUser = data.user || {};
       const authUser: AuthUser = {
         id: rawUser.id || 'user-id',
-        email: rawUser.email || email.trim(),
+        email: rawUser.email || fallbackEmail.trim(),
         first_name: rawUser.first_name || 'Admin',
         last_name: rawUser.last_name || 'User',
         full_name: rawUser.name || `${rawUser.first_name || 'Admin'} ${rawUser.last_name || 'User'}`.trim(),
         organization_id: rawUser.organization_id || null,
-        roles: rawUser.roles || (rawUser.role ? [rawUser.role.toUpperCase()] : ['ADMIN']),
+        roles: (rawUser.roles ?? (rawUser.role ? [rawUser.role] : ['VOLUNTEER'])).map((role: string) => role.toUpperCase().replace('-', '_').replace(' ', '_')),
         permissions: rawUser.permissions || [],
         is_superuser: Boolean(rawUser.is_superuser),
         mfa_enabled: Boolean(rawUser.mfa_enabled),
         phone: rawUser.phone || null
       };
 
-      tokenStore.setSession(data.access_token, data.refresh_token, authUser, false);
-      setUser(authUser);
-      setIsAuthenticated(true);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // ── Quick Demo Login ────────────────────────────────────────────────────────
-  const loginDemo = async (role: UserRole = 'SUPER_ADMIN') => {
-    setIsLoading(true);
-    try {
-      // First try authenticating with real backend Super Admin credentials
-      try {
-        const data = await authApi.login('superadmin@electwin.com', 'SuperSecureAdminPassword123!');
-        const rawUser = data.user || {};
-        const authUser: AuthUser = {
-          id: rawUser.id || 'superadmin-id',
-          email: rawUser.email || 'superadmin@electwin.com',
-          first_name: rawUser.first_name || 'Super',
-          last_name: rawUser.last_name || 'Admin',
-          full_name: rawUser.name || `${rawUser.first_name || 'Super'} ${rawUser.last_name || 'Admin'}`.trim(),
-          organization_id: rawUser.organization_id || null,
-          roles: rawUser.roles || ['SUPER_ADMIN'],
-          permissions: rawUser.permissions || ['all'],
-          is_superuser: true,
-          mfa_enabled: false,
-          phone: rawUser.phone || '+91 98290 14285'
-        };
-
-        tokenStore.setSession(data.access_token, data.refresh_token, authUser, false);
-        setUser(authUser);
-        setIsAuthenticated(true);
-        return;
-      } catch {
-        // Fall back to offline mock demo session if backend is not reachable
-        const mockUser: AuthUser = {
-          id: `demo-${Date.now()}`,
-          email: 'superadmin@electwin.com',
-          first_name: 'Demo',
-          last_name: 'Administrator',
-          full_name: 'Demo Administrator',
-          organization_id: 'default-org',
-          roles: [role],
-          permissions: ['all'],
-          is_superuser: role === 'SUPER_ADMIN',
-          mfa_enabled: false,
-          phone: '+91 98290 14285'
-        };
-
-        tokenStore.setSession('mock_demo_access_token', 'mock_demo_refresh_token', mockUser, true);
-        setUser(mockUser);
-        setIsAuthenticated(true);
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // ── OTP Login ───────────────────────────────────────────────────────────────
-  const loginWithOtp = async (contact: string, role?: UserRole) => {
-    setIsLoading(true);
-    try {
-      const normalizedContact = contact.trim();
-      const email = normalizedContact.includes('@')
-        ? normalizedContact
-        : `${normalizedContact.replace(/\s+/g, '').toLowerCase()}@electwin.local`;
-
-      const mockUser: AuthUser = {
-        id: `otp-user-${Date.now()}`,
-        email,
-        first_name: 'OTP',
-        last_name: 'User',
-        full_name: 'OTP User',
-        organization_id: null,
-        roles: [role ?? 'ADMIN'],
-        permissions: ['all'],
-        is_superuser: role === 'SUPER_ADMIN',
-        mfa_enabled: true,
-        phone: normalizedContact.includes('@') ? '' : normalizedContact
-      };
-
-      tokenStore.setSession('mock_otp_access_token', 'mock_otp_refresh_token', mockUser, true);
-      setUser(mockUser);
-      setIsAuthenticated(true);
-    } finally {
-      setIsLoading(false);
-    }
+    tokenStore.setSession(data.access_token, data.refresh_token, authUser);
+    setUser(authUser);
+    setIsAuthenticated(true);
   };
 
   // ── Logout ──────────────────────────────────────────────────────────────────
   const logout = async () => {
     const rt = tokenStore.getRefresh();
-    if (rt && !tokenStore.isMock()) {
+    if (rt) {
       try { await httpClient.post('/auth/logout', { refresh_token: rt }); } catch { /* ignore */ }
     }
     tokenStore.clear();
@@ -202,7 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, permissions, currentRole, isLoading, login, loginWithOtp, loginDemo, switchRole, logout, hasPermission }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, permissions, currentRole, isLoading, login, loginWithSession, switchRole, logout, hasPermission }}>
       {children}
     </AuthContext.Provider>
   );

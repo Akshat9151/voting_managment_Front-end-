@@ -3,7 +3,7 @@
  * Axios instance for ElectWin Dashboard.
  * - Attaches JWT Bearer token on every request
  * - Auto-refreshes on 401 using stored refresh token
- * - Avoids hard window.location loops on mock demo sessions or network errors
+ * - Refreshes expired real sessions without redirect loops
  */
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
@@ -12,7 +12,6 @@ const BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL ?? 'http://localhos
 // ─── Token store ─────────────────────────────────────────────────────────────
 let _accessToken: string | null = localStorage.getItem('ew_at') ?? null;
 let _refreshToken: string | null = localStorage.getItem('ew_rt') ?? null;
-let _isMock: boolean = localStorage.getItem('ew_is_mock') === 'true';
 let _isRefreshing = false;
 let _refreshQueue: Array<(token: string) => void> = [];
 
@@ -41,26 +40,17 @@ export const tokenStore = {
     if (u) localStorage.setItem('ew_user', JSON.stringify(u));
     else localStorage.removeItem('ew_user');
   },
-  isMock: () => _isMock,
-  setMock: (m: boolean) => {
-    _isMock = m;
-    if (m) localStorage.setItem('ew_is_mock', 'true');
-    else localStorage.removeItem('ew_is_mock');
-  },
-  setSession: (access: string, refresh: string, user: any, isMock: boolean = false) => {
+  setSession: (access: string, refresh: string, user: any) => {
     tokenStore.setAccess(access);
     tokenStore.setRefresh(refresh);
     tokenStore.setUser(user);
-    tokenStore.setMock(isMock);
   },
   clear: () => {
     _accessToken = null;
     _refreshToken = null;
-    _isMock = false;
     localStorage.removeItem('ew_at');
     localStorage.removeItem('ew_rt');
     localStorage.removeItem('ew_user');
-    localStorage.removeItem('ew_is_mock');
   }
 };
 
@@ -74,7 +64,7 @@ export const httpClient = axios.create({
 // ─── Request interceptor: attach access token ─────────────────────────────────
 httpClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = tokenStore.getAccess();
-  if (token && config.headers && !tokenStore.isMock()) {
+  if (token && config.headers) {
     config.headers['Authorization'] = `Bearer ${token}`;
   }
   return config;
@@ -90,13 +80,8 @@ httpClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // If mock session, do not trigger refresh loop
-    if (tokenStore.isMock()) {
-      return Promise.reject(error);
-    }
-
     const rt = tokenStore.getRefresh();
-    if (!rt || rt.startsWith('mock_')) {
+    if (!rt) {
       tokenStore.clear();
       window.dispatchEvent(new CustomEvent('auth:unauthorized'));
       return Promise.reject(error);
