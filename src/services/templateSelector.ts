@@ -1,5 +1,11 @@
 import { Candidate, DesignTemplate, SymbolItem } from '../types';
-import { DESIGN_TEMPLATES, SYMBOLS_DATABASE } from './mockData';
+
+const DESIGN_TEMPLATES: DesignTemplate[] = [];
+const SYMBOLS_DATABASE: SymbolItem[] = [
+  { symbol: '🚜', name: 'Tractor', keywords: 'tractor farming agriculture' },
+  { symbol: '🌾', name: 'Wheat', keywords: 'wheat farming crop' },
+  { symbol: '🌳', name: 'Tree', keywords: 'tree nature environment' },
+];
 
 /**
  * Deterministic rule-based template selector for 1-Click Poster Generation.
