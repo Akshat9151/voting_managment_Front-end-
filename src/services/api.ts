@@ -268,6 +268,10 @@ export const usersApi = {
     const res = await httpClient.delete(`/users/${id}`);
     return unwrap<any>(res);
   },
+  purge: async (id: string) => {
+    const res = await httpClient.delete(`/users/${id}/purge`);
+    return unwrap<any>(res);
+  },
   getRoles: async () => {
     const res = await httpClient.get('/users/roles/all');
     return unwrap<any[]>(res) ?? [];

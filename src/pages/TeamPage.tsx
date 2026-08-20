@@ -3,7 +3,7 @@ import { usersApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useLanguage } from '../context/LanguageContext';
-import { UserPlus, Phone, Search, CheckCircle2, PencilLine, Trash2 } from 'lucide-react';
+import { UserPlus, Phone, Search, CheckCircle2, PencilLine, Trash2, AlertTriangle } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -23,6 +23,10 @@ export const TeamPage: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [wardName, setWardName] = useState('All Wards (Campaign HQ)');
+  const [includeInactive, setIncludeInactive] = useState(false);
+  const [isPurgeModalOpen, setIsPurgeModalOpen] = useState(false);
+  const [purgeMember, setPurgeMember] = useState<TeamMember | null>(null);
+  const [purgeConfirmation, setPurgeConfirmation] = useState('');
 
   // Form State
   const [firstName, setFirstName] = useState('');
@@ -55,7 +59,7 @@ export const TeamPage: React.FC = () => {
   const loadTeam = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { items } = await usersApi.list();
+      const { items } = await usersApi.list({ include_inactive: includeInactive });
       const normalizedUsers = (items ?? []).map((u: any) => {
         const derivedRole = normalizeRole(u.roles?.[0] ?? u.role ?? u.roleTitle ?? 'VOLUNTEER');
         return {
@@ -83,7 +87,7 @@ export const TeamPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentRole, showToast]);
+  }, [currentRole, showToast, includeInactive]);
 
   useEffect(() => { loadTeam(); }, [loadTeam]);
 
@@ -171,13 +175,42 @@ export const TeamPage: React.FC = () => {
       showToast(t('noPermissionRemoveRole'), 'error');
       return;
     }
-    if (!window.confirm(`Remove ${member.name || 'this team member'}? They will no longer be able to sign in.`)) return;
+    if (!window.confirm(`Deactivate ${member.name || 'this team member'}? They will no longer be able to sign in.`)) return;
     try {
       await usersApi.remove(member.id);
       setTeam((current) => current.filter((item) => item.id !== member.id));
-      showToast(`${member.name || 'Team member'} removed successfully.`, 'success');
+      showToast(`${member.name || 'Team member'} deactivated successfully.`, 'success');
     } catch (err: any) {
-      showToast(err?.response?.data?.message || err?.response?.data?.detail || 'Failed to remove team member.', 'error');
+      showToast(err?.response?.data?.message || err?.response?.data?.detail || 'Failed to deactivate team member.', 'error');
+    }
+  };
+
+  const handlePurgeMember = async (member: TeamMember) => {
+    if (currentRole !== 'SUPER_ADMIN') {
+      showToast('Only Super Admin can permanently delete users.', 'error');
+      return;
+    }
+    setPurgeMember(member);
+    setPurgeConfirmation('');
+    setIsPurgeModalOpen(true);
+  };
+
+  const confirmPurgeMember = async () => {
+    if (!purgeMember) return;
+    const expectedValue = purgeMember.email || purgeMember.name;
+    if (purgeConfirmation !== expectedValue) {
+      showToast('Confirmation does not match. Please type the exact email or name.', 'error');
+      return;
+    }
+    try {
+      await usersApi.purge(purgeMember.id);
+      setTeam((current) => current.filter((item) => item.id !== purgeMember.id));
+      showToast(`${purgeMember.name || 'User'} permanently purged from the system.`, 'success');
+      setIsPurgeModalOpen(false);
+      setPurgeMember(null);
+      setPurgeConfirmation('');
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || err?.response?.data?.detail || 'Failed to purge user.', 'error');
     }
   };
 
@@ -242,13 +275,25 @@ export const TeamPage: React.FC = () => {
           ))}
         </div>
 
-        <div className="w-full sm:max-w-md">
+        <div className="flex items-center gap-3 w-full sm:max-w-md">
           <FormInput
             placeholder={t('memberSearchPlaceholder')}
             leftIcon={<Search className="w-4 h-4" />}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1"
           />
+          {currentRole === 'SUPER_ADMIN' && (
+            <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 whitespace-nowrap">
+              <input
+                type="checkbox"
+                checked={includeInactive}
+                onChange={(e) => setIncludeInactive(e.target.checked)}
+                className="rounded border-slate-300"
+              />
+              Show Deactivated
+            </label>
+          )}
         </div>
       </div>
 
@@ -325,8 +370,17 @@ export const TeamPage: React.FC = () => {
                     onClick={() => handleRemoveMember(member)}
                     className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2 py-1.5 text-[11px] font-bold text-rose-700"
                   >
-                    <Trash2 className="w-3.5 h-3.5" /> Remove
+                    <Trash2 className="w-3.5 h-3.5" /> Deactivate
                   </button>
+                  {currentRole === 'SUPER_ADMIN' && (
+                    <button
+                      type="button"
+                      onClick={() => handlePurgeMember(member)}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-red-600 bg-red-600 px-2 py-1.5 text-[11px] font-bold text-white hover:bg-red-700"
+                    >
+                      <AlertTriangle className="w-3.5 h-3.5" /> Purge
+                    </button>
+                  )}
                 </div>
               )}
             </Card>
@@ -440,6 +494,61 @@ export const TeamPage: React.FC = () => {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Purge Confirmation Modal */}
+      <Modal
+        isOpen={isPurgeModalOpen}
+        onClose={() => { setIsPurgeModalOpen(false); setPurgeMember(null); setPurgeConfirmation(''); }}
+        title={
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-red-600" />
+            <span className="text-red-900">Permanent Delete Confirmation</span>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-sm font-semibold text-red-900 mb-2">
+              ⚠️ This action cannot be undone!
+            </p>
+            <p className="text-xs text-red-700">
+              This will permanently delete all data for <strong>{purgeMember?.name || 'this user'}</strong> from the system,
+              including their roles, sessions, and all related records. This action is irreversible.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-700">
+              Type <strong>{purgeMember?.email || purgeMember?.name}</strong> to confirm:
+            </label>
+            <FormInput
+              value={purgeConfirmation}
+              onChange={(e) => setPurgeConfirmation(e.target.value)}
+              placeholder="Type email or name to confirm"
+              className="border-red-300 focus:border-red-500 focus:ring-red-500"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setIsPurgeModalOpen(false); setPurgeMember(null); setPurgeConfirmation(''); }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={confirmPurgeMember}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={!purgeConfirmation || purgeConfirmation !== (purgeMember?.email || purgeMember?.name)}
+            >
+              Permanently Delete
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
