@@ -64,22 +64,39 @@ export const ExpensesPage: React.FC = () => {
 
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeElectionId || !title || !amount) return;
+
+    const normalizedAmount = Number(amount);
+    const normalizedTitle = title.trim() || category;
+    const normalizedVendor = vendorName.trim();
+    const normalizedNote = note.trim() || normalizedVendor || 'Campaign expense';
+
+    if (!activeElectionId || !Number.isFinite(normalizedAmount) || normalizedAmount <= 0) {
+      showToast('Please enter a valid expense amount greater than zero.', 'error');
+      return;
+    }
+
     try {
       await expensesApi.create(activeElectionId, {
-        title,
-        amount,
+        title: normalizedTitle,
+        amount: normalizedAmount,
         category,
-        vendor_name: vendorName || null,
-        note: note || null,
+        vendor_name: normalizedVendor || null,
+        note: normalizedNote,
         mode,
       });
-      showToast(`Expense of ₹${amount.toLocaleString()} recorded successfully!`, 'success');
+
+      showToast(`Expense of ₹${normalizedAmount.toLocaleString()} recorded successfully!`, 'success');
       setIsAddModalOpen(false);
-      setTitle(''); setNote(''); setMode('UPI / Online'); setVendorName('');
+      setTitle('');
+      setNote('');
+      setMode('UPI / Online');
+      setVendorName('');
+      setCategory('PRINTING');
+      setAmount(5000);
       await loadData();
     } catch (err: any) {
-      showToast(err?.response?.data?.message || 'Failed to record expense', 'error');
+      const message = err?.response?.data?.detail || err?.response?.data?.message || 'Failed to record expense';
+      showToast(message, 'error');
     }
   };
 
