@@ -7,14 +7,14 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
-import { FormInput } from '../components/ui/FormInput';
 import { Select } from '../components/ui/Select';
-import { Textarea } from '../components/ui/Textarea';
 import { Candidate, PostType } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { useElection } from '../context/ElectionContext';
 import { candidatesApi, designTemplatesApi } from '../services/api';
 import { FileDropzone } from '../components/ui/FileDropzone';
+import { TransliteratingNameInput } from '../components/ui/TransliteratingNameInput';
+import { TransliteratingTextInput, TransliteratingTextArea } from '../components/ui/TransliteratingTextInput';
 
 export const CandidatesPage: React.FC = () => {
   const { t, language } = useLanguage();
@@ -142,7 +142,18 @@ export const CandidatesPage: React.FC = () => {
     }
   };
 
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+  const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+
+  const validateImageFile = (file: File): string | null => {
+    if (!ALLOWED_TYPES.includes(file.type)) return 'Only JPG, PNG, and WebP images are allowed.';
+    if (file.size > MAX_SIZE_BYTES) return 'File size must be 5 MB or less.';
+    return null;
+  };
+
   const uploadCandidateAsset = async (file: File, kind: 'photo' | 'symbol') => {
+    const validationError = validateImageFile(file);
+    if (validationError) { showToast(validationError, 'error'); return; }
     const setter = kind === 'photo' ? setIsUploadingPhoto : setIsUploadingSymbol;
     setter(true);
     try {
@@ -312,18 +323,19 @@ export const CandidatesPage: React.FC = () => {
       >
         <form onSubmit={handleAddCandidate} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <FormInput
+            <TransliteratingTextInput
               label={l.englishName}
               placeholder={l.englishName}
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
             />
-            <FormInput
+            <TransliteratingNameInput
               label={l.hindiName}
               placeholder={l.hindiName}
               value={hindiName}
               onChange={(e) => setHindiName(e.target.value)}
+              sourceValue={name}
             />
           </div>
 
@@ -337,7 +349,7 @@ export const CandidatesPage: React.FC = () => {
               <option value="panch">Panch (Ward Representative)</option>
             </Select>
 
-            <FormInput
+            <TransliteratingTextInput
               label={l.ward}
               value={constituency}
               onChange={(e) => setConstituency(e.target.value)}
@@ -347,12 +359,33 @@ export const CandidatesPage: React.FC = () => {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <label className="block text-xs font-bold text-slate-700">{l.symbol}</label>
-              {symbolPreview ? <img src={symbolPreview} alt={l.symbol} className="h-20 w-20 rounded-lg border object-contain" /> : (
-                <FileDropzone onFileSelect={(file) => uploadCandidateAsset(file, 'symbol')} accept=".jpg,.jpeg,.png,.webp" title={isUploadingSymbol ? 'Uploading...' : l.uploadSymbol} subtitle={l.choose} className="min-h-[90px]" />
+              {symbolPreview ? (
+                <div className="flex flex-col items-start gap-2">
+                  <img
+                    src={symbolPreview}
+                    alt={l.symbol}
+                    className="h-28 w-28 rounded-xl border-2 border-amber-300 object-contain bg-amber-50"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { setSymbolUrl(''); setSymbolPreview(''); }}
+                    className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    ✕ Remove
+                  </button>
+                </div>
+              ) : (
+                <FileDropzone
+                  onFileSelect={(file) => uploadCandidateAsset(file, 'symbol')}
+                  accept=".jpg,.jpeg,.png,.webp"
+                  title={isUploadingSymbol ? 'Uploading...' : l.uploadSymbol}
+                  subtitle={l.choose}
+                  className="min-h-[110px]"
+                />
               )}
             </div>
 
-            <FormInput
+            <TransliteratingTextInput
               label={l.symbolName}
               placeholder={l.symbolName}
               value={symbolName}
@@ -362,18 +395,39 @@ export const CandidatesPage: React.FC = () => {
 
           <div className="space-y-2">
             <label className="block text-xs font-bold text-slate-700">{l.photo}</label>
-            {photoPreview ? <img src={photoPreview} alt={l.photo} className="h-28 w-28 rounded-xl border-2 border-sky-300 object-cover" /> : (
-              <FileDropzone onFileSelect={(file) => uploadCandidateAsset(file, 'photo')} accept=".jpg,.jpeg,.png,.webp" title={isUploadingPhoto ? 'Uploading...' : l.uploadPhoto} subtitle={l.choose} className="min-h-[110px]" />
+            {photoPreview ? (
+              <div className="flex flex-col items-start gap-2">
+                <img
+                  src={photoPreview}
+                  alt={l.photo}
+                  className="h-28 w-28 rounded-xl border-2 border-sky-300 object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => { setPhotoUrl(''); setPhotoPreview(''); }}
+                  className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 transition-colors cursor-pointer"
+                >
+                  ✕ Remove
+                </button>
+              </div>
+            ) : (
+              <FileDropzone
+                onFileSelect={(file) => uploadCandidateAsset(file, 'photo')}
+                accept=".jpg,.jpeg,.png,.webp"
+                title={isUploadingPhoto ? 'Uploading...' : l.uploadPhoto}
+                subtitle={l.choose}
+                className="min-h-[110px]"
+              />
             )}
           </div>
 
-          <FormInput
+          <TransliteratingTextInput
             label={l.slogan}
             value={slogan}
             onChange={(e) => setSlogan(e.target.value)}
           />
 
-          <Textarea
+          <TransliteratingTextArea
             label={l.manifesto}
             rows={3}
             value={manifesto}

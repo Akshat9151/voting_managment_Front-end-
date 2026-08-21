@@ -145,3 +145,47 @@ html.dark .shadow-card { box-shadow: 0 2px 8px -2px rgba(15, 23, 42, 0.55), 0 1p
 .animate-pulse-subtle {
   animation: pulse-subtle 3s ease-in-out infinite;
 }
+
+/* ─── Mobile Responsiveness Enhancements ───────────────────── */
+@media (max-width: 640px) {
+  html {
+    font-size: 13.5px;
+  }
+
+  /* Prevent page horizontal overflow */
+  body, #root {
+    overflow-x: hidden;
+    width: 100%;
+  }
+
+  /* Make data tables horizontally scrollable on mobile without clipping */
+  table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent flex children from overflowing on small screens */
+  .flex-wrap-mobile {
+    flex-wrap: wrap !important;
+  }
+
+  /* Responsive padding adjustments for modals and cards */
+  .modal-responsive {
+    padding: 1rem !important;
+    margin: 0.5rem !important;
+  }
+}
+
+/* Touch target and mobile scroll utilities */
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
+/* Safe area padding for modern mobile devices */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+

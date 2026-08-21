@@ -2,19 +2,18 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useNavigate } from 'react-router-dom';
-import { Vote, ArrowRight, ShieldCheck, CheckCircle2, Mail, Lock, Globe, Smartphone, UserPlus } from 'lucide-react';
+import { ArrowRight, ShieldCheck, CheckCircle2, Mail, Lock, Globe, Smartphone, UserPlus } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { FormInput } from '../components/ui/FormInput';
 import { useLanguage, SUPPORTED_LANGUAGES } from '../context/LanguageContext';
 import { authApi } from '../services/api';
+import { VoteVictoryLogo } from '../components/ui/VoteVictoryLogo';
 
 export const AuthPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
-  const [organizationName, setOrganizationName] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSignup, setIsSignup] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,8 +66,8 @@ export const AuthPage: React.FC = () => {
     setError(null);
 
     const normalizedPhone = phone.trim();
-    if (!organizationName.trim() || !firstName.trim() || !lastName.trim() || !email.trim() || !password || !normalizedPhone) {
-      setError('Please complete all workspace and owner fields.');
+    if (!fullName.trim() || !email.trim() || !password || !normalizedPhone) {
+      setError('Please complete all required fields.');
       return;
     }
 
@@ -87,11 +86,9 @@ export const AuthPage: React.FC = () => {
     try {
       if (!otpChallengeId) {
         const challenge = await authApi.requestSignupOtp({
-          organization_name: organizationName.trim(),
+          full_name: fullName.trim(),
           email: email.trim(),
           password,
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
           phone: normalizedPhone
         });
         setOtpChallengeId(challenge.challenge_id);
@@ -101,12 +98,14 @@ export const AuthPage: React.FC = () => {
         );
         return;
       }
-      const session = await authApi.verifySignupOtp(otpChallengeId, otpCode);
-      loginWithSession(session, email);
-      showToast('Workspace created. You are signed in as Super Admin.', 'success');
+      await authApi.verifySignupOtp(otpChallengeId, otpCode);
+      showToast('Account verified! Please log in to continue.', 'success');
       setOtpChallengeId(null);
       setOtpCode('');
-      navigate('/');
+      setFullName('');
+      setPhone('');
+      setPassword('');
+      setIsSignup(false);
     } catch (err: any) {
       const isConflict = err?.response?.status === 409;
       const msg = isConflict
@@ -134,11 +133,11 @@ export const AuthPage: React.FC = () => {
         <div className="bg-gradient-to-br from-sky-600 to-violet-700 p-8 text-white flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2.5 mb-6">
-              <div className="w-10 h-10 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center backdrop-blur-md">
-                <Vote className="w-6 h-6 text-white" />
+              <div className="w-10 h-10 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center backdrop-blur-md overflow-hidden p-1">
+                <VoteVictoryLogo className="w-full h-full" />
               </div>
               <span className="font-heading font-extrabold text-2xl tracking-tight">
-                Elect<span className="text-sky-300">Win</span>
+                Vote<span className="text-sky-300">Victory</span>
               </span>
             </div>
 
@@ -230,29 +229,12 @@ export const AuthPage: React.FC = () => {
                   <p className="mt-0.5 text-sky-700">You become its first Super Admin and can then create Admins and Volunteers.</p>
                 </div>
                 <FormInput
-                  label="Organization / Campaign Name"
+                  label="Full Name"
                   type="text"
-                  value={organizationName}
-                  onChange={(e) => setOrganizationName(e.target.value)}
-                  placeholder="e.g. Rampur Election Campaign"
-                  required
-                />
-                <FormInput
-                  label={t('firstName')}
-                  type="text"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  placeholder={t('enterFirstName')}
-                  autoComplete="off"
-                  required
-                />
-                <FormInput
-                  label={t('lastName')}
-                  type="text"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  placeholder={t('enterLastName')}
-                  autoComplete="off"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Enter your full name"
+                  autoComplete="name"
                   required
                 />
                 <FormInput
@@ -292,7 +274,7 @@ export const AuthPage: React.FC = () => {
                   type="submit"
                   variant="primary"
                   className="w-full"
-                  disabled={isLoading || !organizationName || !email || !password || !phone || (!firstName || !lastName)}
+                  disabled={isLoading || !fullName || !email || !password || !phone}
                 >
                   {isLoading ? (
                     <span className="flex items-center gap-2">

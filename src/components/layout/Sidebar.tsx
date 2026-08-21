@@ -13,7 +13,6 @@ import {
   Receipt,
   BarChart3,
   Settings,
-  MapPin,
   UserPlus,
   Activity,
   LogOut,
@@ -49,20 +48,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const mainNavItems = [
     { to: '/', label: t('navItemDashboard'), icon: <LayoutDashboard className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN', 'VOLUNTEER'] },
     { to: '/team', label: t('navItemTeam'), icon: <Users className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN'] },
-    { to: '/candidates', label: t('navItemCandidates'), icon: <Award className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN'] },
+    { to: '/candidates', label: t('navItemCandidates'), icon: <Award className="w-4 h-4" />, roles: ['SUPER_ADMIN'] },
     { to: '/voters', label: t('navItemVoters'), icon: <Contact2 className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN'] },
     { to: '/tasks', label: t('navItemTasks'), icon: <CheckSquare className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN', 'VOLUNTEER'] },
     { to: '/field-activities', label: t('navItemFieldActivities'), icon: <Map className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN', 'VOLUNTEER'] },
-    { to: '/studio', label: t('navItemDesignStudio'), icon: <Palette className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN'] },
+    { to: '/studio', label: t('navItemDesignStudio'), icon: <Palette className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN', 'VOLUNTEER'] },
     { to: '/broadcast', label: t('navItemBroadcast'), icon: <Send className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN'] },
     { to: '/complaints', label: t('navItemComplaints'), icon: <AlertCircle className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN'] },
-    { to: '/expenses', label: t('navItemExpenses'), icon: <Receipt className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN'] },
-    { to: '/analytics', label: t('navItemAnalytics'), icon: <BarChart3 className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN'] },
+    { to: '/expenses', label: t('navItemExpenses'), icon: <Receipt className="w-4 h-4" />, roles: ['SUPER_ADMIN'] },
+    { to: '/analytics', label: t('navItemAnalytics'), icon: <BarChart3 className="w-4 h-4" />, roles: ['SUPER_ADMIN'] },
     { to: '/settings', label: t('navItemSettings'), icon: <Settings className="w-4 h-4" />, roles: ['SUPER_ADMIN', 'ADMIN', 'VOLUNTEER'] }
   ];
 
   const volunteerNavItems = [
-    { to: '/volunteer-ward', label: t('navItemWardFieldDesk'), icon: <MapPin className="w-4 h-4" /> },
     { to: '/volunteer-add', label: t('navItemAddVoter'), icon: <UserPlus className="w-4 h-4" /> },
     { to: '/volunteer-activity', label: t('navItemFieldRecord'), icon: <Activity className="w-4 h-4" /> }
   ];
@@ -89,7 +87,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* Mobile Drawer Header */}
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 lg:hidden dark:border-slate-800">
             <div className="font-heading font-extrabold text-lg text-slate-900 dark:text-slate-100">
-              Elect<span style={{ color: 'var(--brand-primary)' }}>Win</span>
+              Vote<span style={{ color: 'var(--brand-primary)' }}>Victory</span>
             </div>
             <button
               onClick={onClose}

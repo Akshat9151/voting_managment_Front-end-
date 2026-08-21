@@ -1,12 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useElection } from '../../context/ElectionContext';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
-import { Vote, Menu, Globe, Bell, ChevronDown, Sun, Moon } from 'lucide-react';
+import { Menu, Globe, Bell, Sun, Moon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { NotificationPanel } from '../ui/NotificationPanel';
+import { notificationsApi } from '../../services/api';
+import { VoteVictoryLogo } from '../ui/VoteVictoryLogo';
 
 interface NavbarProps {
   onToggleSidebar: () => void;
@@ -18,27 +19,25 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenLanguageModal
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showElectionDrop, setShowElectionDrop] = useState(false);
 
   const { language, t } = useLanguage();
-  const { elections, activeElection, setActiveElection } = useElection();
   const { user, currentRole } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
 
-  const electionMenuRef = useRef<HTMLDivElement>(null);
-
   const [unreadNotifsCount, setUnreadNotifsCount] = useState(0);
+  const [notifications, setNotifications] = useState<any[]>([]);
 
-  // Close menus on click outside
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (electionMenuRef.current && !electionMenuRef.current.contains(e.target as Node)) {
-        setShowElectionDrop(false);
+    const loadNotifications = async () => {
+      try {
+        const response = await notificationsApi.listMyNotifications();
+        setNotifications(response);
+      } catch {
+        setNotifications([]);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    loadNotifications();
   }, []);
 
   // Determine role badge color and label
@@ -68,64 +67,29 @@ export const Navbar: React.FC<NavbarProps> = ({
         </button>
 
         <Link to="/" className="flex items-center gap-2 text-decoration-none group">
-          <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform"
-            style={{ background: 'linear-gradient(135deg, var(--brand-primary), #7c3aed)' }}
-          >
-            <Vote className="w-4 h-4" />
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform overflow-hidden">
+            <VoteVictoryLogo className="w-full h-full" />
           </div>
           <span className="font-heading font-extrabold text-lg tracking-tight text-slate-900 dark:text-slate-100">
-            Elect<span style={{ color: 'var(--brand-primary)' }}>Win</span>
+            Vote<span style={{ color: 'var(--brand-primary)' }}>Victory</span>
           </span>
         </Link>
       </div>
 
       {/* Right: Controls & Badges */}
       <div className="flex items-center gap-1.5 sm:gap-2.5">
-
-        {/* Election Switcher */}
-        {activeElection && (
-          <div className="relative" ref={electionMenuRef}>
-            <button
-              onClick={() => setShowElectionDrop(v => !v)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 text-emerald-800 text-xs font-bold transition-all cursor-pointer min-h-[38px] max-w-[160px] dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-              <span className="truncate hidden sm:inline">{activeElection.title}</span>
-              <span className="sm:hidden truncate">Election</span>
-              {elections.length > 1 && <ChevronDown className="w-3 h-3 shrink-0" />}
-            </button>
-            {showElectionDrop && elections.length > 1 && (
-              <div className="absolute right-0 top-11 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl z-50 min-w-[200px] py-1.5 animate-fade-in">
-                {elections.map(e => (
-                  <button
-                    key={e.id}
-                    onClick={() => { setActiveElection(e); setShowElectionDrop(false); }}
-                    className={`w-full text-left px-4 py-2.5 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-700 transition-all ${
-                      e.id === activeElection.id ? 'text-brand-primary font-bold' : 'text-slate-700 dark:text-slate-200'
-                    }`}
-                  >
-                    {e.title}
-                    {e.status === 'ACTIVE' && <span className="ml-1.5 text-[10px] text-emerald-600 font-bold">LIVE</span>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Authenticated identity; role comes from the JWT and cannot be switched in the UI. */}
+        {/* Authenticated identity */}
         {user && (
           <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold shadow-xs ${getRoleBadgeColor()}`}>
-              <span className="hidden sm:inline truncate max-w-[120px]">{user.first_name}</span>
-              <span className="hidden sm:inline">·</span>
-              <span className="truncate">
-                {t(`role${currentRole.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('')}`)}
-              </span>
+            <span className="hidden sm:inline truncate max-w-[120px]">{user.first_name}</span>
+            <span className="hidden sm:inline">·</span>
+            <span className="truncate">
+              {t(`role${currentRole.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('')}`)}
+            </span>
           </div>
         )}
 
-        {/* 1. Theme Toggle (Top Right Corner) */}
+        {/* 1. Theme Toggle */}
         <button
           onClick={() => {
             toggleTheme();
@@ -168,6 +132,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* Notification Panel */}
       <NotificationPanel
         isOpen={showNotifications}
+        notifications={notifications}
         onClose={() => setShowNotifications(false)}
         onUnreadCountChange={setUnreadNotifsCount}
       />

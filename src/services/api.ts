@@ -19,7 +19,7 @@ export const authApi = {
     const res = await httpClient.post('/auth/onboard', payload);
     return unwrap<{ access_token: string; refresh_token: string; expires_in: number; user: Record<string, any> }>(res);
   },
-  requestSignupOtp: async (payload: { organization_name: string; email: string; password: string; first_name: string; last_name: string; phone?: string }) => {
+  requestSignupOtp: async (payload: { full_name?: string; email: string; password: string; phone?: string }) => {
     const res = await httpClient.post('/auth/signup/request-otp', payload);
     return unwrap<{ challenge_id: string; destination: string; expires_in: number; dev_code?: string }>(res);
   },
@@ -71,7 +71,7 @@ export const authApi = {
 
 // ─── Tasks & Field Activities ────────────────────────────────────────────────
 export const tasksApi = {
-  list: async (params?: { status?: string; priority?: string }) => {
+  list: async (params?: { status?: string; priority?: string; mine?: boolean }) => {
     const res = await httpClient.get('/tasks', { params });
     return (unwrap<any>(res) ?? []) as any[];
   },
@@ -93,7 +93,7 @@ export const tasksApi = {
 };
 
 export const fieldActivitiesApi = {
-  list: async (params?: { ward?: string; activity_type?: string }) => {
+  list: async (params?: { ward?: string; activity_type?: string; status?: string; mine?: boolean }) => {
     const res = await httpClient.get('/field-activities', { params });
     return (unwrap<any>(res) ?? []) as any[];
   },
@@ -102,7 +102,10 @@ export const fieldActivitiesApi = {
     return unwrap<any>(res);
   },
   updateStatus: async (id: string, status: string) => {
-    const res = await httpClient.patch(`/field-activities/${id}/status`, null, { params: { status_value: status } });
+    const path = status === 'Verified' ? 'approve' : status === 'Flagged' ? 'reject' : 'status';
+    const res = path === 'status'
+      ? await httpClient.patch(`/field-activities/${id}/status`, { status })
+      : await httpClient.put(`/field-activities/${id}/${path}`);
     return unwrap<any>(res);
   },
 };
@@ -143,27 +146,12 @@ export const orgsApi = {
 
 export const candidatesApi = {
   list: async (election_id?: string, params?: Record<string, any>) => {
-    try {
-      if (election_id) {
-        const res = await httpClient.get(`/candidates/election/${election_id}`, { params });
-        const data = unwrap<any>(res);
-        const items = (data?.items ?? (Array.isArray(data) ? data : [])) as any[];
-        if (items && items.length > 0) {
-          return { items, pagination: data?.pagination };
-        }
-      }
-    } catch {
-      // ignore and fallback
-    }
-
-    try {
-      const res = await httpClient.get('/candidates', { params });
-      const data = unwrap<any>(res);
-      const items = (Array.isArray(data) ? data : (data?.items ?? [])) as any[];
-      return { items, pagination: undefined };
-    } catch {
-      return { items: [], pagination: undefined };
-    }
+    const res = election_id
+      ? await httpClient.get(`/candidates/election/${election_id}`, { params })
+      : await httpClient.get('/candidates', { params });
+    const data = unwrap<any>(res);
+    const items = (data?.items ?? (Array.isArray(data) ? data : [])) as any[];
+    return { items, pagination: data?.pagination };
   },
   create: async (payload: Record<string, any>) => {
     const res = await httpClient.post('/candidates/', payload);
@@ -213,6 +201,10 @@ export const votersApi = {
     const res = await httpClient.delete(`/voters/${id}`);
     return unwrap<any>(res);
   },
+  deleteBulk: async (voter_ids: string[]) => {
+    const res = await httpClient.delete('/voters/bulk', { data: { voter_ids } });
+    return unwrap<any>(res);
+  },
   verify: async (voter_id: string, payload: Record<string, any>) => {
     const res = await httpClient.post(`/voters/${voter_id}/verify`, payload);
     return unwrap<any>(res);
@@ -228,6 +220,10 @@ export const votersApi = {
     const res = await httpClient.post('/imports/confirm', { job_id });
     return unwrap<any>(res); // ImportReportResponse
   },
+  cancelImport: async (job_id: string) => {
+    const res = await httpClient.delete(`/imports/${job_id}`);
+    return unwrap<any>(res);
+  },
   checkin: async (payload: {
     voter_id: string;
     election_id: string;
@@ -236,6 +232,33 @@ export const votersApi = {
   }) => {
     const res = await httpClient.post('/checkin/', payload);
     return unwrap<any>(res);
+  },
+};
+
+export const broadcastGroupsApi = {
+  list: async () => {
+    const res = await httpClient.get('/broadcast/groups');
+    return (unwrap<any>(res) ?? []) as any[];
+  },
+  create: async (payload: { name?: string; voter_ids: string[]; filter_criteria_snapshot: Record<string, unknown> }) => {
+    const res = await httpClient.post('/broadcast/groups', payload);
+    return unwrap<any>(res);
+  },
+  saveDraft: async (id: string, message_text: string) => {
+    const res = await httpClient.patch(`/broadcast/groups/${id}/draft`, { message_text });
+    return unwrap<any>(res);
+  },
+  send: async (id: string) => {
+    const res = await httpClient.post(`/broadcast/${id}/send`);
+    return unwrap<any>(res);
+  },
+  results: async (id: string) => {
+    const res = await httpClient.get(`/broadcast/${id}/results`);
+    return unwrap<any>(res);
+  },
+  logs: async (id: string) => {
+    const res = await httpClient.get(`/broadcast/${id}/logs`);
+    return (unwrap<any>(res) ?? []) as any[];
   },
 };
 
@@ -254,6 +277,7 @@ export const usersApi = {
       last_name: payload.last_name,
       password: payload.password,
       phone: payload.phone ?? null,
+      ward: payload.ward ?? null,
       role_code: (payload.role_code ?? payload.role ?? 'VOLUNTEER').toString().toUpperCase(),
       organization_id: payload.organization_id ?? null,
     };
@@ -347,6 +371,10 @@ export const notificationsApi = {
     const res = await httpClient.get(`/notifications/campaigns/${campaign_id}/report`);
     return unwrap<any>(res);
   },
+  listMyNotifications: async () => {
+    const res = await httpClient.get('/notifications/my');
+    return (unwrap<any>(res) ?? []) as any[];
+  },
 };
 
 export const broadcastApi = {
@@ -377,6 +405,14 @@ export const complaintsApi = {
   },
   updateStatus: async (id: string, payload: Record<string, any>) => {
     const res = await httpClient.put(`/complaints/${id}/status`, payload);
+    return unwrap<any>(res);
+  },
+  update: async (id: string, payload: Record<string, any>) => {
+    const res = await httpClient.put(`/complaints/${id}`, payload);
+    return unwrap<any>(res);
+  },
+  remove: async (id: string) => {
+    const res = await httpClient.delete(`/complaints/${id}`);
     return unwrap<any>(res);
   },
 };
@@ -482,6 +518,18 @@ export const designTemplatesApi = {
     const res = await httpClient.get('/design-templates/designs/my');
     return (unwrap<any>(res) ?? []) as any[];
   },
+  listSharedDesigns: async () => {
+    const res = await httpClient.get('/posters/shared-with-me');
+    return (unwrap<any>(res) ?? []) as any[];
+  },
+  shareDesign: async (id: string, recipient_ids: string[]) => {
+    const res = await httpClient.post(`/posters/${id}/share`, { recipient_ids });
+    return unwrap<any>(res);
+  },
+  deleteDesign: async (id: string) => {
+    const res = await httpClient.delete(`/design-templates/designs/${id}`);
+    return unwrap<any>(res);
+  },
   uploadAsset: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -540,8 +588,20 @@ class ApiService {
   async addVoter(payload: Record<string, any>) {
     return votersApi.create(payload);
   }
+  async deleteVoter(id: string) {
+    return votersApi.delete(id);
+  }
   async addVotersBatch(election_id: string, file: File) {
     return votersApi.uploadBatch(election_id, file);
+  }
+  async uploadVotersFile(election_id: string, file: File) {
+    return votersApi.uploadBatch(election_id, file);
+  }
+  async confirmVotersImport(job_id: string) {
+    return votersApi.confirmImport(job_id);
+  }
+  async cancelVotersImport(job_id: string) {
+    return votersApi.cancelImport(job_id);
   }
 
   // Users / Team
@@ -569,6 +629,15 @@ class ApiService {
   async updateVolunteerVoterStatus(id: string, status: string, slipHanded?: boolean) {
     return volunteerVotersApi.updateStatus(id, status, slipHanded);
   }
+    async uploadVolunteerVoters(election_id: string, file: File) {
+      return votersApi.uploadBatch(election_id, file);
+    }
+    async confirmVolunteerVoterImport(job_id: string) {
+      return votersApi.confirmImport(job_id);
+    }
+    async cancelVolunteerVoterImport(job_id: string) {
+      return votersApi.cancelImport(job_id);
+    }
 
   // Notifications / Broadcast
   async sendBroadcast(payload: Record<string, any>) {

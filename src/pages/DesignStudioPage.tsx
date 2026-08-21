@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { api, designTemplatesApi } from '../services/api';
+import { api, designTemplatesApi, usersApi } from '../services/api';
 import { getCandidateStudioAutofill } from '../services/templateSelector';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { useElection } from '../context/ElectionContext';
 import {
-  Search,
   Sparkles,
   Award,
   ImageIcon,
@@ -19,21 +18,10 @@ import {
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { FormInput } from '../components/ui/FormInput';
+import { TransliteratingTextInput, TransliteratingTextArea } from '../components/ui/TransliteratingTextInput';
 import { FileDropzone } from '../components/ui/FileDropzone';
 import { Button } from '../components/ui/Button';
-import { SymbolItem, DesignTemplate } from '../types';
-
-const SYMBOLS_DATABASE: SymbolItem[] = [
-  { symbol: '🚜', name: 'Tractor', keywords: 'tractor kisan village farmer' },
-  { symbol: '🌾', name: 'Wheat', keywords: 'wheat farmer field crop' },
-  { symbol: '☀️', name: 'Sun', keywords: 'sun light energy progress' },
-  { symbol: '🔦', name: 'Torch', keywords: 'torch light service' },
-  { symbol: '🪁', name: 'Kite', keywords: 'kite sky celebration' },
-  { symbol: '☕', name: 'Tea', keywords: 'tea community people' },
-  { symbol: '🪷', name: 'Lotus', keywords: 'lotus purity faith' },
-  { symbol: '✋', name: 'Hand', keywords: 'hand support people' },
-  { symbol: '🌹', name: 'Rose', keywords: 'rose growth hope' }
-];
+import { DesignTemplate } from '../types';
 
 const validateMediaFile = (file: File): { valid: boolean; error?: string } => {
   const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
@@ -64,6 +52,13 @@ export const DesignStudioPage: React.FC = () => {
   // View state
   const [view, setView] = useState<'gallery' | 'editor'>('gallery');
   const [selectedTemplate, setSelectedTemplate] = useState<DesignTemplate | null>(null);
+  const [savedDesigns, setSavedDesigns] = useState<any[]>([]);
+  const [sharedDesigns, setSharedDesigns] = useState<any[]>([]);
+  const [showSavedPosters, setShowSavedPosters] = useState(false);
+  const [shareDesignId, setShareDesignId] = useState<string | null>(null);
+  const [shareRecipientIds, setShareRecipientIds] = useState<string[]>([]);
+  const [shareRecipients, setShareRecipients] = useState<any[]>([]);
+  const [isSharingPoster, setIsSharingPoster] = useState(false);
 
   // Form state
   const [candidateName, setCandidateName] = useState('');
@@ -77,14 +72,9 @@ export const DesignStudioPage: React.FC = () => {
   const [candidatePhotoUrl, setCandidatePhotoUrl] = useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
-  // Symbol
-  const [symbolTab, setSymbolTab] = useState<'preset' | 'custom'>('preset');
-  const [selectedSymbol, setSelectedSymbol] = useState<SymbolItem>(SYMBOLS_DATABASE[0]);
-  const [symbolSearchQuery, setSymbolSearchQuery] = useState('');
+  // Election symbol upload
+  const [symbolUrl, setSymbolUrl] = useState<string | null>(null);
   const [symbolPreview, setSymbolPreview] = useState<string | null>(null);
   const [isUploadingSymbol, setIsUploadingSymbol] = useState(false);
 
@@ -107,6 +97,25 @@ export const DesignStudioPage: React.FC = () => {
     };
     fetchTemplates();
   }, [showToast]);
+
+  useEffect(() => {
+    designTemplatesApi.listMyDesigns().then(setSavedDesigns).catch(() => setSavedDesigns([]));
+    designTemplatesApi.listSharedDesigns().then(setSharedDesigns).catch(() => setSharedDesigns([]));
+  }, [view, showSavedPosters]);
+
+  useEffect(() => {
+    const loadRecipients = async () => {
+      try {
+        const response = await usersApi.list({ page_size: 100 });
+        const items = response?.items ?? [];
+        const currentUser = JSON.parse(localStorage.getItem('ew_user') ?? 'null');
+        setShareRecipients(items.filter((user: any) => user?.id && user.id !== currentUser?.id));
+      } catch {
+        setShareRecipients([]);
+      }
+    };
+    loadRecipients();
+  }, []);
 
   // Handle Candidate Autofill from URL Query Param (?candidateId=...)
   useEffect(() => {
@@ -139,14 +148,10 @@ export const DesignStudioPage: React.FC = () => {
             setPhotoPreview(autofill.photoPreview);
           }
 
-          if (cand.symbol) {
-            if (cand.symbol.startsWith('http') || cand.symbol.startsWith('/')) {
-              setSymbolTab('custom');
-              setSymbolPreview(toAssetUrl(cand.symbol));
-            } else {
-              setSymbolTab('preset');
-              setSelectedSymbol(autofill.symbolItem);
-            }
+          // Autofill election symbol if it's an image URL
+          if (cand.symbol && (cand.symbol.startsWith('http') || cand.symbol.startsWith('/'))) {
+            setSymbolUrl(cand.symbol);
+            setSymbolPreview(cand.symbol);
           }
 
           if (autofill.recommendedTemplate) {
@@ -163,34 +168,10 @@ export const DesignStudioPage: React.FC = () => {
     loadCandidateData();
   }, [candidateIdParam, templates, activeElectionId]);
 
-  const filteredSymbols = SYMBOLS_DATABASE.filter(s =>
-    s.name.toLowerCase().includes(symbolSearchQuery.toLowerCase()) ||
-    s.keywords.toLowerCase().includes(symbolSearchQuery.toLowerCase())
-  );
-
   const handleSelectTemplate = (template: DesignTemplate) => {
     setSelectedTemplate(template);
     setView('editor');
     // Keep user's entered form data when changing templates!
-  };
-
-  const handleLogoUpload = async (file: File) => {
-    setIsUploadingLogo(true);
-    try {
-      const validation = validateMediaFile(file);
-      if (!validation.valid) {
-        showToast(validation.error || 'Invalid file', 'error');
-        return;
-      }
-      const uploaded = await designTemplatesApi.uploadAsset(file);
-      const url = toAssetUrl(uploaded.url);
-      setLogoUrl(url);
-      setLogoPreview(url);
-    } catch {
-      showToast('Logo upload failed.', 'error');
-    } finally {
-      setIsUploadingLogo(false);
-    }
   };
 
   const handlePhotoUpload = async (file: File) => {
@@ -224,16 +205,18 @@ export const DesignStudioPage: React.FC = () => {
         setIsUploadingSymbol(false);
         return;
       }
-
       const uploaded = await designTemplatesApi.uploadAsset(file);
-      setSymbolPreview(toAssetUrl(uploaded.url));
-      showToast(t('symbolUploadedSuccessfully'), 'success');
-    } catch (err: any) {
-      showToast(t('symbolUploadFailed'), 'error');
+      const url = toAssetUrl(uploaded.url);
+      setSymbolUrl(url);
+      setSymbolPreview(url);
+      showToast('Election symbol uploaded!', 'success');
+    } catch {
+      showToast('Symbol upload failed.', 'error');
     } finally {
       setIsUploadingSymbol(false);
     }
   };
+
 
   const validateForm = (): boolean => {
     if (!candidateName.trim()) {
@@ -281,17 +264,37 @@ export const DesignStudioPage: React.FC = () => {
           slogan,
           contactNumber,
           candidatePhotoUrl,
-          logoUrl,
-          symbol: symbolTab === 'preset' ? selectedSymbol?.symbol : symbolPreview,
-          symbolName: symbolTab === 'preset' ? selectedSymbol?.name : 'Custom symbol',
+          symbolUrl,
         },
         preview_image_url: previewImageUrl
       });
-      showToast('Poster design saved to your library!', 'success');
+      const refreshed = await designTemplatesApi.listMyDesigns();
+      setSavedDesigns(refreshed);
+      showToast(t('posterSavedLibrary'), 'success');
     } catch (err: any) {
       showToast('Failed to save design: ' + (err?.message || 'Server error'), 'error');
     } finally {
       setIsSavingDesign(false);
+    }
+  };
+
+  const handleSharePoster = async () => {
+    if (!shareDesignId || shareRecipientIds.length === 0) {
+      showToast(t('noRecipientsFound'), 'error');
+      return;
+    }
+    setIsSharingPoster(true);
+    try {
+      await designTemplatesApi.shareDesign(shareDesignId, shareRecipientIds);
+      showToast(t('sharePosterSuccess'), 'success');
+      setShareDesignId(null);
+      setShareRecipientIds([]);
+      const refreshed = await designTemplatesApi.listMyDesigns();
+      setSavedDesigns(refreshed);
+    } catch (err: any) {
+      showToast(err?.response?.data?.detail || 'Failed to share poster', 'error');
+    } finally {
+      setIsSharingPoster(false);
     }
   };
 
@@ -328,6 +331,65 @@ export const DesignStudioPage: React.FC = () => {
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">{t('studioSub')}</p>
         </div>
+        <Button size="sm" variant="outline" onClick={() => setShowSavedPosters((value) => !value)}>
+          {showSavedPosters ? t('studioTemplates') : t('savedPosters')}
+        </Button>
+
+        {showSavedPosters && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {savedDesigns.map((design) => (
+                <Card key={design.id} className="space-y-3 p-3">
+                  {design.preview_image_url && <img src={resolveAssetUrl(design.preview_image_url)} alt={design.title} className="aspect-[4/5] w-full rounded-lg object-cover border" />}
+                  <div className="text-sm font-bold text-slate-900">{design.title}</div>
+                  <div className="text-xs text-slate-500">{new Date(design.created_at).toLocaleString()}</div>
+                  <div className="flex gap-2">
+                    {design.preview_image_url && <a className="flex-1" href={resolveAssetUrl(design.preview_image_url)} download><Button size="sm" variant="primary" className="w-full">{t('download')}</Button></a>}
+                    <Button size="sm" variant="outline" onClick={() => { setShareDesignId(design.id); setShareRecipientIds([]); }}> {t('sharePoster')} </Button>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={async () => { await designTemplatesApi.deleteDesign(design.id); setSavedDesigns((items) => items.filter((item) => item.id !== design.id)); }}>{t('delete')}</Button>
+                </Card>
+              ))}
+            </div>
+
+            {sharedDesigns.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="text-sm font-extrabold text-slate-900">{t('sharedWithMe')}</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {sharedDesigns.map((design) => (
+                    <Card key={design.id} className="space-y-3 p-3">
+                      {design.preview_image_url && <img src={resolveAssetUrl(design.preview_image_url)} alt={design.title} className="aspect-[4/5] w-full rounded-lg object-cover border" />}
+                      <div className="text-sm font-bold text-slate-900">{design.title}</div>
+                      <div className="text-xs text-slate-500">{new Date(design.created_at).toLocaleString()}</div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {shareDesignId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+            <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+              <h3 className="text-base font-extrabold text-slate-900">{t('sharePosterTitle')}</h3>
+              <div className="mt-4 space-y-3">
+                {shareRecipients.length === 0 ? <p className="text-xs text-slate-500">{t('noRecipientsFound')}</p> : shareRecipients.map((user: any) => (
+                  <label key={user.id} className="flex items-center gap-2 rounded-lg border border-slate-200 p-2 text-sm text-slate-700">
+                    <input type="checkbox" checked={shareRecipientIds.includes(user.id)} onChange={(e) => {
+                      setShareRecipientIds((prev) => e.target.checked ? [...prev, user.id] : prev.filter((id) => id !== user.id));
+                    }} />
+                    <span>{user.first_name} {user.last_name}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="mt-5 flex gap-2 justify-end">
+                <Button size="sm" variant="outline" onClick={() => { setShareDesignId(null); setShareRecipientIds([]); }}>{t('cancel')}</Button>
+                <Button size="sm" variant="primary" onClick={handleSharePoster} disabled={isSharingPoster}>{isSharingPoster ? 'Sharing...' : t('sharePoster')}</Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div>
           <h2 className="text-sm font-extrabold text-slate-900 mb-4 flex items-center gap-2">
@@ -392,6 +454,13 @@ export const DesignStudioPage: React.FC = () => {
           >
             Back
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => { setShowSavedPosters(true); setView('gallery'); }}
+          >
+            {t('savedPosters')}
+          </Button>
           <div>
             <h1 className="text-lg sm:text-xl font-extrabold font-heading text-slate-900">
               {selectedTemplate?.name}
@@ -432,18 +501,20 @@ export const DesignStudioPage: React.FC = () => {
               <Award className="w-4 h-4 text-sky-600" />
               Basic Information
             </h3>
-            <FormInput
+            <TransliteratingTextInput
               label="Candidate Name *"
               value={candidateName}
               onChange={(e) => setCandidateName(e.target.value)}
               placeholder="e.g., Rameshwar Patel"
+              alwaysTransliterate={true}
               required
             />
-            <FormInput
+            <TransliteratingTextInput
               label="Position / Post *"
               value={position}
               onChange={(e) => setPosition(e.target.value)}
               placeholder="e.g., Sarpanch, Panch, Councillor"
+              alwaysTransliterate={true}
               required
             />
             <div className="grid grid-cols-2 gap-3">
@@ -463,30 +534,13 @@ export const DesignStudioPage: React.FC = () => {
                 placeholder="e.g., 001"
               />
             </div>
-            <FormInput
+            <TransliteratingTextInput
               label="Contact Number"
               value={contactNumber}
               onChange={(e) => setContactNumber(e.target.value)}
               placeholder="+91 98XXXX XXXX"
+              alwaysTransliterate={true}
             />
-          </Card>
-
-          <Card className="space-y-3">
-            <h3 className="font-heading font-extrabold text-sm text-slate-900">Campaign Logo</h3>
-            {logoPreview ? (
-              <div className="flex items-center gap-3">
-                <img src={logoPreview} alt="Campaign logo" className="w-20 h-20 object-contain rounded-lg border border-slate-200 bg-white" />
-                <Button variant="outline" size="sm" onClick={() => { setLogoUrl(null); setLogoPreview(null); }} disabled={isUploadingLogo}>Remove</Button>
-              </div>
-            ) : (
-              <FileDropzone
-                onFileSelect={handleLogoUpload}
-                accept=".jpg,.jpeg,.png,.webp"
-                title={isUploadingLogo ? 'Uploading...' : 'Upload campaign logo'}
-                subtitle="Optional logo for the generated design"
-                className="min-h-[100px]"
-              />
-            )}
           </Card>
 
           {/* Campaign Message */}
@@ -494,11 +548,12 @@ export const DesignStudioPage: React.FC = () => {
             <h3 className="font-heading font-extrabold text-sm text-slate-900">
               Campaign Message / नारा
             </h3>
-            <textarea
+            <TransliteratingTextArea
               value={slogan}
               onChange={(e) => setSlogan(e.target.value)}
               placeholder="Enter your campaign slogan or message"
               className="w-full p-3 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-400 focus:border-transparent outline-none"
+              alwaysTransliterate={true}
               rows={3}
             />
             <p className="text-[11px] text-slate-500">
@@ -550,115 +605,41 @@ export const DesignStudioPage: React.FC = () => {
 
           {/* Election Symbol */}
           <Card className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-heading font-extrabold text-sm text-slate-900 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                Election Symbol
-              </h3>
-              <span className="text-[10px] font-bold text-slate-500">
-                {symbolTab === 'preset' && selectedSymbol ? (
-                  <>Selected: {selectedSymbol.symbol}</>
-                ) : (
-                  <>Custom Upload</>
-                )}
-              </span>
-            </div>
-
-            {/* Symbol Tabs */}
-            <div className="flex gap-2 border-b border-slate-200">
-              <button
-                onClick={() => setSymbolTab('preset')}
-                className={`px-3 py-2 text-xs font-bold transition-all relative ${
-                  symbolTab === 'preset'
-                    ? 'text-sky-600'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Preset Symbols
-                {symbolTab === 'preset' && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-600" />
-                )}
-              </button>
-              <button
-                onClick={() => setSymbolTab('custom')}
-                className={`px-3 py-2 text-xs font-bold transition-all relative ${
-                  symbolTab === 'custom'
-                    ? 'text-sky-600'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Custom Upload
-                {symbolTab === 'custom' && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-600" />
-                )}
-              </button>
-            </div>
-
-            {/* Preset Symbols */}
-            {symbolTab === 'preset' && (
-              <>
-                <FormInput
-                  placeholder="Search symbols..."
-                  leftIcon={<Search className="w-4 h-4" />}
-                  value={symbolSearchQuery}
-                  onChange={(e) => setSymbolSearchQuery(e.target.value)}
-                />
-                <div className="grid grid-cols-5 sm:grid-cols-6 gap-2 max-h-[200px] overflow-y-auto p-2 bg-slate-50 rounded-lg border border-slate-200">
-                  {filteredSymbols.map((item) => (
-                    <button
-                      key={item.name}
-                      type="button"
-                      onClick={() => { setSelectedSymbol(item); setSymbolTab('preset'); }}
-                      className={`p-2 rounded-lg border text-center transition-all text-lg ${
-                        selectedSymbol.symbol === item.symbol
-                          ? 'border-sky-500 bg-sky-100 ring-2 ring-sky-400'
-                          : 'border-slate-200 bg-white hover:bg-slate-100'
-                      }`}
-                      title={item.name}
-                    >
-                      {item.symbol}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {/* Custom Symbol */}
-            {symbolTab === 'custom' && (
-              <>
-                {symbolPreview ? (
-                  <div className="flex gap-3 items-end">
-                    <div className="w-20 h-20 rounded-lg overflow-hidden border-2 border-sky-300 shadow-sm flex-shrink-0">
-                      <img
-                        src={symbolPreview}
-                        alt="Custom Symbol"
-                        className="w-full h-full object-contain bg-white"
-                      />
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSymbolPreview(null);
-                      }}
-                      disabled={isUploadingSymbol}
-                    >
-                      <X className="w-3.5 h-3.5 mr-1" />
-                      Remove
-                    </Button>
-                  </div>
-                ) : (
-                  <FileDropzone
-                    onFileSelect={handleSymbolUpload}
-                    accept=".jpg,.jpeg,.png,.webp"
-                    title={isUploadingSymbol ? 'Uploading...' : 'Upload custom symbol'}
-                    subtitle="Drag & drop or click to browse"
-                    className="min-h-[100px]"
+            <h3 className="font-heading font-extrabold text-sm text-slate-900 flex items-center gap-2">
+              <span className="text-lg">🗳️</span>
+              चुनाव चिह्न (Election Symbol)
+            </h3>
+            <p className="text-xs text-slate-600">
+              JPG, PNG, WebP • Square format recommended, Max 5MB
+            </p>
+            {symbolPreview ? (
+              <div className="flex gap-3 items-end">
+                <div className="w-24 h-24 rounded-lg overflow-hidden border-2 border-amber-300 shadow-sm flex-shrink-0 bg-amber-50">
+                  <img
+                    src={symbolPreview}
+                    alt="Election Symbol"
+                    className="w-full h-full object-contain"
                   />
-                )}
-              </>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setSymbolUrl(null); setSymbolPreview(null); }}
+                  className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 transition-colors cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" /> Remove
+                </button>
+              </div>
+            ) : (
+              <FileDropzone
+                onFileSelect={handleSymbolUpload}
+                accept=".jpg,.jpeg,.png,.webp"
+                title={isUploadingSymbol ? 'Uploading...' : 'Upload election symbol'}
+                subtitle="Drag & drop or click to browse"
+                className="min-h-[120px]"
+              />
             )}
           </Card>
+
         </div>
 
         {/* Right Col: Live Canvas Preview (5 Cols) */}
@@ -698,9 +679,7 @@ export const DesignStudioPage: React.FC = () => {
         slogan={slogan}
         contactNumber={contactNumber}
         photoUrl={photoPreview}
-        symbolMode={symbolTab}
-        symbolValue={symbolTab === 'preset' ? selectedSymbol.symbol : (symbolPreview || '')}
-        logoUrl={logoPreview}
+        symbolUrl={symbolPreview}
         templateLayout={selectedTemplate?.layout_json}
         onRenderStateChange={setIsRenderingCanvas}
       />
@@ -720,10 +699,8 @@ interface RenderCanvasProps {
   slogan: string;
   contactNumber: string;
   photoUrl: string | null;
-  symbolMode: 'preset' | 'custom';
-  symbolValue: string;
+  symbolUrl?: string | null;
   templateLayout?: any;
-  logoUrl: string | null;
   onRenderStateChange: (isRendering: boolean) => void;
 }
 
@@ -758,10 +735,8 @@ const RenderCanvas: React.FC<RenderCanvasProps> = ({
   slogan,
   contactNumber,
   photoUrl,
-  symbolMode,
-  symbolValue,
+  symbolUrl,
   templateLayout,
-  logoUrl,
   onRenderStateChange
 }) => {
   useEffect(() => {
@@ -800,41 +775,33 @@ const RenderCanvas: React.FC<RenderCanvasProps> = ({
       // Data bindings dictionary
       const values: Record<string, string> = {
         candidate_name: candidateName.trim(),
+        position: position.trim(),
+        ward_no: wardNo.trim() ? `वार्ड: ${wardNo.trim()}` : '',
+        ballot_no: ballotNo.trim() ? `क्रमांक: ${ballotNo.trim()}` : '',
+        slogan: slogan.trim(),
+        contact: contactNumber.trim(),
         candidateName: candidateName.trim(),
         name: candidateName.trim(),
         full_name: candidateName.trim(),
         hindiName: candidateName.trim(),
-
-        position: position.trim(),
         post: position.trim(),
         post_title: position.trim(),
         position_title: position.trim(),
-
-        ward_no: wardNo.trim(),
-        ward: wardNo.trim(),
-        wardNo: wardNo.trim(),
-
-        ballot_no: ballotNo.trim(),
-        ballot: ballotNo.trim(),
-        ballot_number: ballotNo.trim(),
-        ballotNo: ballotNo.trim(),
-        serial_number: ballotNo.trim(),
-        sequence_number: ballotNo.trim(),
-
-        slogan: slogan.trim(),
+        ward: wardNo.trim() ? `वार्ड: ${wardNo.trim()}` : '',
+        wardNo: wardNo.trim() ? `वार्ड: ${wardNo.trim()}` : '',
+        ballot: ballotNo.trim() ? `क्रमांक: ${ballotNo.trim()}` : '',
+        ballot_number: ballotNo.trim() ? `क्रमांक: ${ballotNo.trim()}` : '',
+        ballotNo: ballotNo.trim() ? `क्रमांक: ${ballotNo.trim()}` : '',
+        serial_number: ballotNo.trim() ? `क्रमांक: ${ballotNo.trim()}` : '',
+        sequence_number: ballotNo.trim() ? `क्रमांक: ${ballotNo.trim()}` : '',
         message: slogan.trim(),
         tagline: slogan.trim(),
         nara: slogan.trim(),
-
-        contact: contactNumber.trim(),
-        phone: contactNumber.trim(),
-        mobile: contactNumber.trim(),
         contact_number: contactNumber.trim(),
         contactNumber: contactNumber.trim(),
-
-        symbol_name: symbolMode === 'preset' ? (symbolValue ? (SYMBOLS_DATABASE.find(s => s.symbol === symbolValue)?.name || 'चुनाव चिह्न') : 'चुनाव चिह्न') : 'चुनाव चिह्न',
-        symbolName: symbolMode === 'preset' ? (symbolValue ? (SYMBOLS_DATABASE.find(s => s.symbol === symbolValue)?.name || 'चुनाव चिह्न') : 'चुनाव चिह्न') : 'चुनाव चिह्न',
-        symbol: symbolValue
+        phone: contactNumber.trim(),
+        mobile: contactNumber.trim(),
+        symbol_name: ''
       };
 
       const elements = [...(templateLayout.elements || [])].sort((a: any, b: any) => (a.z_index || 0) - (b.z_index || 0));
@@ -842,9 +809,9 @@ const RenderCanvas: React.FC<RenderCanvasProps> = ({
         if (cancelled) return;
         ctx.save();
 
-        // 1. IMAGE & LOGO ELEMENTS
-        if (el.type === 'image' || el.type === 'logo') {
-          const source = el.type === 'logo' ? logoUrl : (el.value || el.src);
+        // 1. IMAGE ELEMENTS
+        if (el.type === 'image') {
+          const source = el.value || el.src;
           if (source) {
             try {
               const image = await loadImage(source);
@@ -854,10 +821,8 @@ const RenderCanvas: React.FC<RenderCanvasProps> = ({
               }
               ctx.drawImage(image, el.x, el.y, el.width, el.height);
             } catch {
-              if (el.type !== 'logo') {
-                ctx.fillStyle = templateLayout.bg_color || '#ffffff';
-                ctx.fillRect(el.x, el.y, el.width, el.height);
-              }
+              ctx.fillStyle = templateLayout.bg_color || '#ffffff';
+              ctx.fillRect(el.x, el.y, el.width, el.height);
             }
           }
         }
@@ -884,7 +849,53 @@ const RenderCanvas: React.FC<RenderCanvasProps> = ({
             }
           }
         }
-        // 3. CANDIDATE PHOTO ELEMENT
+        // 3. ELECTION SYMBOL ELEMENT
+        else if (el.type === 'symbol') {
+          const symSrc = symbolUrl;
+          if (symSrc) {
+            try {
+              const image = await loadImage(symSrc);
+              const radius = el.border_radius !== undefined ? el.border_radius : 8;
+              if (radius > 0) {
+                drawCanvasRoundedRect(ctx, el.x, el.y, el.width, el.height, radius);
+                ctx.clip();
+              }
+              // contain mode: preserve aspect ratio
+              const imgRatio = image.width / image.height;
+              const boxRatio = el.width / el.height;
+              let renderW = el.width;
+              let renderH = el.height;
+              let offsetX = 0;
+              let offsetY = 0;
+              if (imgRatio > boxRatio) {
+                renderH = el.width / imgRatio;
+                offsetY = (el.height - renderH) / 2;
+              } else {
+                renderW = el.height * imgRatio;
+                offsetX = (el.width - renderW) / 2;
+              }
+              ctx.drawImage(image, el.x + offsetX, el.y + offsetY, renderW, renderH);
+            } catch {
+              drawCanvasRoundedRect(ctx, el.x, el.y, el.width, el.height, el.border_radius || 8);
+              ctx.fillStyle = '#fef3c7';
+              ctx.fill();
+            }
+          } else {
+            // Placeholder box
+            drawCanvasRoundedRect(ctx, el.x, el.y, el.width, el.height, el.border_radius || 8);
+            ctx.fillStyle = '#fef3c7';
+            ctx.fill();
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.fillStyle = '#92400e';
+            ctx.font = `bold ${Math.min(el.width, el.height) * 0.3}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🗳️', el.x + el.width / 2, el.y + el.height / 2);
+          }
+        }
+        // 4. CANDIDATE PHOTO ELEMENT
         else if (el.type === 'photo') {
           const radius = el.border_radius !== undefined ? el.border_radius : 24;
           const photoSrc = photoUrl;
@@ -934,32 +945,12 @@ const RenderCanvas: React.FC<RenderCanvasProps> = ({
             ctx.fillText(initial, el.x + el.width / 2, el.y + el.height / 2);
           }
         }
-        // 4. ELECTION SYMBOL ELEMENT
-        else if (el.type === 'symbol') {
-          const symbolVal = symbolValue;
-          if (symbolVal) {
-            if (symbolMode === 'preset' || (!symbolVal.startsWith('http') && !symbolVal.startsWith('data:') && !symbolVal.startsWith('/'))) {
-              ctx.font = `${el.font_size || 64}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.fillStyle = el.color || '#000000';
-              ctx.fillText(symbolVal, el.x + el.width / 2, el.y + el.height / 2);
-            } else {
-              try {
-                const image = await loadImage(symbolVal);
-                const scale = Math.min(el.width / image.width, el.height / image.height) * 0.9;
-                const destW = image.width * scale;
-                const destH = image.height * scale;
-                const destX = el.x + (el.width - destW) / 2;
-                const destY = el.y + (el.height - destH) / 2;
-                ctx.drawImage(image, destX, destY, destW, destH);
-              } catch { /* graceful fallback */ }
-            }
-          }
-        }
-        // 5. TEXT ELEMENT WITH COMPREHENSIVE BINDING & SAFETY CHECKS
+        // 4. TEXT ELEMENT WITH COMPREHENSIVE BINDING & SAFETY CHECKS
         else if (el.type === 'text') {
-          const sourceText = el.placeholder || el.value || '';
+          let sourceText = el.placeholder || el.value || '';
+          if (sourceText.includes('') || sourceText.includes('?')) {
+            sourceText = 'आपका अपना'; // Patch corrupted placeholder text from DB
+          }
           // Replace {{variable}} tokens
           let text = sourceText.replace(/\{\{\s*([\w]+)\s*\}\}/g, (_match: string, key: string) => values[key] ?? '').trim();
 
@@ -1013,9 +1004,7 @@ const RenderCanvas: React.FC<RenderCanvasProps> = ({
     slogan,
     contactNumber,
     photoUrl,
-    symbolMode,
-    symbolValue,
-    logoUrl,
+    symbolUrl,
     templateLayout,
     onRenderStateChange
   ]);

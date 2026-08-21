@@ -9,6 +9,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { FormInput } from '../components/ui/FormInput';
+import { TransliteratingTextInput } from '../components/ui/TransliteratingTextInput';
 import { Select } from '../components/ui/Select';
 import { Expense, BudgetSummary } from '../types';
 
@@ -217,7 +218,7 @@ export const ExpensesPage: React.FC = () => {
             </Select>
           </div>
 
-          <FormInput
+          <TransliteratingTextInput
             label="Vendor &amp; Purpose Note"
             placeholder="e.g. Rampur Digital Flex Print (500 Handbills)"
             value={note}

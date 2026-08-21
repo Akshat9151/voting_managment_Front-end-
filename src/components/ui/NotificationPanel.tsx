@@ -4,7 +4,7 @@ import { CheckSquare, Map, Trash2, Check } from 'lucide-react';
 
 interface Notification {
   id: string;
-  type: 'task-assigned' | 'activity-submitted' | 'deadline-approaching';
+  type: 'task-assigned' | 'activity-submitted' | 'deadline-approaching' | 'poster-shared';
   title: string;
   message: string;
   timestamp: string;
@@ -44,6 +44,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         return <Map className="w-4 h-4 text-emerald-600" />;
       case 'deadline-approaching':
         return <CheckSquare className="w-4 h-4 text-amber-600" />;
+      case 'poster-shared':
+        return <CheckSquare className="w-4 h-4 text-violet-600" />;
     }
   };
 
@@ -56,6 +58,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         return 'bg-emerald-50 border-l-4 border-emerald-500';
       case 'deadline-approaching':
         return 'bg-amber-50 border-l-4 border-amber-500';
+      case 'poster-shared':
+        return 'bg-violet-50 border-l-4 border-violet-500';
     }
   };
 

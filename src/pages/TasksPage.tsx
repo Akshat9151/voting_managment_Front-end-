@@ -6,18 +6,20 @@ import { CheckSquare, Plus, PencilLine, Trash2 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { FormInput } from '../components/ui/FormInput';
-import { Textarea } from '../components/ui/Textarea';
+import { TransliteratingTextInput, TransliteratingTextArea } from '../components/ui/TransliteratingTextInput';
 import { Select } from '../components/ui/Select';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
-import { tasksApi } from '../services/api';
+import { tasksApi, usersApi } from '../services/api';
 
 interface Task {
   id: string;
   title: string;
   description: string;
   assignedTo: string;
+  assignedToUserId: string;
+  assignedToRole: string;
   status: 'pending' | 'in-progress' | 'completed';
   priority: 'high' | 'medium' | 'low';
   deadline: string;
@@ -28,7 +30,7 @@ type TaskPriority = 'high' | 'medium' | 'low';
 
 export const TasksPage: React.FC = () => {
   const { t } = useLanguage();
-  const { user, currentRole } = useAuth();
+  const { currentRole } = useAuth();
   const { showToast } = useToast();
 
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -36,10 +38,14 @@ export const TasksPage: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'in-progress' | 'completed'>('all');
+  const [showMine, setShowMine] = useState(false);
+  const [assignees, setAssignees] = useState<any[]>([]);
+  const [assigneeSearch, setAssigneeSearch] = useState('');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     assignedTo: '',
+    assignedToUserId: '',
     priority: 'medium' as TaskPriority,
     deadline: ''
   });
@@ -49,14 +55,16 @@ export const TasksPage: React.FC = () => {
 
   React.useEffect(() => {
     let active = true;
-    tasksApi.list()
+    tasksApi.list({ mine: showMine })
       .then((items) => {
         if (!active) return;
         setTasks(items.map((item) => ({
           id: item.id,
           title: item.title,
           description: item.description || '',
-          assignedTo: item.assigned_volunteer_name || item.assigned_to_id || 'Unassigned',
+          assignedTo: item.assigned_to_name || item.assigned_volunteer_name || 'Unassigned',
+          assignedToUserId: item.assigned_to_id || '',
+          assignedToRole: item.assigned_to_role || '',
           status: item.status === 'in_progress' ? 'in-progress' : item.status,
           priority: item.priority === 'urgent' ? 'high' : item.priority,
           deadline: item.deadline || '',
@@ -65,11 +73,21 @@ export const TasksPage: React.FC = () => {
       })
       .catch((err) => showToast(err?.response?.data?.detail || 'Unable to load tasks.', 'error'));
     return () => { active = false; };
-  }, [showToast]);
+  }, [showMine, showToast]);
+
+  React.useEffect(() => {
+    if (!isAdmin) return;
+    usersApi.list({ page_size: 100 }).then(({ items }) => {
+      setAssignees((items ?? []).filter((member: any) => {
+        const role = String(member.roles?.[0] ?? member.role ?? '').toUpperCase();
+        return role.includes('ADMIN') || role.includes('VOLUNTEER');
+      }));
+    }).catch((err) => showToast(err?.response?.data?.detail || 'Unable to load team members.', 'error'));
+  }, [isAdmin, showToast]);
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.assignedTo || !formData.deadline) {
+    if (!formData.title || !formData.assignedToUserId || !formData.deadline) {
       showToast(t('fillAllRequiredFields'), 'error');
       return;
     }
@@ -78,24 +96,29 @@ export const TasksPage: React.FC = () => {
       const payload = {
         title: formData.title,
         description: formData.description,
-        assigned_volunteer_name: formData.assignedTo,
+        assigned_to_id: formData.assignedToUserId,
         priority: formData.priority,
         deadline: formData.deadline,
       };
-      const created = editingTask
-        ? await tasksApi.update(editingTask.id, payload)
-        : await tasksApi.create(payload);
-      setTasks((current) => [{
-        id: created.id,
-        title: created.title,
-        description: created.description || '',
-        assignedTo: created.assigned_volunteer_name || 'Unassigned',
-        status: created.status === 'in_progress' ? 'in-progress' : created.status,
-        priority: created.priority === 'urgent' ? 'high' : created.priority,
-        deadline: created.deadline || '',
-        createdAt: created.created_at || '',
-      }, ...current]);
-      setFormData({ title: '', description: '', assignedTo: '', priority: 'medium', deadline: '' });
+      if (editingTask) {
+        await tasksApi.update(editingTask.id, payload);
+      } else {
+        await tasksApi.create(payload);
+      }
+      const refreshedTasks = await tasksApi.list({ mine: showMine });
+      setTasks(refreshedTasks.map((item) => ({
+        id: item.id,
+        title: item.title,
+        description: item.description || '',
+        assignedTo: item.assigned_to_name || item.assigned_volunteer_name || 'Unassigned',
+        assignedToUserId: item.assigned_to_id || '',
+        assignedToRole: item.assigned_to_role || '',
+        status: item.status === 'in_progress' ? 'in-progress' : item.status,
+        priority: item.priority === 'urgent' ? 'high' : item.priority,
+        deadline: item.deadline || '',
+        createdAt: item.created_at || '',
+      })));
+      setFormData({ title: '', description: '', assignedTo: '', assignedToUserId: '', priority: 'medium', deadline: '' });
       setShowCreateModal(false);
       setEditingTask(null);
       showToast(editingTask ? t('taskUpdated') : t('taskCreated'), 'success');
@@ -106,7 +129,7 @@ export const TasksPage: React.FC = () => {
 
   const openCreateTask = () => {
     setEditingTask(null);
-    setFormData({ title: '', description: '', assignedTo: '', priority: 'medium', deadline: '' });
+    setFormData({ title: '', description: '', assignedTo: '', assignedToUserId: '', priority: 'medium', deadline: '' });
     setShowCreateModal(true);
   };
 
@@ -116,6 +139,7 @@ export const TasksPage: React.FC = () => {
       title: task.title,
       description: task.description,
       assignedTo: task.assignedTo === 'Unassigned' ? '' : task.assignedTo,
+      assignedToUserId: task.assignedToUserId,
       priority: task.priority,
       deadline: task.deadline,
     });
@@ -150,11 +174,11 @@ export const TasksPage: React.FC = () => {
     ? tasks 
     : tasks.filter(t => t.status === filterStatus);
 
-  const myTasks = isVolunteer 
-    ? tasks.filter(t => t.assignedTo === user?.first_name || t.assignedTo.includes(user?.last_name || ''))
-    : tasks;
-
-  const displayTasks = isVolunteer ? myTasks : filteredTasks;
+  const displayTasks = filteredTasks;
+  const visibleAssignees = assignees.filter((member) => {
+    const name = `${member.first_name ?? ''} ${member.last_name ?? ''}`.trim();
+    return name.toLowerCase().includes(assigneeSearch.toLowerCase());
+  }).filter((member) => currentRole === 'SUPER_ADMIN' || String(member.roles?.[0] ?? member.role ?? '').toUpperCase().includes('VOLUNTEER'));
 
   const getStatusColor = (status: Task['status']) => {
     switch (status) {
@@ -205,6 +229,11 @@ export const TasksPage: React.FC = () => {
       </div>
 
       {/* Filter Bar (Admin only) */}
+      {(isAdmin || isVolunteer) && (
+        <Button size="sm" variant="outline" onClick={() => setShowMine((value) => !value)}>
+          {showMine ? t('taskManagement') : t('myTasks')}
+        </Button>
+      )}
       {isAdmin && (
         <div className="flex flex-wrap gap-2">
           <button
@@ -271,7 +300,7 @@ export const TasksPage: React.FC = () => {
 
                 <div className="flex flex-wrap gap-2 mt-3">
                   <Badge variant="slate" className="text-[11px]">
-                    {t('assignedTo')}: {task.assignedTo}
+                    {t('assignedTo')}: {task.assignedTo} {task.assignedToRole && `(${task.assignedToRole})`}
                   </Badge>
                   <Badge 
                     variant="slate" 
@@ -327,7 +356,7 @@ export const TasksPage: React.FC = () => {
           title={editingTask ? 'Edit Task' : t('createTask')}
         >
           <form onSubmit={handleCreateTask} className="space-y-4">
-            <FormInput
+            <TransliteratingTextInput
               label={t('taskTitle')}
               type="text"
               value={formData.title}
@@ -336,7 +365,7 @@ export const TasksPage: React.FC = () => {
               required
             />
 
-            <Textarea
+            <TransliteratingTextArea
               label={t('taskDescription')}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -345,12 +374,25 @@ export const TasksPage: React.FC = () => {
 
             <FormInput
               label={t('assignToVolunteer')}
-              type="text"
-              value={formData.assignedTo}
-              onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
-              placeholder="Volunteer name or email"
-              required
+              value={assigneeSearch}
+              onChange={(e) => setAssigneeSearch(e.target.value)}
+              placeholder={t('searchAssignees')}
             />
+            <Select
+              label={t('assignedTeamMember')}
+              value={formData.assignedToUserId}
+              onChange={(e) => {
+                const selected = assignees.find((member) => member.id === e.target.value);
+                setFormData({ ...formData, assignedToUserId: e.target.value, assignedTo: selected ? `${selected.first_name} ${selected.last_name}`.trim() : '' });
+              }}
+              required
+            >
+              <option value="">{t('selectAssignee')}</option>
+              {visibleAssignees.map((member) => {
+                const role = String(member.roles?.[0] ?? member.role ?? '').replace('_', ' ');
+                return <option key={member.id} value={member.id}>{`${member.first_name} ${member.last_name}`.trim()} (${role})</option>;
+              })}
+            </Select>
 
             <div className="grid grid-cols-2 gap-3">
               <Select

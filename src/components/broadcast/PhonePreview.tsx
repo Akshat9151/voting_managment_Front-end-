@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { MessageCircle, Smartphone, Wifi, Battery, CheckCheck } from 'lucide-react';
 import { BroadcastChannel } from '../../types';
 
@@ -47,7 +47,7 @@ export const PhonePreview: React.FC<PhonePreviewProps> = ({
             {isWhatsApp ? <MessageCircle className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
           </div>
           <div>
-            <div className="text-xs font-bold leading-tight">ElectWin</div>
+            <div className="text-xs font-bold leading-tight">VoteVictory</div>
             <div className="text-[9px] text-emerald-200">Official Campaign Channel</div>
           </div>
         </div>

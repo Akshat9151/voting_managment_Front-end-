@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { Map, Plus, Camera, Clock, MapPin } from 'lucide-react';
+import { Map, Plus, Camera, Clock, MapPin, X } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { FormInput } from '../components/ui/FormInput';
-import { Textarea } from '../components/ui/Textarea';
+import { TransliteratingTextInput, TransliteratingTextArea } from '../components/ui/TransliteratingTextInput';
 import { Select } from '../components/ui/Select';
 import { FileDropzone } from '../components/ui/FileDropzone';
 import { Badge } from '../components/ui/Badge';
@@ -16,8 +16,11 @@ import { designTemplatesApi, fieldActivitiesApi } from '../services/api';
 
 interface FieldActivity {
   id: string;
+  title: string;
   volunteerId: string;
   volunteerName: string;
+  submittedByRole: string;
+  photoUrl?: string;
   activityType: string;
   location: string;
   dateTime: string;
@@ -35,9 +38,13 @@ export const FieldActivitiesPage: React.FC = () => {
   const [activities, setActivities] = useState<FieldActivity[]>([]);
 
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState('');
+  const [showMine, setShowMine] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [formData, setFormData] = useState({
+    title: '',
     activityType: 'door-to-door-campaign',
+    ward: '',
     location: '',
     dateTime: '',
     description: '',
@@ -46,32 +53,47 @@ export const FieldActivitiesPage: React.FC = () => {
 
   const isAdmin = currentRole === 'ADMIN' || currentRole === 'SUPER_ADMIN';
   const isVolunteer = currentRole === 'VOLUNTEER';
+  const canSubmit = currentRole === 'SUPER_ADMIN' || currentRole === 'ADMIN' || isVolunteer;
+  const assetUrl = (url?: string) => url && (url.startsWith('http') ? url : `http://localhost:8000${url}`);
+
+  useEffect(() => {
+    if (!formData.photos[0]) {
+      setPhotoPreviewUrl('');
+      return;
+    }
+    const url = URL.createObjectURL(formData.photos[0]);
+    setPhotoPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [formData.photos]);
 
   React.useEffect(() => {
     let active = true;
-    fieldActivitiesApi.list()
+    fieldActivitiesApi.list({ mine: showMine })
       .then((items) => {
         if (!active) return;
         setActivities(items.map((item) => ({
           id: item.id,
+          title: item.title || item.activity_type,
           volunteerId: item.volunteer_id || '',
           volunteerName: item.volunteer_name,
+          submittedByRole: item.submitted_by_role || 'VOLUNTEER',
           activityType: item.activity_type,
           location: item.location,
-          dateTime: item.created_at,
+          dateTime: item.date_time || item.created_at,
           description: item.description,
           status: item.status === 'Verified' ? 'approved' : item.status === 'Flagged' ? 'rejected' : 'pending',
           photosCount: item.photo_url ? 1 : 0,
+          photoUrl: assetUrl(item.photo_url),
           createdAt: item.created_at,
         })));
       })
       .catch((err) => showToast(err?.response?.data?.detail || 'Unable to load field activities.', 'error'));
     return () => { active = false; };
-  }, [showToast]);
+  }, [showMine, showToast]);
 
   const handleSubmitActivity = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.location || !formData.dateTime || !formData.description) {
+    if (!formData.title || !formData.ward || !formData.location || !formData.dateTime || !formData.description) {
       showToast(t('fillAllRequiredFields'), 'error');
       return;
     }
@@ -83,25 +105,31 @@ export const FieldActivitiesPage: React.FC = () => {
         photoUrl = uploaded.url;
       }
       const created = await fieldActivitiesApi.submit({
+        title: formData.title,
         volunteer_name: `${user?.first_name || ''} ${user?.last_name || ''}`.trim(),
         activity_type: formData.activityType,
+        ward: formData.ward,
         location: formData.location,
+        date_time: formData.dateTime,
         description: formData.description,
         photo_url: photoUrl,
       });
       setActivities((current) => [{
         id: created.id,
+        title: created.title || created.activity_type,
         volunteerId: created.volunteer_id || '',
         volunteerName: created.volunteer_name,
+        submittedByRole: created.submitted_by_role || currentRole,
         activityType: created.activity_type,
         location: created.location,
-        dateTime: created.created_at,
+        dateTime: created.date_time || created.created_at,
         description: created.description,
         status: 'pending',
         photosCount: created.photo_url ? 1 : 0,
+        photoUrl: assetUrl(created.photo_url),
         createdAt: created.created_at,
       }, ...current]);
-      setFormData({ activityType: 'door-to-door-campaign', location: '', dateTime: '', description: '', photos: [] });
+      setFormData({ title: '', activityType: 'door-to-door-campaign', ward: '', location: '', dateTime: '', description: '', photos: [] });
       setShowSubmitModal(false);
       showToast(t('activitySubmitted'), 'success');
     } catch (err: any) {
@@ -127,13 +155,7 @@ export const FieldActivitiesPage: React.FC = () => {
     ? activities
     : activities.filter(a => a.status === filterStatus);
 
-  const currentVolunteerName = `${user?.first_name || ''} ${user?.last_name || ''}`.trim().toLowerCase();
-  const displayActivities = isVolunteer
-    ? activities.filter((activity) =>
-        activity.volunteerId === user?.id ||
-        activity.volunteerName.trim().toLowerCase() === currentVolunteerName
-      )
-    : filteredActivities;
+  const displayActivities = filteredActivities;
 
   const getStatusColor = (status: FieldActivity['status']) => {
     switch (status) {
@@ -161,7 +183,7 @@ export const FieldActivitiesPage: React.FC = () => {
           </p>
         </div>
 
-        {isVolunteer && (
+        {canSubmit && (
           <Button
             onClick={() => setShowSubmitModal(true)}
             className="gap-2"
@@ -171,6 +193,12 @@ export const FieldActivitiesPage: React.FC = () => {
           </Button>
         )}
       </div>
+
+      {(isAdmin || isVolunteer) && (
+        <Button size="sm" variant="outline" onClick={() => setShowMine((value) => !value)}>
+          {showMine ? t('activityReview') : t('myActivitySubmissions')}
+        </Button>
+      )}
 
       {/* Filter Bar (Admin only) */}
       {isAdmin && (
@@ -233,16 +261,22 @@ export const FieldActivitiesPage: React.FC = () => {
                 <div className="flex-1 space-y-2">
                   <div>
                     <h3 className="font-bold text-slate-900">
-                      {activity.activityType.replace('-', ' ').toUpperCase()}
+                      {activity.title}
                     </h3>
                     {isAdmin && (
                       <p className="text-xs text-slate-500 mt-1">
-                        {t('submitBy')}: {activity.volunteerName}
+                        {t('submitBy')}: {activity.volunteerName} ({activity.submittedByRole})
                       </p>
                     )}
                   </div>
 
                   <p className="text-sm text-slate-700">{activity.description}</p>
+
+                  {activity.photoUrl && (
+                    <a href={activity.photoUrl} target="_blank" rel="noreferrer" className="block w-fit">
+                      <img src={activity.photoUrl} alt={t('activityPhotoPreview')} className="h-24 w-32 rounded-lg border border-slate-200 object-cover" />
+                    </a>
+                  )}
 
                   <div className="flex flex-wrap gap-2 mt-3">
                     <Badge variant="slate" className="text-[11px] gap-1 flex items-center">
@@ -267,7 +301,7 @@ export const FieldActivitiesPage: React.FC = () => {
                     {activity.status === 'rejected' && t('rejected')}
                   </Badge>
 
-                  {isAdmin && (
+                  {isAdmin && !showMine && (
                     <Select
                       value={activity.status}
                       onChange={(e) => handleStatusChange(activity.id, e.target.value as FieldActivity['status'])}
@@ -286,13 +320,19 @@ export const FieldActivitiesPage: React.FC = () => {
       )}
 
       {/* Submit Activity Modal */}
-      {isVolunteer && (
+      {canSubmit && (
         <Modal
           isOpen={showSubmitModal}
           onClose={() => setShowSubmitModal(false)}
           title={t('submitActivity')}
         >
           <form onSubmit={handleSubmitActivity} className="space-y-4">
+            <TransliteratingTextInput
+              label={t('activityTitle')}
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              required
+            />
             <Select
               label={t('activityType')}
               value={formData.activityType}
@@ -306,7 +346,14 @@ export const FieldActivitiesPage: React.FC = () => {
               <option value="other">Other</option>
             </Select>
 
-            <FormInput
+            <TransliteratingTextInput
+              label={t('activityWard')}
+              value={formData.ward}
+              onChange={(e) => setFormData({ ...formData, ward: e.target.value })}
+              required
+            />
+
+            <TransliteratingTextInput
               label={t('activityLocation') || t('activityLocation')}
               type="text"
               value={formData.location}
@@ -323,7 +370,7 @@ export const FieldActivitiesPage: React.FC = () => {
               required
             />
 
-            <Textarea
+            <TransliteratingTextArea
               label={t('activityDescription')}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -338,9 +385,19 @@ export const FieldActivitiesPage: React.FC = () => {
             />
 
             {formData.photos.length > 0 && (
-              <p className="text-xs text-slate-600">
-                {formData.photos.length} {t('filesSelected')}
-              </p>
+              <div className="relative w-fit">
+                <img src={photoPreviewUrl} alt={t('activityPhotoPreview')} className="h-24 w-32 rounded-lg border border-slate-200 object-cover" />
+                <button
+                  type="button"
+                  aria-label={t('removeActivityPhoto')}
+                  title={t('removeActivityPhoto')}
+                  onClick={() => setFormData({ ...formData, photos: [] })}
+                  className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-rose-600 text-white shadow hover:bg-rose-700"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+                <p className="mt-1 text-xs text-slate-600">{formData.photos.length} {t('filesSelected')}</p>
+              </div>
             )}
 
             <div className="flex gap-3 pt-4 border-t border-slate-200">

@@ -7,13 +7,18 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { VolunteerVoter, VolunteerVoterStatus } from '../types';
 import { useNavigate } from 'react-router-dom';
+import { useElection } from '../context/ElectionContext';
 
+import { FileDropzone } from '../components/ui/FileDropzone';
 export const VolunteerWardPage: React.FC = () => {
   const { showToast } = useToast();
   const navigate = useNavigate();
+  const { activeElectionId } = useElection();
 
   const [voters, setVoters] = useState<VolunteerVoter[]>([]);
   const [filter, setFilter] = useState<'all' | 'pending' | 'visited'>('all');
+    const [pendingImportJobId, setPendingImportJobId] = useState<string | null>(null);
+    const [isCancellingImport, setIsCancellingImport] = useState(false);
 
   useEffect(() => {
     loadWardVoters();
@@ -22,6 +27,43 @@ export const VolunteerWardPage: React.FC = () => {
   const loadWardVoters = async () => {
     const data = await api.getVolunteerVoters();
     setVoters(data);
+  };
+
+  const handleFileUpload = async (file: File) => {
+      try {
+        if (!activeElectionId) { showToast('Select an active election first', 'error'); return; }
+        const preview = await api.uploadVolunteerVoters(activeElectionId, file);
+        setPendingImportJobId(preview.job_id);
+        showToast(`Preview ready: ${preview.valid_count ?? 0} valid voters found. Confirm to add them.`, 'success');
+      } catch (err: any) {
+        showToast(err?.response?.data?.error?.message || err?.response?.data?.message || err?.response?.data?.detail || 'Upload failed', 'error');
+      }
+  };
+
+  const handleConfirmImport = async () => {
+      if (!pendingImportJobId) return;
+      try {
+        const report = await api.confirmVolunteerVoterImport(pendingImportJobId);
+        setPendingImportJobId(null);
+        showToast(`${report.successfully_imported ?? 0} voters imported successfully.`, 'success');
+        await loadWardVoters();
+      } catch (err: any) {
+        showToast(err?.response?.data?.message || 'Import confirmation failed', 'error');
+      }
+  };
+
+  const handleCancelImport = async () => {
+      if (!pendingImportJobId) return;
+      setIsCancellingImport(true);
+      try {
+        await api.cancelVolunteerVoterImport(pendingImportJobId);
+        setPendingImportJobId(null);
+        showToast('Import cancelled', 'info');
+      } catch (err: any) {
+        showToast(err?.response?.data?.message || err?.response?.data?.detail || 'Cancel failed', 'error');
+      } finally {
+        setIsCancellingImport(false);
+      }
   };
 
   const handleUpdateStatus = async (id: string, newStatus: VolunteerVoterStatus) => {
@@ -80,6 +122,28 @@ export const VolunteerWardPage: React.FC = () => {
       </div>
 
       {/* Filter Tabs */}
+        {/* File Dropzone for Bulk Voter Upload */}
+        <FileDropzone
+          onFileSelect={handleFileUpload}
+          accept=".csv,.xlsx,.xls"
+          title="Upload voter CSV/Excel file (bulk import)"
+          subtitle="Accepted formats: CSV, Excel (.xlsx, .xls)"
+        />
+
+        {pendingImportJobId && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm">
+            <span className="font-semibold text-amber-900">Voter import preview ready. Confirm to proceed?</span>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={handleCancelImport} disabled={isCancellingImport}>
+                {isCancellingImport ? 'Cancelling...' : 'Cancel'}
+              </Button>
+              <Button size="sm" variant="primary" onClick={handleConfirmImport}>
+                Confirm Import
+              </Button>
+            </div>
+          </div>
+        )}
+
       <div className="flex items-center gap-2 text-xs">
         {[
           { id: 'all', label: `All Elector Cards (${voters.length})` },

@@ -6,6 +6,7 @@ import { Palette, Calendar, UploadCloud, Save, Check, CreditCard, Moon, Sun } fr
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { FormInput } from '../components/ui/FormInput';
+import { TransliteratingTextInput } from '../components/ui/TransliteratingTextInput';
 import { Select } from '../components/ui/Select';
 import { FileDropzone } from '../components/ui/FileDropzone';
 import { Badge } from '../components/ui/Badge';
@@ -151,12 +152,12 @@ export const SettingsPage: React.FC = () => {
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormInput
+            <TransliteratingTextInput
               label="Campaign Title"
               value={campaignName}
               onChange={(e) => setCampaignName(e.target.value)}
             />
-            <FormInput
+            <TransliteratingTextInput
               label="Contesting Candidate"
               value={candidateName}
               onChange={(e) => setCandidateName(e.target.value)}

@@ -1,99 +1,159 @@
 import React, { useState } from 'react';
-import { api } from '../services/api';
-import { useToast } from '../context/ToastContext';
-import { useLanguage } from '../context/LanguageContext';
-import { useElection } from '../context/ElectionContext';
 import { ArrowLeft } from 'lucide-react';
-import { Card } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { FormInput } from '../components/ui/FormInput';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { useElection } from '../context/ElectionContext';
+import { useLanguage } from '../context/LanguageContext';
+import { useToast } from '../context/ToastContext';
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { FormInput } from '../components/ui/FormInput';
+import { TransliteratingNameInput } from '../components/ui/TransliteratingNameInput';
+import { TransliteratingTextInput } from '../components/ui/TransliteratingTextInput';
+import { FileDropzone } from '../components/ui/FileDropzone';
 
 export const VolunteerAddPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const { activeElectionId } = useElection();
   const { showToast } = useToast();
   const { t } = useLanguage();
-  const navigate = useNavigate();
-  const { activeElectionId } = useElection();
 
   const [name, setName] = useState('');
-  const [age, setAge] = useState<number>(35);
+  const [ward, setWard] = useState('');
+  const [age, setAge] = useState(35);
   const [mobile, setMobile] = useState('');
-  const [house, setHouse] = useState('House #');
-  const [slipHanded, setSlipHanded] = useState(true);
+  const [house, setHouse] = useState('');
+  const [slipHanded, setSlipHanded] = useState(false);
+  const [pendingImportJobId, setPendingImportJobId] = useState<string | null>(null);
+  const [isCancellingImport, setIsCancellingImport] = useState(false);
+
+  const handleFileUpload = async (file: File) => {
+    if (!activeElectionId) { showToast(t('selectActiveElectionBeforeAdding'), 'error'); return; }
+    try {
+      const preview = await api.uploadVolunteerVoters(activeElectionId, file);
+      setPendingImportJobId(preview.job_id);
+      showToast(`Preview ready: ${preview.valid_count ?? 0} valid voters found.`, 'success');
+    } catch (err: any) {
+      showToast(err?.response?.data?.detail || err?.response?.data?.message || 'Upload failed', 'error');
+    }
+  };
+
+  const confirmImport = async () => {
+    if (!pendingImportJobId) return;
+    try {
+      const report = await api.confirmVolunteerVoterImport(pendingImportJobId);
+      setPendingImportJobId(null);
+      showToast(`${report.successfully_imported ?? 0} voters imported successfully.`, 'success');
+    } catch (err: any) {
+      showToast(err?.response?.data?.detail || 'Import confirmation failed', 'error');
+    }
+  };
+
+  const cancelImport = async () => {
+    if (!pendingImportJobId) return;
+    setIsCancellingImport(true);
+    try { await api.cancelVolunteerVoterImport(pendingImportJobId); setPendingImportJobId(null); showToast('Import cancelled', 'info'); }
+    catch (err: any) { showToast(err?.response?.data?.detail || 'Cancel failed', 'error'); }
+    finally { setIsCancellingImport(false); }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name) return;
-    if (!activeElectionId) {
+
+    if (!name.trim()) {
+      showToast('Please enter elector name', 'error');
+      return;
+    }
+    if (!ward.trim()) {
+      showToast('Please enter ward/area name', 'error');
+      return;
+    }
+    if (!isAuthenticated || !activeElectionId) {
       showToast(t('selectActiveElectionBeforeAdding'), 'error');
       return;
     }
+
+    let createdVoter: any = null;
     try {
-      await Promise.all([
-        api.addVoter({
-        election_id: activeElectionId,
-        voter_id_number: `V-02-${Date.now()}`,
-        first_name: name,
-        last_name: '',
-        age,
-        gender: 'Male',
-        ward_name: 'Ward 02',
-        phone_number: mobile || '+91 94140 00000',
-        house_number: house,
-        status: 'Valid',
-        source: 'Volunteer Entry',
-        }),
-        api.addVolunteerVoter({
-        name,
-        age,
-        mobile: mobile || '',
-        house: house || '',
-        status: 'Pending',
-        slipHanded
-        })
-      ]);
+      createdVoter = await api.addVoter({
+          election_id: activeElectionId,
+          first_name: name.trim(),
+          last_name: '',
+          age,
+          gender: 'Male',
+          ward_name: ward.trim(),
+          phone_number: mobile.trim() || null,
+          house_number: house.trim() || null,
+          status: 'Valid',
+          source: 'Volunteer Entry',
+        });
+      try {
+        await api.addVolunteerVoter({
+          name: name.trim(),
+          age,
+          mobile: mobile.trim(),
+          house: house.trim(),
+          status: 'Pending',
+          slipHanded,
+        });
+      } catch (error) {
+        if (createdVoter?.id) await api.deleteVoter(createdVoter.id).catch(() => undefined);
+        throw error;
+      }
+      showToast(`Elector ${name.trim()} logged into ${ward.trim()}!`, 'success');
+      navigate('/volunteer-ward');
     } catch (err: any) {
       showToast(err?.response?.data?.message || err?.response?.data?.detail || t('errorSavingData'), 'error');
-      return;
     }
-
-    showToast(`Elector ${name} logged directly into Ward 02!`, 'success');
-    navigate('/volunteer-ward');
   };
 
   return (
     <div className="max-w-xl mx-auto space-y-5 animate-fade-in">
       <div className="flex items-center gap-3">
         <button
+          type="button"
           onClick={() => navigate('/volunteer-ward')}
-          className="p-2 rounded-xl text-slate-600 hover:bg-slate-200 min-h-[44px] min-w-[44px] flex items-center justify-center"
+          className="p-2 rounded-lg text-slate-600 hover:bg-slate-100"
+          aria-label="Go back"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div>
-          <h1 className="text-xl font-extrabold font-heading text-slate-900">
-            Quick Elector Entry (Ward 02)
-          </h1>
-          <p className="text-xs text-slate-500">Auto-tagged to Ward 02 – Patel Basti</p>
+          <h1 className="text-xl font-extrabold font-heading text-slate-900">Quick Elector Entry</h1>
+          <p className="text-xs text-slate-500">Enter the ward/area for this elector</p>
         </div>
       </div>
 
       <Card className="p-6">
+        <FileDropzone onFileSelect={handleFileUpload} accept=".csv,.pdf,.xlsx,.xls" title="Upload voter roll PDF or CSV" subtitle="Review the import before adding voters" />
+        {pendingImportJobId && <div className="my-4 flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm"><span className="font-semibold text-amber-900">Import preview ready</span><span className="flex gap-2"><Button type="button" size="sm" variant="outline" onClick={cancelImport} disabled={isCancellingImport}>Cancel</Button><Button type="button" size="sm" variant="primary" onClick={confirmImport}>Confirm Import</Button></span></div>}
         <form onSubmit={handleSubmit} className="space-y-4">
-          <FormInput
+          <TransliteratingNameInput
             label="Elector Full Name"
-            placeholder="e.g. Radheshyam Patel"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
           />
 
-          <div className="grid grid-cols-2 gap-3">
+          <TransliteratingTextInput
+            label="Ward / Area Name"
+            placeholder="e.g. Ward 02, Patel Basti"
+            value={ward}
+            onChange={(e) => setWard(e.target.value)}
+            required
+          />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <FormInput
               label="Age (Years)"
               type="number"
+              min={1}
+              max={120}
               value={age}
               onChange={(e) => setAge(Number(e.target.value))}
+              required
             />
             <FormInput
               label="House / Mohalla Address"
@@ -104,7 +164,8 @@ export const VolunteerAddPage: React.FC = () => {
           </div>
 
           <FormInput
-            label="Mobile Number (with +91)"
+            label="Mobile Number"
+            type="tel"
             placeholder="+91 98765 43210"
             value={mobile}
             onChange={(e) => setMobile(e.target.value)}
@@ -120,22 +181,11 @@ export const VolunteerAddPage: React.FC = () => {
             <span>Panna voting slip handed over during this visit</span>
           </label>
 
-          <div className="pt-2 flex gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              className="flex-1"
-              onClick={() => navigate('/volunteer-ward')}
-            >
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="outline" size="lg" className="flex-1" onClick={() => navigate('/volunteer-ward')}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-            >
+            <Button type="submit" variant="success" size="lg" className="flex-1">
               Commit Entry
             </Button>
           </div>

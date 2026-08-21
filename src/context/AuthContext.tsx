@@ -67,6 +67,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
   }, []);
 
+  useEffect(() => {
+    if (!initialToken || !initialUser) return;
+    authApi.getMe().then((freshUser) => {
+      tokenStore.setUser(freshUser);
+      setUser(freshUser as AuthUser);
+    }).catch(() => {
+      // The response interceptor handles expired sessions and unauthorized events.
+    });
+  }, [initialToken, initialUser]);
+
   // ── Real Email & Password Login ─────────────────────────────────────────────
   const login = async (email: string, password: string) => {
     setIsLoading(true);

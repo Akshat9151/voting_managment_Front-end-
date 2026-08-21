@@ -10,6 +10,7 @@ import { ToastProvider } from './context/ToastContext';
 import { AppLayout } from './components/layout/AppLayout';
 
 // Pages
+import { SplashPage } from './pages/SplashPage';
 import { AuthPage } from './pages/AuthPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { TeamPage } from './pages/TeamPage';
@@ -30,8 +31,8 @@ import { VolunteersPage } from './pages/VolunteersPage';
 
 const ROLE_ROUTE_ALLOWLIST: Record<'SUPER_ADMIN' | 'ADMIN' | 'VOLUNTEER', readonly string[]> = {
   SUPER_ADMIN: ['/', '/team', '/volunteers', '/candidates', '/voters', '/tasks', '/field-activities', '/studio', '/broadcast', '/complaints', '/expenses', '/analytics', '/settings', '/volunteer-ward', '/volunteer-add', '/volunteer-activity'],
-  ADMIN: ['/', '/team', '/volunteers', '/candidates', '/voters', '/tasks', '/field-activities', '/studio', '/broadcast', '/complaints', '/expenses', '/analytics', '/settings'],
-  VOLUNTEER: ['/', '/volunteer-ward', '/volunteer-add', '/volunteer-activity', '/field-activities', '/tasks']
+  ADMIN: ['/', '/team', '/volunteers', '/voters', '/tasks', '/field-activities', '/studio', '/broadcast', '/complaints', '/settings'],
+  VOLUNTEER: ['/', '/volunteer-add', '/volunteer-activity', '/field-activities', '/tasks', '/studio']
 };
 
 // ─── ProtectedRoute with optional permission check ────────────────────────────
@@ -123,6 +124,25 @@ export const AppRoutes: React.FC = () => {
   );
 };
 
+export const AppContent: React.FC = () => {
+  const [showSplash, setShowSplash] = React.useState(() => {
+    return !sessionStorage.getItem('vv_splash_shown');
+  });
+
+  if (showSplash) {
+    return (
+      <SplashPage
+        onComplete={() => {
+          sessionStorage.setItem('vv_splash_shown', 'true');
+          setShowSplash(false);
+        }}
+      />
+    );
+  }
+
+  return <AppRoutes />;
+};
+
 export const App: React.FC = () => {
   return (
     <BrowserRouter future={{ v7_relativeSplatPath: true }}>
@@ -131,7 +151,7 @@ export const App: React.FC = () => {
           <LanguageProvider>
             <ThemeProvider>
               <ToastProvider>
-                <AppRoutes />
+                <AppContent />
               </ToastProvider>
             </ThemeProvider>
           </LanguageProvider>

@@ -25,7 +25,7 @@ export const DashboardPage: React.FC = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { currentRole } = useAuth();
-  const { activeElectionId, activeElection } = useElection();
+  const { activeElectionId } = useElection();
   const { showToast } = useToast();
 
   const [dashData, setDashData] = useState<any>(null);
@@ -60,10 +60,14 @@ export const DashboardPage: React.FC = () => {
     if (currentRole === 'SUPER_ADMIN') {
       return {
         totalCandidates: Number(dashData?.total_candidates ?? 0),
-        totalOrganizations: Number(dashData?.total_organizations ?? 0),
         totalVotersAdded: Number(dashData?.total_voters ?? 0),
         activeElections: Number(dashData?.active_elections ?? 0),
-        recentActivity: Array.isArray(dashData?.recent_activity) ? dashData.recent_activity.slice(0, 5) : []
+        recentActivity: (Array.isArray(dashData?.recent_activity) ? dashData.recent_activity : []).slice(0, 5).map((item: any) => ({
+          type: item.type ?? item.activity_type ?? item.action ?? 'Activity',
+          name: item.name ?? item.title ?? item.actor ?? 'System',
+          detail: item.detail ?? item.description ?? '',
+          time: item.time ?? item.timestamp ?? ''
+        }))
       };
     }
 
@@ -102,9 +106,9 @@ export const DashboardPage: React.FC = () => {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
-          title={t('totalCandidatesOrganizations')}
-          value={`${roleSummary.totalCandidates}/${roleSummary.totalOrganizations}`}
-          subtext={t('candidatesAndOrganizations')}
+          title={t('totalCandidates')}
+          value={roleSummary.totalCandidates.toLocaleString()}
+          subtext={t('candidates')}
           icon={<Users className="w-5 h-5" />}
           color="cyan"
           onClick={() => navigate('/candidates')}
@@ -168,7 +172,7 @@ export const DashboardPage: React.FC = () => {
         <StatCard
           title={t('totalVotersInElection')}
           value={roleSummary.totalVoters.toLocaleString()}
-          subtext={activeElection?.title ?? t('currentElection')}
+          subtext={t('currentElection')}
           icon={<Users className="w-5 h-5" />}
           color="cyan"
           onClick={() => navigate('/voters')}
@@ -320,7 +324,7 @@ export const DashboardPage: React.FC = () => {
         <div>
           <h1 className="text-xl font-extrabold text-slate-900 sm:text-2xl">{t('dashboardOverview')}</h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            {activeElection?.title ?? t('currentElection')}
+            {t('dashboardOverview')}
           </p>
         </div>
       </div>

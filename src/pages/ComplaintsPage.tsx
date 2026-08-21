@@ -3,30 +3,35 @@ import { complaintsApi } from '../services/api';
 import { useElection } from '../context/ElectionContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
-import { AlertCircle, Plus } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { AlertCircle, Edit3, Plus, Trash2 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
-import { FormInput } from '../components/ui/FormInput';
+import { TransliteratingNameInput } from '../components/ui/TransliteratingNameInput';
+import { TransliteratingTextArea } from '../components/ui/TransliteratingTextInput';
 import { Select } from '../components/ui/Select';
-import { Textarea } from '../components/ui/Textarea';
 import { Complaint, ComplaintStatus, ComplaintCategory } from '../types';
 
 export const ComplaintsPage: React.FC = () => {
   const { t } = useLanguage();
   const { showToast } = useToast();
   const { activeElectionId } = useElection();
+  const { currentRole } = useAuth();
+  const isSuperAdmin = currentRole === 'SUPER_ADMIN';
 
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  const [editingComplaint, setEditingComplaint] = useState<Complaint | null>(null);
+  const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
 
   // Form State
   const [title, setTitle] = useState('');
   const [reportedByName, setReportedByName] = useState('');
-  const [wardName, setWardName] = useState('Ward 01');
-  const [category, setCategory] = useState<ComplaintCategory>('INFRASTRUCTURE');
+  const [wardName, setWardName] = useState('');
+  const [category, setCategory] = useState<ComplaintCategory>('Water Supply');
   const [desc, setDesc] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -59,20 +64,31 @@ export const ComplaintsPage: React.FC = () => {
     e.preventDefault();
     if (!activeElectionId || !title) return;
     try {
-      await complaintsApi.create(activeElectionId, {
+      const payload = {
         title,
         description: desc,
         category,
         reported_by_name: reportedByName,
         ward_name: wardName,
-      });
+      };
+      if (editingComplaint) await complaintsApi.update(editingComplaint.id, payload);
+      else await complaintsApi.create(activeElectionId, payload);
       showToast(t('grievanceRegistered'), 'success');
-      setIsLogModalOpen(false);
+      setIsLogModalOpen(false); setEditingComplaint(null);
       setTitle(''); setDesc(''); setReportedByName(''); setWardName('');
       loadComplaints();
     } catch (err: any) {
       showToast(err?.response?.data?.message || 'Failed to register grievance', 'error');
     }
+  };
+
+  const openEdit = (complaint: Complaint) => {
+    setEditingComplaint(complaint); setTitle(complaint.title ?? ''); setDesc(complaint.description ?? ''); setReportedByName(complaint.reported_by_name ?? ''); setWardName(complaint.ward_name ?? ''); setCategory(complaint.category); setIsLogModalOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Delete this complaint?')) return;
+    try { await complaintsApi.remove(id); showToast('Complaint deleted successfully.', 'success'); await loadComplaints(); } catch (err: any) { showToast(err?.response?.data?.detail || 'Delete failed.', 'error'); }
   };
 
   const filtered = complaints.filter(c => {
@@ -93,7 +109,7 @@ export const ComplaintsPage: React.FC = () => {
           </p>
         </div>
 
-        <Button
+        {!isSuperAdmin && <Button
           size="sm"
           variant="primary"
           onClick={() => setIsLogModalOpen(true)}
@@ -101,7 +117,7 @@ export const ComplaintsPage: React.FC = () => {
           disabled={isLoading}
         >
           {isLoading ? 'Loading...' : t('logGrievance')}
-        </Button>
+        </Button>}
       </div>
 
       {/* Category Filter Pills */}
@@ -140,7 +156,7 @@ export const ComplaintsPage: React.FC = () => {
                 const statusValue = c.status ?? 'OPEN';
                 const label = statusValue === 'RESOLVED' || statusValue === 'Resolved' ? 'Resolved' : statusValue === 'IN_PROGRESS' || statusValue === 'In Progress' ? 'In Progress' : 'Open';
                 return (
-                  <tr key={c.id} className="hover:bg-slate-50">
+                  <tr key={c.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => isSuperAdmin && setSelectedComplaint(c)}>
                     <td className="p-3.5 font-bold text-slate-900">{c.reported_by_name ?? 'Citizen'}</td>
                     <td className="p-3.5">
                       <Badge variant="purple" size="sm">{c.ward_name ?? 'Ward'}</Badge>
@@ -151,8 +167,9 @@ export const ComplaintsPage: React.FC = () => {
                     <td className="p-3.5 text-slate-700 max-w-xs">{c.description ?? 'No description'}</td>
                     <td className="p-3.5 text-slate-400">{c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}</td>
                     <td className="p-3.5">
-                      <select
+                      {isSuperAdmin ? <select
                         value={label}
+                        onClick={(e) => e.stopPropagation()}
                         onChange={(e) => handleStatusChange(c.id, e.target.value as ComplaintStatus)}
                         className={`text-xs font-bold rounded-lg px-2 py-1 border transition-all cursor-pointer ${
                           label === 'Resolved'
@@ -165,8 +182,9 @@ export const ComplaintsPage: React.FC = () => {
                         <option value="Open">🔴 Open</option>
                         <option value="In Progress">🟡 In Progress</option>
                         <option value="Resolved">🟢 Resolved</option>
-                      </select>
+                      </select> : <Badge variant={label === 'Resolved' ? 'mint' : label === 'In Progress' ? 'amber' : 'rose'} size="sm">{label}</Badge>}
                     </td>
+                    {!isSuperAdmin && <td className="p-3.5"><div className="flex gap-1"><Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); openEdit(c); }} aria-label="Edit complaint"><Edit3 className="w-3.5 h-3.5" /></Button><Button size="sm" variant="danger" onClick={(e) => { e.stopPropagation(); handleDelete(c.id); }} aria-label="Delete complaint"><Trash2 className="w-3.5 h-3.5" /></Button></div></td>}
                   </tr>
                 );
               })}
@@ -182,12 +200,12 @@ export const ComplaintsPage: React.FC = () => {
         title={
           <div className="flex items-center gap-2">
             <AlertCircle className="w-5 h-5 text-sky-600" />
-            <span>Log Citizen Grievance &amp; Issue</span>
+            <span>{editingComplaint ? 'Edit Citizen Grievance' : 'Log Citizen Grievance & Issue'}</span>
           </div>
         }
       >
         <form onSubmit={handleLogComplaint} className="space-y-4">
-          <FormInput
+          <TransliteratingNameInput
             label="Citizen Name"
             placeholder="e.g. Suraj Mal Sharma"
             value={reportedByName}
@@ -196,33 +214,26 @@ export const ComplaintsPage: React.FC = () => {
           />
 
           <div className="grid grid-cols-2 gap-3">
-            <Select
+            <TransliteratingTextArea
               label="Ward Location"
               value={wardName}
               onChange={(e) => setWardName(e.target.value)}
-            >
-              <option value="Ward 01">Ward 01</option>
-              <option value="Ward 02">Ward 02</option>
-              <option value="Ward 03">Ward 03</option>
-              <option value="Ward 04">Ward 04</option>
-              <option value="Ward 05">Ward 05</option>
-              <option value="Ward 06">Ward 06</option>
-            </Select>
+              rows={1}
+              required
+            />
 
             <Select
               label="Issue Category"
               value={category}
               onChange={(e) => setCategory(e.target.value as ComplaintCategory)}
             >
-              <option value="Water Supply">Water Supply (पेयजल)</option>
-              <option value="Road Drainage">Road Drainage (सड़क-नाली)</option>
-              <option value="Health / School">Health / School (स्वास्थ्य/स्कूल)</option>
-              <option value="Electricity">Electricity (बिजली)</option>
-              <option value="Sanitation">Sanitation (सफाई)</option>
+              {[
+                ['Water Supply', 'complaintWater'], ['Road / Infrastructure', 'complaintRoad'], ['Electricity', 'complaintElectricity'], ['Sanitation / Garbage Collection', 'complaintSanitation'], ['Drainage / Sewage', 'complaintDrainage'], ['Street Lighting', 'complaintLighting'], ['Public Health', 'complaintHealth'], ['Education / School Issues', 'complaintEducation'], ['Law & Order / Safety', 'complaintSafety'], ['Corruption / Bribery', 'complaintCorruption'], ['Land / Property Dispute', 'complaintLand'], ['Ration / PDS Issues', 'complaintRation'], ['Pension / Welfare Scheme Issues', 'complaintPension'], ['Employment / MGNREGA Issues', 'complaintEmployment'], ['Voter ID / EPIC Issues', 'complaintVoterId'], ['Election Malpractice', 'complaintMalpractice'], ['Other', 'complaintOther']
+              ].map(([value, key]) => <option key={value} value={value}>{t(key)}</option>)}
             </Select>
           </div>
 
-          <Textarea
+          <TransliteratingTextArea
             label="Description of Grievance"
             rows={3}
             placeholder="Describe the issue reported by the elector..."
@@ -240,6 +251,23 @@ export const ComplaintsPage: React.FC = () => {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(selectedComplaint)}
+        onClose={() => setSelectedComplaint(null)}
+        title={<div className="flex items-center gap-2"><AlertCircle className="w-5 h-5 text-sky-600" /><span>Complaint Details</span></div>}
+      >
+        {selectedComplaint && <div className="space-y-3 text-sm">
+          <div><strong>Complainant:</strong> {selectedComplaint.reported_by_name || selectedComplaint.name || 'Citizen'}</div>
+          <div><strong>Mobile:</strong> {selectedComplaint.reported_by_phone || 'Not provided'}</div>
+          <div><strong>Ward / Location:</strong> {selectedComplaint.ward_name || selectedComplaint.ward || 'Not provided'}</div>
+          <div><strong>Category:</strong> {selectedComplaint.category}</div>
+          <div><strong>Description:</strong> {selectedComplaint.description || selectedComplaint.desc || 'Not provided'}</div>
+          <div><strong>Submitted by:</strong> {selectedComplaint.submitted_by_name || 'Unknown'}</div>
+          <div><strong>Submitted date:</strong> {selectedComplaint.created_at ? new Date(selectedComplaint.created_at).toLocaleString() : selectedComplaint.date || 'Not provided'}</div>
+          <div className="flex items-center justify-between"><strong>Status:</strong><select value={selectedComplaint.status} onChange={(e) => { void handleStatusChange(selectedComplaint.id, e.target.value as ComplaintStatus); setSelectedComplaint({ ...selectedComplaint, status: e.target.value as ComplaintStatus }); }} className="rounded-lg border border-slate-200 px-2 py-1"><option value="Open">Open</option><option value="In Progress">In Progress</option><option value="Resolved">Resolved</option></select></div>
+        </div>}
       </Modal>
     </div>
   );

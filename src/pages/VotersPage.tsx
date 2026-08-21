@@ -15,6 +15,8 @@ import { FormInput } from '../components/ui/FormInput';
 import { Select } from '../components/ui/Select';
 import { FileDropzone } from '../components/ui/FileDropzone';
 import { Voter } from '../types';
+import { TransliteratingNameInput } from '../components/ui/TransliteratingNameInput';
+import { TransliteratingTextInput } from '../components/ui/TransliteratingTextInput';
 
 export const VotersPage: React.FC = () => {
   const { t } = useLanguage();
@@ -25,6 +27,9 @@ export const VotersPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [pendingImportJobId, setPendingImportJobId] = useState<string | null>(null);
+  const [selectedVoterIds, setSelectedVoterIds] = useState<Set<string>>(new Set());
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [isCancellingImport, setIsCancellingImport] = useState(false);
   const [segmentFilter, setSegmentFilter] = useState<'all' | 'whatsapp' | 'no-whatsapp' | 'youth' | 'women' | 'missing'>('all');
   const [name, setName] = useState('');
   const [channel, setChannel] = useState<'WhatsApp' | 'SMS Only'>('WhatsApp');
@@ -64,6 +69,10 @@ export const VotersPage: React.FC = () => {
     loadVoters();
   }, [loadVoters]);
 
+  useEffect(() => {
+    setSelectedVoterIds(new Set());
+  }, [segmentFilter, searchQuery, activeElectionId]);
+
   const handleFileUpload = async (file: File) => {
     if (!activeElectionId) { showToast(t('noActiveElectionSelected'), 'error'); return; }
     try {
@@ -91,6 +100,20 @@ export const VotersPage: React.FC = () => {
       await loadVoters();
     } catch (err: any) {
       showToast(err?.response?.data?.message || 'Import confirmation failed', 'error');
+    }
+  };
+
+  const handleCancelImport = async () => {
+    if (!pendingImportJobId) return;
+    setIsCancellingImport(true);
+    try {
+      await votersApi.cancelImport(pendingImportJobId);
+      setPendingImportJobId(null);
+      showToast(t('voterImportCancelled'), 'info');
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || err?.response?.data?.detail || t('voterImportCancelFailed'), 'error');
+    } finally {
+      setIsCancellingImport(false);
     }
   };
 
@@ -127,6 +150,26 @@ export const VotersPage: React.FC = () => {
       await loadVoters();
     } catch (err: any) {
       showToast(err?.response?.data?.message || err?.response?.data?.detail || 'Unable to delete voter.', 'error');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const visibleIdSet = new Set(filteredVoters.map((v) => v.id));
+    const ids = Array.from(selectedVoterIds).filter((id) => visibleIdSet.has(id));
+    if (ids.length !== selectedVoterIds.size) {
+      setSelectedVoterIds(new Set(ids));
+    }
+    if (!ids.length || !window.confirm(t('bulkDeleteVotersConfirm').replace('{{count}}', String(ids.length)))) return;
+    setIsBulkDeleting(true);
+    try {
+      await votersApi.deleteBulk(ids);
+      setSelectedVoterIds(new Set());
+      showToast(t('bulkDeleteVotersSuccess'), 'success');
+      await loadVoters();
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || err?.response?.data?.detail || t('bulkDeleteVotersFailed'), 'error');
+    } finally {
+      setIsBulkDeleting(false);
     }
   };
 
@@ -168,6 +211,20 @@ export const VotersPage: React.FC = () => {
     return true;
   });
 
+  const visibleIds = filteredVoters.map((v) => v.id);
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedVoterIds.has(id));
+  const toggleVoter = (id: string) => setSelectedVoterIds((current) => {
+    const next = new Set(current);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const toggleAllVisible = () => setSelectedVoterIds((current) => {
+    const next = new Set(current);
+    if (allVisibleSelected) visibleIds.forEach((id) => next.delete(id));
+    else visibleIds.forEach((id) => next.add(id));
+    return next;
+  });
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -189,6 +246,11 @@ export const VotersPage: React.FC = () => {
           >
             {isLoading ? 'Loading...' : t('exportCsv')}
           </Button>
+          {selectedVoterIds.size > 0 && (
+            <Button size="sm" variant="danger" onClick={handleBulkDelete} disabled={isBulkDeleting} leftIcon={<Trash2 className="w-3.5 h-3.5" />}>
+              {isBulkDeleting ? t('bulkDeleteVotersLoading') : t('bulkDeleteVoters').replace('{{count}}', String(selectedVoterIds.size))}
+            </Button>
+          )}
           <Button
             size="sm"
             variant="primary"
@@ -210,8 +272,11 @@ export const VotersPage: React.FC = () => {
       />
       {pendingImportJobId && (
         <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm">
-          <span className="font-semibold text-amber-900">Voter preview is ready for confirmation.</span>
-          <Button size="sm" variant="primary" onClick={handleConfirmImport}>Confirm Import</Button>
+          <span className="font-semibold text-amber-900">{t('voterImportPreviewReady')}</span>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={handleCancelImport} disabled={isCancellingImport}>{isCancellingImport ? t('voterImportCancelling') : t('cancel')}</Button>
+            <Button size="sm" variant="primary" onClick={handleConfirmImport}>{t('confirmImport')}</Button>
+          </div>
         </div>
       )}
 
@@ -257,6 +322,8 @@ export const VotersPage: React.FC = () => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-extrabold uppercase text-slate-500 tracking-wider">
+                <th className="py-3 px-4">Sr. No.</th>
+                <th className="py-3 px-4"><input type="checkbox" aria-label={t('selectAllVoters')} checked={allVisibleSelected} onChange={toggleAllVisible} /></th>
                 <th className="py-3 px-4">EPIC ID</th>
                 <th className="py-3 px-4">Elector Name</th>
                 <th className="py-3 px-4">Age / Sex</th>
@@ -268,7 +335,7 @@ export const VotersPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
-              {filteredVoters.map((v) => {
+              {filteredVoters.map((v, index) => {
                 const displayName = v.name ?? `${v.first_name ?? ''} ${v.last_name ?? ''}`.trim();
                 const displayWard = v.ward ?? v.ward_name ?? '';
                 const displayMobile = v.mobile ?? v.phone_number ?? '';
@@ -277,6 +344,8 @@ export const VotersPage: React.FC = () => {
 
                 return (
                   <tr key={v.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-3 px-4 font-bold text-slate-500">{index + 1}</td>
+                    <td className="py-3 px-4"><input type="checkbox" aria-label={t('selectVoter')} checked={selectedVoterIds.has(v.id)} onChange={() => toggleVoter(v.id)} /></td>
                     <td className="py-3 px-4 font-mono font-bold text-slate-600">{v.id}</td>
                     <td className="py-3 px-4 font-bold text-slate-900">{displayName}</td>
                     <td className="py-3 px-4 text-slate-600">{v.age ?? 0} Yrs • {v.gender ?? 'N/A'}</td>
@@ -331,6 +400,7 @@ export const VotersPage: React.FC = () => {
             return (
               <div key={v.id} className="p-3 space-y-2">
                 <div className="flex justify-between items-start">
+                  <input type="checkbox" aria-label={t('selectVoter')} checked={selectedVoterIds.has(v.id)} onChange={() => toggleVoter(v.id)} />
                   <div>
                     <div className="text-sm font-extrabold text-slate-900 font-heading">{displayName}</div>
                     <div className="text-xs text-slate-500 font-mono">{v.id} • {v.age ?? 0} Yrs • {v.gender ?? 'N/A'}</div>
@@ -391,7 +461,7 @@ export const VotersPage: React.FC = () => {
         }
       >
         <form onSubmit={handleAddVoter} className="space-y-4">
-          <FormInput
+          <TransliteratingNameInput
             label={t('voterDatabase')}
             placeholder="e.g. Rameshwar Patel"
             value={name}
@@ -418,7 +488,7 @@ export const VotersPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <FormInput
+            <TransliteratingTextInput
               label="Ward Assignment"
               value={ward}
               onChange={(e) => setWard(e.target.value)}

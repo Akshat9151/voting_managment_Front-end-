@@ -11,6 +11,7 @@ import { Modal } from '../components/ui/Modal';
 import { FormInput } from '../components/ui/FormInput';
 import { Select } from '../components/ui/Select';
 import { TeamMember } from '../types';
+import { TransliteratingNameInput } from '../components/ui/TransliteratingNameInput';
 
 export const VolunteersPage: React.FC = () => {
   const { currentRole } = useAuth();
@@ -119,6 +120,7 @@ export const VolunteersPage: React.FC = () => {
         email,
         password,
         phone: phone || null,
+        ward: wardName.trim() || null,
         role_code: roleCode,
       });
       showToast(`${t('teamMemberAddedSuccessPrefix')} ${firstName} ${lastName} ${t('teamMemberAddedSuccessSuffix')}`, 'success');
@@ -268,8 +270,8 @@ export const VolunteersPage: React.FC = () => {
 
       <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title={<div className="flex items-center gap-2"><UserPlus className="w-5 h-5 text-sky-600" /><span>{t('addCampaignTeamMember')}</span></div>}>
         <form onSubmit={handleAddMember} className="space-y-4">
-          <FormInput label={t('formLabelFirstName')} placeholder={t('formPlaceholderFirstName')} value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
-          <FormInput label={t('formLabelLastName')} placeholder={t('formPlaceholderLastName')} value={lastName} onChange={(e) => setLastName(e.target.value)} />
+          <TransliteratingNameInput label={t('formLabelFirstName')} placeholder={t('formPlaceholderFirstName')} value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+          <TransliteratingNameInput label={t('formLabelLastName')} placeholder={t('formPlaceholderLastName')} value={lastName} onChange={(e) => setLastName(e.target.value)} />
           <div className="grid grid-cols-2 gap-3">
             <Select label={t('formLabelRoleHierarchy')} value={roleCode} onChange={(e) => setRoleCode(e.target.value as 'ADMIN' | 'VOLUNTEER')}>
               {allowedAddRoles.length === 0 && <option value="VOLUNTEER">{t('roleVolunteerFieldWorker')}</option>}
@@ -279,15 +281,7 @@ export const VolunteersPage: React.FC = () => {
             <FormInput label={t('formLabelEmail')} placeholder={t('formPlaceholderEmail')} value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
           <FormInput label={t('formLabelPassword')} type="password" placeholder={t('formPlaceholderPassword')} value={password} onChange={(e) => setPassword(e.target.value)} required />
-          <Select label={t('formLabelWardName')} value={wardName} onChange={(e) => setWardName(e.target.value)}>
-            <option value="All Wards (Campaign HQ)">{t('wardAllCampaignHQ')}</option>
-            <option value="Ward 01 – Old Village">Ward 01 – Old Village</option>
-            <option value="Ward 02 – Patel Basti">Ward 02 – Patel Basti</option>
-            <option value="Ward 03 – Main Market">Ward 03 – Main Market</option>
-            <option value="Ward 04 – Rampur HQ">Ward 04 – Rampur HQ</option>
-            <option value="Ward 05 – South Colony">Ward 05 – South Colony</option>
-            <option value="Ward 06 – Krishi Upaj">Ward 06 – Krishi Upaj</option>
-          </Select>
+          <TransliteratingNameInput label={t('formLabelWardName')} placeholder={t('formPlaceholderWardName')} value={wardName} onChange={(e) => setWardName(e.target.value)} />
           <FormInput label={t('formLabelPhoneNumber')} placeholder={t('formPlaceholderPhoneNumber')} value={phone} onChange={(e) => setPhone(e.target.value)} required />
           <div className="flex justify-end gap-2 pt-3">
             <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)}>{t('cancel')}</Button>

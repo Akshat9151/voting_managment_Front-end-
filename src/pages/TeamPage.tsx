@@ -9,6 +9,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { FormInput } from '../components/ui/FormInput';
+import { TransliteratingNameInput } from '../components/ui/TransliteratingNameInput';
 import { Select } from '../components/ui/Select';
 import { TeamMember } from '../types';
 
@@ -46,13 +47,13 @@ export const TeamPage: React.FC = () => {
 
   const visibilityMap: Record<string, Array<'SUPER_ADMIN' | 'ADMIN' | 'VOLUNTEER'>> = {
     SUPER_ADMIN: ['SUPER_ADMIN', 'ADMIN', 'VOLUNTEER'],
-    ADMIN: ['VOLUNTEER'],
+    ADMIN: ['ADMIN', 'VOLUNTEER'],
     VOLUNTEER: []
   };
 
   const permissionMap: Record<string, { add: Array<'ADMIN' | 'VOLUNTEER'>; remove: Array<'ADMIN' | 'VOLUNTEER'> }> = {
     SUPER_ADMIN: { add: ['ADMIN', 'VOLUNTEER'], remove: ['ADMIN', 'VOLUNTEER'] },
-    ADMIN: { add: ['VOLUNTEER'], remove: ['VOLUNTEER'] },
+    ADMIN: { add: ['ADMIN', 'VOLUNTEER'], remove: ['ADMIN', 'VOLUNTEER'] },
     VOLUNTEER: { add: [], remove: [] }
   };
 
@@ -92,7 +93,7 @@ export const TeamPage: React.FC = () => {
   useEffect(() => { loadTeam(); }, [loadTeam]);
 
   useEffect(() => {
-    const allowedRoles = currentRole === 'SUPER_ADMIN' ? ['ADMIN', 'VOLUNTEER'] : ['VOLUNTEER'];
+    const allowedRoles = currentRole === 'SUPER_ADMIN' || currentRole === 'ADMIN' ? ['ADMIN', 'VOLUNTEER'] : ['VOLUNTEER'];
     if (!allowedRoles.includes(roleCode)) {
       setRoleCode(allowedRoles[0] as 'ADMIN' | 'VOLUNTEER');
     }
@@ -130,6 +131,7 @@ export const TeamPage: React.FC = () => {
           first_name: firstName,
           last_name: lastName,
           phone: phone || null,
+          ward: wardName.trim() || null,
           is_active: isActive,
         });
         showToast(`${firstName} ${lastName} updated successfully.`, 'success');
@@ -166,6 +168,7 @@ export const TeamPage: React.FC = () => {
     setLastName(member.last_name || member.name?.split(' ').slice(1).join(' ') || '');
     setEmail(member.email || '');
     setPhone(member.phone || '');
+    setWardName(member.ward || '');
     setIsActive(member.is_active !== false);
     setIsAddModalOpen(true);
   };
@@ -400,7 +403,7 @@ export const TeamPage: React.FC = () => {
         }
       >
         <form onSubmit={handleAddMember} className="space-y-4">
-          <FormInput
+          <TransliteratingNameInput
             label={t('formLabelFirstName')}
             placeholder={t('formPlaceholderFirstName')}
             value={firstName}
@@ -408,7 +411,7 @@ export const TeamPage: React.FC = () => {
             required
           />
 
-          <FormInput
+          <TransliteratingNameInput
             label={t('formLabelLastName')}
             placeholder={t('formPlaceholderLastName')}
             value={lastName}
@@ -456,19 +459,12 @@ export const TeamPage: React.FC = () => {
             />
           )}
 
-          {!editingMember && <Select
+          <TransliteratingNameInput
             label={t('formLabelWardName')}
+            placeholder={t('formPlaceholderWardName')}
             value={wardName}
             onChange={(e) => setWardName(e.target.value)}
-          >
-            <option value="All Wards (Campaign HQ)">{t('wardAllCampaignHQ')}</option>
-            <option value="Ward 01 – Old Village">Ward 01 – Old Village</option>
-            <option value="Ward 02 – Patel Basti">Ward 02 – Patel Basti</option>
-            <option value="Ward 03 – Main Market">Ward 03 – Main Market</option>
-            <option value="Ward 04 – Rampur HQ">Ward 04 – Rampur HQ</option>
-            <option value="Ward 05 – South Colony">Ward 05 – South Colony</option>
-            <option value="Ward 06 – Krishi Upaj">Ward 06 – Krishi Upaj</option>
-          </Select>}
+          />
 
           <FormInput
             label="Mobile Number"
