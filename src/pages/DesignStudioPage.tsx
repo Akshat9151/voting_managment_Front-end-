@@ -1013,8 +1013,16 @@ const RenderCanvas: React.FC<RenderCanvasProps> = ({
 };
 
 const resolveAssetUrl = (url: string): string => {
+  if (!url) return '';
   if (/^https?:\/\//.test(url)) return url;
   if (url.startsWith('/assets/')) return url;
+  
+  const lower = url.toLowerCase();
+  if (lower.includes('poster2.png')) return '/assets/poster2.png';
+  if (lower.includes('poster.png')) return '/assets/Poster.png';
+  if (lower.includes('id card.png') || lower.includes('id%20card.png')) return '/assets/Id Card.png';
+  if (lower.includes('holding') || lower.includes('banner')) return '/assets/holdings.png';
+
   const apiBase = (import.meta as any).env?.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1';
   return `${apiBase.replace(/\/api\/v1\/?$/, '')}${url.startsWith('/') ? url : `/${url}`}`;
 };
