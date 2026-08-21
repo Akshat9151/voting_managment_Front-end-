@@ -58,7 +58,7 @@ export const tokenStore = {
 export const httpClient = axios.create({
   baseURL: BASE_URL,
   headers: { 'Content-Type': 'application/json' },
-  timeout: 30000,
+  timeout: 60000,
 });
 
 // ─── Request interceptor: attach access token ─────────────────────────────────
