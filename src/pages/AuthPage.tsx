@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, ShieldCheck, CheckCircle2, Mail, Lock, Globe, Smartphone, UserPlus } from 'lucide-react';
+import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import { Button } from '../components/ui/Button';
 import { FormInput } from '../components/ui/FormInput';
 import { useLanguage, SUPPORTED_LANGUAGES } from '../context/LanguageContext';
@@ -17,6 +18,7 @@ export const AuthPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSignup, setIsSignup] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successBanner, setSuccessBanner] = useState<string | null>(null);
   const [otpChallengeId, setOtpChallengeId] = useState<string | null>(null);
   const [otpCode, setOtpCode] = useState('');
 
@@ -33,19 +35,11 @@ export const AuthPage: React.FC = () => {
     }
 
     setError(null);
+    setSuccessBanner(null);
     setIsLoading(true);
     try {
-      if (!otpChallengeId) {
-        const challenge = await authApi.requestLoginOtp(email.trim(), password);
-        setOtpChallengeId(challenge.challenge_id);
-        showToast(
-          challenge.dev_code ? `Development OTP: ${challenge.dev_code}` : `Verification code sent to ${challenge.destination}.`,
-          'success'
-        );
-        return;
-      }
-      const session = await authApi.verifyLoginOtp(otpChallengeId, otpCode, email.trim(), password);
-      loginWithSession(session, email);
+      const session = await authApi.login(email.trim(), password);
+      loginWithSession(session, email.trim());
       showToast('Signed in successfully.', 'success');
       navigate('/');
     } catch (err: any) {
@@ -64,6 +58,37 @@ export const AuthPage: React.FC = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessBanner(null);
+
+    if (otpChallengeId) {
+      // OTP Verification Step
+      if (!otpCode || otpCode.length !== 6) {
+        setError('Please enter a valid 6-digit verification code.');
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        await authApi.verifySignupOtp(otpChallengeId, otpCode);
+        showToast('Account verified! Please log in with your email and password.', 'success');
+        setSuccessBanner('Account verified successfully! Please enter your password to sign in.');
+        setOtpChallengeId(null);
+        setOtpCode('');
+        setPassword('');
+        setIsSignup(false);
+      } catch (err: any) {
+        const msg = err?.response?.data?.error?.message
+          || err?.response?.data?.message
+          || err?.response?.data?.detail
+          || err?.message
+          || 'Invalid or expired verification code.';
+        setError(msg);
+        showToast(msg, 'error');
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
 
     const normalizedPhone = phone.trim();
     if (!fullName.trim() || !email.trim() || !password || !normalizedPhone) {
@@ -84,28 +109,17 @@ export const AuthPage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      if (!otpChallengeId) {
-        const challenge = await authApi.requestSignupOtp({
-          full_name: fullName.trim(),
-          email: email.trim(),
-          password,
-          phone: normalizedPhone
-        });
-        setOtpChallengeId(challenge.challenge_id);
-        showToast(
-          challenge.dev_code ? `Development OTP: ${challenge.dev_code}` : `Verification code sent to ${challenge.destination}.`,
-          'success'
-        );
-        return;
-      }
-      await authApi.verifySignupOtp(otpChallengeId, otpCode);
-      showToast('Account verified! Please log in to continue.', 'success');
-      setOtpChallengeId(null);
-      setOtpCode('');
-      setFullName('');
-      setPhone('');
-      setPassword('');
-      setIsSignup(false);
+      const challenge = await authApi.requestSignupOtp({
+        full_name: fullName.trim(),
+        email: email.trim(),
+        password,
+        phone: normalizedPhone
+      });
+      setOtpChallengeId(challenge.challenge_id);
+      showToast(
+        challenge.dev_code ? `Development OTP: ${challenge.dev_code}` : `Verification code sent to ${challenge.destination}.`,
+        'success'
+      );
     } catch (err: any) {
       const isConflict = err?.response?.status === 409;
       const msg = isConflict
@@ -124,6 +138,36 @@ export const AuthPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+    if (!credentialResponse.credential) {
+      showToast('Google sign in failed. No credential received.', 'error');
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    setSuccessBanner(null);
+    try {
+      const session = await authApi.googleAuth(credentialResponse.credential);
+      loginWithSession(session, session.user?.email || '');
+      showToast('Signed in with Google successfully!', 'success');
+      navigate('/');
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message
+        || err?.response?.data?.message
+        || err?.response?.data?.detail
+        || err?.message
+        || 'Google authentication failed.';
+      setError(msg);
+      showToast(msg, 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    showToast('Google authentication failed or was closed.', 'error');
   };
 
   return (
@@ -193,161 +237,197 @@ export const AuthPage: React.FC = () => {
             </div>
           </div>
 
+          {successBanner && (
+            <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 font-medium">
+              {successBanner}
+            </div>
+          )}
+
           {error && (
             <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-medium">
               {error}
             </div>
           )}
 
-          {/* Regular Login/Signup Form */}
+          {/* OTP Verification Form (Only during Signup) */}
           {otpChallengeId ? (
-            <form onSubmit={isSignup ? handleSignup : handlePasswordLogin} className="space-y-4">
+            <form onSubmit={handleSignup} className="space-y-4">
               <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-3 text-xs text-sky-800">
-                A 6-digit verification code was sent to <strong>{email}</strong>.
+                A 6-digit verification code was sent to <strong>{email}</strong>. Please enter it below to complete registration.
               </div>
               <FormInput
                 label="Email verification code"
                 value={otpCode}
                 onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="123456"
+                placeholder={t('auth.enter_otp', 'Enter 6-digit code')}
                 inputMode="numeric"
                 maxLength={6}
                 required
               />
               <Button type="submit" variant="primary" className="w-full" disabled={isLoading || otpCode.length !== 6}>
-                {isLoading ? 'Verifying...' : 'Verify and continue'}
+                {isLoading ? 'Verifying...' : 'Verify and proceed to login'}
               </Button>
-              <button type="button" className="w-full text-xs font-bold text-slate-500" onClick={() => { setOtpChallengeId(null); setOtpCode(''); }}>
+              <button
+                type="button"
+                className="w-full text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors"
+                onClick={() => { setOtpChallengeId(null); setOtpCode(''); }}
+              >
                 Change email or go back
               </button>
             </form>
-          ) : <>
-            {isSignup ? (
-              <form onSubmit={handleSignup} className="space-y-4" autoComplete="off">
-                <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2.5 text-xs text-sky-800">
-                  <p className="font-bold">Create your organization workspace</p>
-                  <p className="mt-0.5 text-sky-700">You become its first Super Admin and can then create Admins and Volunteers.</p>
+          ) : (
+            <>
+              {/* Google Sign In / Sign Up Button */}
+              <div className="mb-4">
+                <div className="w-full flex justify-center">
+                  <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={handleGoogleError}
+                    text={isSignup ? 'signup_with' : 'signin_with'}
+                    shape="pill"
+                    size="large"
+                    width="320px"
+                  />
                 </div>
-                <FormInput
-                  label="Full Name"
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Enter your full name"
-                  autoComplete="name"
-                  required
-                />
-                <FormInput
-                  label={t('emailAddress')}
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={t('emailExample')}
-                  leftIcon={<Mail className="w-4 h-4" />}
-                  autoComplete="off"
-                  required
-                />
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-200" />
+                  </div>
+                  <div className="relative flex justify-center text-xs">
+                    <span className="bg-white px-2 text-[10px] text-slate-400 uppercase font-bold tracking-wider">{t('or')}</span>
+                  </div>
+                </div>
+              </div>
 
-                <FormInput
-                  label={t('formLabelPhoneNumber')}
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder={t('phoneExample')}
-                  leftIcon={<Smartphone className="w-4 h-4" />}
-                  autoComplete="off"
-                  required
-                />
-
-                <FormInput
-                  label={t('password')}
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={t('createPassword')}
-                  leftIcon={<Lock className="w-4 h-4" />}
-                  autoComplete="new-password"
-                  required
-                />
-
-                <Button
-                  type="submit"
-                  variant="primary"
-                  className="w-full"
-                  disabled={isLoading || !fullName || !email || !password || !phone}
-                >
-                  {isLoading ? (
-                    <span className="flex items-center gap-2">
-                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      {t('creatingAccount')}
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      {t('createAccount')}
-                      <ArrowRight className="w-4 h-4" />
-                    </span>
-                  )}
-                </Button>
-              </form>
-            ) : (
-              <form onSubmit={handlePasswordLogin} className="space-y-4">
-                    <FormInput
-                      label={t('emailAddress')}
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@yourorganization.com"
-                      leftIcon={<Mail className="w-4 h-4" />}
-                      required
-                    />
-
-                    <FormInput
-                      label={t('password')}
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••••••"
-                      leftIcon={<Lock className="w-4 h-4" />}
-                      required
-                    />
-
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      className="w-full"
-                      disabled={isLoading || !email || !password}
-                    >
-                      {isLoading ? (
-                        <span className="flex items-center gap-2">
-                          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          Signing in...
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-2">
-                          Sign In with Password
-                          <ArrowRight className="w-4 h-4" />
-                        </span>
-                      )}
-                    </Button>
-                  </form>
-            )}
-
-            <div className="mt-6 text-center">
-              <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-2">{t('or')}</div>
               {isSignup ? (
-                <button
-                  type="button"
-                  onClick={() => setIsSignup(false)}
-                  className="w-full py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all"
-                >
-                  {t('alreadyHaveAccountLogin')}
-                </button>
+                <form onSubmit={handleSignup} className="space-y-3.5" autoComplete="off">
+                  <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
+                    <p className="font-bold">Create your workspace</p>
+                    <p className="mt-0.5 text-sky-700">First signup becomes Super Admin and can manage campaign teams.</p>
+                  </div>
+                  <FormInput
+                    label="Full Name"
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Enter your full name"
+                    autoComplete="name"
+                    required
+                  />
+                  <FormInput
+                    label={t('emailAddress')}
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={t('emailExample')}
+                    leftIcon={<Mail className="w-4 h-4" />}
+                    autoComplete="off"
+                    required
+                  />
+
+                  <FormInput
+                    label={t('formLabelPhoneNumber')}
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder={t('phoneExample')}
+                    leftIcon={<Smartphone className="w-4 h-4" />}
+                    autoComplete="off"
+                    required
+                  />
+
+                  <FormInput
+                    label={t('password')}
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={t('createPassword')}
+                    leftIcon={<Lock className="w-4 h-4" />}
+                    autoComplete="new-password"
+                    required
+                  />
+
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className="w-full"
+                    disabled={isLoading || !fullName || !email || !password || !phone}
+                  >
+                    {isLoading ? (
+                      <span className="flex items-center gap-2">
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        {t('creatingAccount')}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        {t('createAccount')}
+                        <ArrowRight className="w-4 h-4" />
+                      </span>
+                    )}
+                  </Button>
+                </form>
               ) : (
-                <>
+                <form onSubmit={handlePasswordLogin} className="space-y-4">
+                  <FormInput
+                    label={t('emailAddress')}
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@yourorganization.com"
+                    leftIcon={<Mail className="w-4 h-4" />}
+                    required
+                  />
+
+                  <FormInput
+                    label={t('password')}
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    leftIcon={<Lock className="w-4 h-4" />}
+                    required
+                  />
+
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className="w-full"
+                    disabled={isLoading || !email || !password}
+                  >
+                    {isLoading ? (
+                      <span className="flex items-center gap-2">
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Signing in...
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        Sign In with Password
+                        <ArrowRight className="w-4 h-4" />
+                      </span>
+                    )}
+                  </Button>
+                </form>
+              )}
+
+              <div className="mt-4 text-center">
+                {isSignup ? (
                   <button
                     type="button"
                     onClick={() => {
                       setError(null);
+                      setSuccessBanner(null);
+                      setIsSignup(false);
+                    }}
+                    className="w-full py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all"
+                  >
+                    {t('alreadyHaveAccountLogin')}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setError(null);
+                      setSuccessBanner(null);
                       setIsSignup(true);
                     }}
                     className="w-full py-2.5 rounded-xl border border-sky-300 bg-sky-50 text-xs font-bold text-sky-700 hover:bg-sky-100 transition-all flex items-center justify-center gap-2"
@@ -355,14 +435,14 @@ export const AuthPage: React.FC = () => {
                     <UserPlus className="w-4 h-4" />
                     Create Workspace / Super Admin Account
                   </button>
-                </>
-              )}
-            </div>
+                )}
+              </div>
 
-            <div className="mt-5 text-center text-[10px] text-slate-400 font-semibold">
-              {t('multiTenantNote')}
-            </div>
-          </>}
+              <div className="mt-4 text-center text-[10px] text-slate-400 font-semibold">
+                {t('multiTenantNote')}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ElectionProvider } from './context/ElectionContext';
 import { LanguageProvider } from './context/LanguageContext';
@@ -143,21 +144,25 @@ export const AppContent: React.FC = () => {
   return <AppRoutes />;
 };
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1058284729173-sampleplaceholder.apps.googleusercontent.com';
+
 export const App: React.FC = () => {
   return (
-    <BrowserRouter future={{ v7_relativeSplatPath: true }}>
-      <AuthProvider>
-        <ElectionProvider>
-          <LanguageProvider>
-            <ThemeProvider>
-              <ToastProvider>
-                <AppContent />
-              </ToastProvider>
-            </ThemeProvider>
-          </LanguageProvider>
-        </ElectionProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <BrowserRouter future={{ v7_relativeSplatPath: true }}>
+        <AuthProvider>
+          <ElectionProvider>
+            <LanguageProvider>
+              <ThemeProvider>
+                <ToastProvider>
+                  <AppContent />
+                </ToastProvider>
+              </ThemeProvider>
+            </LanguageProvider>
+          </ElectionProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </GoogleOAuthProvider>
   );
 };
 

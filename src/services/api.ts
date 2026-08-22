@@ -40,6 +40,15 @@ export const authApi = {
       user: Record<string, any>;
     }>(res);
   },
+  googleAuth: async (credential: string) => {
+    const res = await httpClient.post('/auth/google', { credential });
+    return unwrap<{
+      access_token: string;
+      refresh_token: string;
+      expires_in: number;
+      user: Record<string, any>;
+    }>(res);
+  },
   requestLoginOtp: async (email: string, password: string) => {
     const res = await httpClient.post('/auth/login/request-otp', { email, password });
     return unwrap<{ challenge_id: string; destination: string; expires_in: number; dev_code?: string }>(res);

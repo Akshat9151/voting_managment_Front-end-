@@ -1960,9 +1960,19 @@ const EXTRA_TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     back: 'Back', basicInformation: 'Basic Information', positionPost: 'Position / Post', wardNumber: 'Ward Number', ballotNumber: 'Ballot Number',
     contactNumber: 'Contact Number', campaignMessage: 'Campaign Message / Slogan', livePreview: 'Live Preview', updatesAsFill: 'Updates as you fill in the form above',
     presetSymbols: 'Preset Symbols', customUpload: 'Custom Upload', searchSymbols: 'Search symbols...', saveDesign: 'Save Design', download: 'Download', remove: 'Remove', complaintWater: 'Water Supply', complaintRoad: 'Road / Infrastructure', complaintElectricity: 'Electricity', complaintSanitation: 'Sanitation / Garbage Collection', complaintDrainage: 'Drainage / Sewage', complaintLighting: 'Street Lighting', complaintHealth: 'Public Health', complaintEducation: 'Education / School Issues', complaintSafety: 'Law & Order / Safety', complaintCorruption: 'Corruption / Bribery', complaintLand: 'Land / Property Dispute', complaintRation: 'Ration / PDS Issues', complaintPension: 'Pension / Welfare Scheme Issues', complaintEmployment: 'Employment / MGNREGA Issues', complaintVoterId: 'Voter ID / EPIC Issues', complaintMalpractice: 'Election Malpractice', complaintOther: 'Other',
-    broadcastStepGroup: 'Create Group', broadcastStepDraft: 'Draft Message', broadcastStepReview: 'Review & Send', broadcastChooseRecipients: 'Choose recipients from the voter database', broadcastCreateGroup: 'Create Group', broadcastImportVoters: 'Import voter roll', broadcastImportPreview: 'Upload PDF or CSV and review before importing', broadcastAddContact: 'Add Contact for Broadcast', broadcastSavedGroups: 'Saved Broadcast Groups', broadcastRecipients: 'recipients', broadcastWhatsAppCount: 'WhatsApp', broadcastSmsCount: 'SMS', broadcastExcludedNoContact: 'voters excluded — no contact info', broadcastNoRecipients: 'No voters selected.', broadcastDraftTitle: 'Draft Message', broadcastSaveDraft: 'Save Draft & Continue', broadcastReviewSend: 'Review Broadcast', broadcastSendNow: 'Send Now', broadcastSendConfirm: 'Send this broadcast to {{count}} recipients?', broadcastResults: 'Broadcast Results', broadcastSentWhatsApp: 'sent via WhatsApp', broadcastSentSms: 'sent via SMS', broadcastFailed: 'failed', broadcastCreateAnother: 'Create Another Broadcast'
+    broadcastStepGroup: 'Create Group', broadcastStepDraft: 'Draft Message', broadcastStepReview: 'Review & Send', broadcastChooseRecipients: 'Choose recipients from the voter database', broadcastCreateGroup: 'Create Group', broadcastImportVoters: 'Import voter roll', broadcastImportPreview: 'Upload PDF or CSV and review before importing', broadcastAddContact: 'Add Contact for Broadcast', broadcastSavedGroups: 'Saved Broadcast Groups', broadcastRecipients: 'recipients', broadcastWhatsAppCount: 'WhatsApp', broadcastSmsCount: 'SMS', broadcastExcludedNoContact: 'voters excluded — no contact info', broadcastNoRecipients: 'No voters selected.', broadcastDraftTitle: 'Draft Message', broadcastSaveDraft: 'Save Draft & Continue', broadcastReviewSend: 'Review Broadcast', broadcastSendNow: 'Send Now', broadcastSendConfirm: 'Send this broadcast to {{count}} recipients?', broadcastResults: 'Broadcast Results', broadcastSentWhatsApp: 'sent via WhatsApp', broadcastSentSms: 'sent via SMS', broadcastFailed: 'failed', broadcastCreateAnother: 'Create Another Broadcast',
+    continueWithGoogle: 'Continue with Google',
+    enterOtp: 'Enter 6-digit code',
+    'auth.enter_otp': 'Enter 6-digit code',
+    emailVerificationCode: 'Email verification code',
+    verifyAndProceed: 'Verify and proceed to login'
   },
   hi: {
+    continueWithGoogle: 'गूगल के साथ जारी रखें',
+    enterOtp: '6 अंकों का कोड दर्ज करें',
+    'auth.enter_otp': '6 अंकों का कोड दर्ज करें',
+    emailVerificationCode: 'ईमेल सत्यापन कोड',
+    verifyAndProceed: 'सत्यापित करें और लॉगिन पर जाएं',
     activityTitle: 'गतिविधि शीर्षक', activityWard: 'वार्ड / क्षेत्र', myActivitySubmissions: 'मेरी प्रस्तुतियां', activityPhotoPreview: 'गतिविधि फोटो', removeActivityPhoto: 'चयनित फोटो हटाएं',
     primaryWhatsApp: 'प्राथमिक चैनल (व्हाट्सऐप)', smsGateway: 'एसएमएस फॉलबैक गेटवे', electors: 'मतदाता', richMedia: 'मीडिया और डिलीवरी', delivery: 'डिलीवरी', composeBroadcast: 'प्रचार संदेश लिखें', attachPoster: 'पोस्टर कार्ड जोड़ें', insertTags: 'गतिशील मतदाता टैग जोड़ें', voterNameTag: '+ मतदाता नाम', wardTag: '+ वार्ड नंबर', boothTag: '+ मतदान केंद्र', symbolTag: '+ चुनाव चिन्ह', liveReports: 'डिलीवरी रिपोर्ट', elector: 'मतदाता', route: 'माध्यम', sentTime: 'समय', livePhonePreview: 'मतदाता फोन पूर्वावलोकन', submitTrackActivities: 'अपनी क्षेत्र गतिविधियां भेजें और देखें', reviewManageActivities: 'स्वयंसेवकों की गतिविधियों की समीक्षा करें', pending: 'लंबित', approved: 'स्वीकृत', rejected: 'अस्वीकृत', activityLocation: 'गतिविधि स्थान', activityDateTime: 'गतिविधि दिनांक और समय', activityDescription: 'गतिविधि विवरण', activityPhotos: 'गतिविधि फोटो', filesSelected: 'फाइल चुनी गई', campaignGallery: 'अभियान गैलरी – टेम्पलेट चुनें', useTemplate: 'टेम्पलेट उपयोग करें', fillDetails: 'अपने डिजाइन को बदलने के लिए विवरण भरें', back: 'वापस', basicInformation: 'मूल जानकारी', positionPost: 'पद', wardNumber: 'वार्ड नंबर', ballotNumber: 'बैलेट नंबर', contactNumber: 'संपर्क नंबर', campaignMessage: 'अभियान संदेश / नारा', livePreview: 'लाइव पूर्वावलोकन', updatesAsFill: 'फॉर्म भरते ही अपडेट होगा', presetSymbols: 'उपलब्ध चिन्ह', customUpload: 'कस्टम अपलोड', searchSymbols: 'चिन्ह खोजें...', saveDesign: 'डिजाइन सेव करें', download: 'डाउनलोड', remove: 'हटाएं',
     broadcastStepGroup: 'समूह बनाएं', broadcastStepDraft: 'संदेश का मसौदा', broadcastStepReview: 'समीक्षा और भेजें', broadcastChooseRecipients: 'मतदाता डेटाबेस से प्राप्तकर्ता चुनें', broadcastCreateGroup: 'समूह बनाएं', broadcastImportVoters: 'मतदाता सूची आयात करें', broadcastImportPreview: 'PDF या CSV अपलोड करें और आयात से पहले समीक्षा करें', broadcastAddContact: 'ब्रॉडकास्ट संपर्क जोड़ें', broadcastSavedGroups: 'सहेजे गए ब्रॉडकास्ट समूह', broadcastRecipients: 'प्राप्तकर्ता', broadcastWhatsAppCount: 'व्हाट्सऐप', broadcastSmsCount: 'एसएमएस', broadcastExcludedNoContact: 'मतदाता बाहर किए गए — संपर्क जानकारी नहीं है', broadcastNoRecipients: 'कोई मतदाता चयनित नहीं है।', broadcastDraftTitle: 'संदेश का मसौदा', broadcastSaveDraft: 'मसौदा सेव करें और आगे बढ़ें', broadcastReviewSend: 'ब्रॉडकास्ट की समीक्षा करें', broadcastSendNow: 'अभी भेजें', broadcastSendConfirm: '{{count}} प्राप्तकर्ताओं को यह ब्रॉडकास्ट भेजें?', broadcastResults: 'ब्रॉडकास्ट परिणाम', broadcastSentWhatsApp: 'व्हाट्सऐप से भेजे गए', broadcastSentSms: 'एसएमएस से भेजे गए', broadcastFailed: 'विफल', broadcastCreateAnother: 'नया ब्रॉडकास्ट बनाएं', complaintWater: 'पेयजल आपूर्ति', complaintRoad: 'सड़क / आधारभूत संरचना', complaintElectricity: 'बिजली', complaintSanitation: 'स्वच्छता / कचरा संग्रह', complaintDrainage: 'जल निकासी / सीवेज', complaintLighting: 'स्ट्रीट लाइट', complaintHealth: 'जन स्वास्थ्य', complaintEducation: 'शिक्षा / स्कूल समस्याएं', complaintSafety: 'कानून व्यवस्था / सुरक्षा', complaintCorruption: 'भ्रष्टाचार / रिश्वत', complaintLand: 'भूमि / संपत्ति विवाद', complaintRation: 'राशन / पीडीएस समस्याएं', complaintPension: 'पेंशन / कल्याण योजना समस्याएं', complaintEmployment: 'रोजगार / मनरेगा समस्याएं', complaintVoterId: 'मतदाता पहचान पत्र / ईपीआईसी समस्याएं', complaintMalpractice: 'चुनावी धांधली', complaintOther: 'अन्य'
@@ -1980,7 +1990,7 @@ const EXTRA_TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
 interface LanguageContextType {
   language: LanguageCode;
   setLanguage: (lang: LanguageCode) => void;
-  t: (key: string) => string;
+  t: (key: string, fallback?: string) => string;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -1995,9 +2005,9 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.setItem('electwin_lang', lang);
   };
 
-  const t = (key: string): string => {
+  const t = (key: string, fallback?: string): string => {
     const dict = TRANSLATIONS[language] || TRANSLATIONS.en;
-    return dict[key] || EXTRA_TRANSLATIONS[language]?.[key] || TRANSLATIONS.en[key] || EXTRA_TRANSLATIONS.en[key] || key;
+    return dict[key] || EXTRA_TRANSLATIONS[language]?.[key] || TRANSLATIONS.en[key] || EXTRA_TRANSLATIONS.en[key] || fallback || key;
   };
 
   return (
