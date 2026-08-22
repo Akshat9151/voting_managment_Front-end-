@@ -204,11 +204,43 @@ export const AuthPage: React.FC = () => {
 
   return (
     <div className="vv-auth-page relative min-h-screen flex items-center justify-center p-4 sm:p-6 overflow-x-hidden overflow-y-auto">
-      {/* Subtle Orbit Pulse background animation */}
-      <div className="vv-orbit-halo" aria-hidden="true" />
-      <div className="vv-orbit-signal vv-orbit-signal-1" aria-hidden="true" />
-      <div className="vv-orbit-signal vv-orbit-signal-2" aria-hidden="true" />
-      <div className="vv-grid-dots" aria-hidden="true" />
+      {/* Animated wave background — intentionally limited to Login/Signup */}
+      <svg className="vv-wave-background" viewBox="0 0 1440 900" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="vv-wave-base" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#EDEBE6" />
+            <stop offset="100%" stopColor="#DDD9D0" />
+          </linearGradient>
+          <filter id="vv-wave-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="58" />
+          </filter>
+        </defs>
+        <rect width="1440" height="900" fill="url(#vv-wave-base)" />
+        <circle className="vv-wave-glow vv-wave-glow-one" cx="120" cy="80" r="220" fill="#B5471F" opacity="0.16">
+          <animate attributeName="cx" values="120;250;120" dur="15s" repeatCount="indefinite" />
+          <animate attributeName="cy" values="80;170;80" dur="15s" repeatCount="indefinite" />
+        </circle>
+        <circle className="vv-wave-glow vv-wave-glow-two" cx="1330" cy="790" r="250" fill="#B5471F" opacity="0.16">
+          <animate attributeName="cx" values="1330;1180;1330" dur="14s" repeatCount="indefinite" />
+          <animate attributeName="cy" values="790;690;790" dur="14s" repeatCount="indefinite" />
+        </circle>
+        <path className="vv-wave-line vv-wave-orange" d="M-40 245 C 220 120, 430 390, 700 245 S 1170 90, 1480 260">
+          <animate attributeName="d" dur="9s" repeatCount="indefinite"
+            values="M-40 245 C 220 120, 430 390, 700 245 S 1170 90, 1480 260;M-40 280 C 220 390, 455 100, 720 275 S 1180 410, 1480 220;M-40 245 C 220 120, 430 390, 700 245 S 1170 90, 1480 260" />
+        </path>
+        <path className="vv-wave-line vv-wave-gray" d="M-40 410 C 230 285, 460 520, 730 390 S 1190 270, 1480 430">
+          <animate attributeName="d" dur="11s" repeatCount="indefinite"
+            values="M-40 410 C 230 285, 460 520, 730 390 S 1190 270, 1480 430;M-40 370 C 230 530, 470 270, 740 430 S 1190 520, 1480 350;M-40 410 C 230 285, 460 520, 730 390 S 1190 270, 1480 430" />
+        </path>
+        <path className="vv-wave-line vv-wave-orange vv-wave-low" d="M-40 610 C 230 480, 470 735, 740 590 S 1190 475, 1480 640">
+          <animate attributeName="d" dur="13s" repeatCount="indefinite"
+            values="M-40 610 C 230 480, 470 735, 740 590 S 1190 475, 1480 640;M-40 660 C 220 760, 470 470, 760 650 S 1200 760, 1480 570;M-40 610 C 230 480, 470 735, 740 590 S 1190 475, 1480 640" />
+        </path>
+        <path className="vv-wave-line vv-wave-gray vv-wave-low" d="M-40 790 C 220 665, 460 875, 720 755 S 1180 660, 1480 820">
+          <animate attributeName="d" dur="15s" repeatCount="indefinite"
+            values="M-40 790 C 220 665, 460 875, 720 755 S 1180 660, 1480 820;M-40 745 C 220 900, 480 675, 760 790 S 1190 900, 1480 735;M-40 790 C 220 665, 460 875, 720 755 S 1180 660, 1480 820" />
+        </path>
+      </svg>
 
       {/* Centered authentication card */}
       <div className="vv-auth-card relative z-10 w-full bg-white rounded-[28px] border border-slate-200/80 shadow-[0_24px_70px_-28px_rgba(15,23,42,0.32)]">
