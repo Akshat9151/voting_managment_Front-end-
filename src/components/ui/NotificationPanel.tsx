@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
 import {
   CheckSquare,
-  Map,
   Trash2,
   Check,
   Palette,

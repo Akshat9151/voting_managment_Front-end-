@@ -21,7 +21,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   const { language, t } = useLanguage();
   const { user } = useAuth();
 
-  const [unreadNotifsCount, setUnreadNotifsCount] = useState(0);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
   const loadNotifications = useCallback(async () => {
@@ -117,7 +116,6 @@ export const Navbar: React.FC<NavbarProps> = ({
         notifications={notifications}
         onClose={() => setShowNotifications(false)}
         onRefresh={loadNotifications}
-        onUnreadCountChange={setUnreadNotifsCount}
       />
     </header>
   );
