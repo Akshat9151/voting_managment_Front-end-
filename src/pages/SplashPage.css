@@ -1,4 +1,4 @@
-﻿/* ════════════════════════════════════════════════════════════════
+/* ════════════════════════════════════════════════════════════════
    VoteVictory — Cinematic Splash Screen
    Style: "Morphing Ring + Logo Reveal" (Dribbble Premium Style)
    ════════════════════════════════════════════════════════════════ */
@@ -344,6 +344,23 @@
 }
 
 /* ── AuthPage aura blobs compatibility ──────────────────────── */
+.vv-auth-page {
+  background: #f8fafc;
+}
+.vv-auth-card {
+  max-width: 30rem;
+  overflow: hidden;
+}
+.vv-auth-brand {
+  padding-bottom: 1.35rem;
+}
+.vv-auth-card input,
+.vv-auth-card select {
+  min-height: 44px;
+}
+.vv-auth-card button {
+  touch-action: manipulation;
+}
 .vv-aura-blob { position:absolute;border-radius:50%;filter:blur(90px);pointer-events:none;z-index:0;opacity:.85; }
 .vv-aura-1 { width:520px;height:520px;top:-120px;left:-100px;background:radial-gradient(circle,rgba(245,158,11,.22) 0%,rgba(217,119,6,.12) 70%);animation:vv-aura-float-1 20s ease-in-out infinite; }
 .vv-aura-2 { width:480px;height:480px;bottom:-100px;right:-80px;background:radial-gradient(circle,rgba(56,189,248,.22) 0%,rgba(2,132,199,.12) 70%);animation:vv-aura-float-2 22s ease-in-out infinite; }
@@ -353,3 +370,25 @@
 @keyframes vv-aura-float-3 { 0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(30px,30px) scale(1.08)} }
 .vv-grid-dots { position:absolute;inset:0;z-index:0;pointer-events:none;background-image:radial-gradient(circle,rgba(15,23,42,.05) 1.2px,transparent 1.2px);background-size:32px 32px; }
 .vv-splash-root,.vv-card { display:none; }
+
+@media (max-width: 640px) {
+  .vv-auth-page {
+    align-items: flex-start;
+    min-height: 100svh;
+    padding: 1rem 0.75rem;
+  }
+
+  .vv-auth-card {
+    width: 100%;
+    max-width: 30rem;
+    border-radius: 22px;
+  }
+
+  .vv-auth-card > div {
+    padding: 1.35rem 1rem 1.5rem;
+  }
+
+  .vv-auth-brand {
+    padding-bottom: 1rem;
+  }
+}
