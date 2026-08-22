@@ -157,9 +157,10 @@ export const ExpensesPage: React.FC = () => {
         </div>
       </Card>
 
-      {/* Expenses Ledger Table */}
+      {/* Expenses Ledger Table & Mobile Cards */}
       <Card className="p-0 overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-extrabold uppercase text-slate-500">
@@ -190,6 +191,25 @@ export const ExpensesPage: React.FC = () => {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Stacked Card View */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {expenses.map((exp) => (
+            <div key={exp.id} className="p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <Badge variant="purple" size="sm">{exp.category}</Badge>
+                <span className="font-heading font-extrabold text-base text-rose-600">
+                  ₹{exp.amount.toLocaleString()}
+                </span>
+              </div>
+              <div className="text-xs font-semibold text-slate-800">{exp.note}</div>
+              <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+                <span>{exp.date} • {exp.user}</span>
+                <Badge variant="mint" size="sm">{exp.mode}</Badge>
+              </div>
+            </div>
+          ))}
         </div>
       </Card>
 

@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
-import { useToast } from '../../context/ToastContext';
-import { Menu, Globe, Bell, Sun, Moon } from 'lucide-react';
+import { Menu, Globe, Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { NotificationPanel } from '../ui/NotificationPanel';
 import { notificationsApi } from '../../services/api';
@@ -21,9 +19,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [showNotifications, setShowNotifications] = useState(false);
 
   const { language, t } = useLanguage();
-  const { user, currentRole } = useAuth();
-  const { theme, toggleTheme } = useTheme();
-  const { showToast } = useToast();
+  const { user } = useAuth();
 
   const [unreadNotifsCount, setUnreadNotifsCount] = useState(0);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -39,20 +35,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     };
     loadNotifications();
   }, []);
-
-  // Determine role badge color and label
-  const getRoleBadgeColor = () => {
-    switch (currentRole) {
-      case 'SUPER_ADMIN':
-        return 'bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200/80 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800';
-      case 'ADMIN':
-        return 'bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200/80 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800';
-      case 'VOLUNTEER':
-        return 'bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800';
-      default:
-        return 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700';
-    }
-  };
 
   return (
     <header className="h-14 bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 px-3 sm:px-5 flex items-center justify-between shadow-xs dark:bg-slate-900/90 dark:border-slate-700 transition-colors">
@@ -78,33 +60,12 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Right: Controls & Badges */}
       <div className="flex items-center gap-1.5 sm:gap-2.5">
-        {/* Authenticated identity */}
+        {/* Authenticated identity - shows name only without duplicate role badge */}
         {user && (
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold shadow-xs ${getRoleBadgeColor()}`}>
-            <span className="hidden sm:inline truncate max-w-[120px]">{user.first_name}</span>
-            <span className="hidden sm:inline">·</span>
-            <span className="truncate">
-              {t(`role${currentRole.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('')}`)}
-            </span>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 bg-slate-100/80 text-slate-800 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 text-xs font-bold shadow-xs">
+            <span className="truncate max-w-[140px] uppercase">{user.first_name || 'Admin'}</span>
           </div>
         )}
-
-        {/* 1. Theme Toggle */}
-        <button
-          onClick={() => {
-            toggleTheme();
-            showToast(`Switched to ${theme === 'light' ? 'Dark' : 'Light'} Mode!`, 'success');
-          }}
-          className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-amber-400 transition-all active:scale-95 cursor-pointer min-h-[38px] min-w-[38px] flex items-center justify-center shadow-xs"
-          title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
-          aria-label="Toggle Theme"
-        >
-          {theme === 'dark' ? (
-            <Sun className="w-4 h-4 text-amber-400 animate-spin-once" />
-          ) : (
-            <Moon className="w-4 h-4 text-slate-700" />
-          )}
-        </button>
 
         {/* Language Modal Trigger */}
         <button

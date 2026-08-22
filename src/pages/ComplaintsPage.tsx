@@ -137,9 +137,10 @@ export const ComplaintsPage: React.FC = () => {
         ))}
       </div>
 
-      {/* Grievance Ledger Table */}
+      {/* Grievance Ledger Table & Mobile Cards */}
       <Card className="p-0 overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-extrabold uppercase text-slate-500">
@@ -149,6 +150,7 @@ export const ComplaintsPage: React.FC = () => {
                 <th className="p-3.5">Issue Description</th>
                 <th className="p-3.5">Logged Date</th>
                 <th className="p-3.5">Resolution Status</th>
+                {!isSuperAdmin && <th className="p-3.5 text-right">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -190,6 +192,30 @@ export const ComplaintsPage: React.FC = () => {
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Stacked Card View */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {filtered.map((c) => {
+            const statusValue = c.status ?? 'OPEN';
+            const label = statusValue === 'RESOLVED' || statusValue === 'Resolved' ? 'Resolved' : statusValue === 'IN_PROGRESS' || statusValue === 'In Progress' ? 'In Progress' : 'Open';
+            return (
+              <div key={c.id} className="p-4 space-y-2" onClick={() => isSuperAdmin && setSelectedComplaint(c)}>
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs text-slate-900">{c.reported_by_name ?? 'Citizen'}</span>
+                  <Badge variant={label === 'Resolved' ? 'mint' : label === 'In Progress' ? 'amber' : 'rose'} size="sm">{label}</Badge>
+                </div>
+                <div className="text-xs text-slate-700">{c.description ?? 'No description'}</div>
+                <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant="purple" size="sm">{c.ward_name ?? 'Ward'}</Badge>
+                    <Badge variant="cyan" size="sm">{c.category}</Badge>
+                  </div>
+                  <span>{c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}</span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </Card>
 

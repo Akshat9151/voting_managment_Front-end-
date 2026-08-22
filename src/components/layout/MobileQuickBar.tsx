@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
 import { LayoutDashboard, Contact2, Palette, Send, MapPin } from 'lucide-react';
@@ -16,7 +16,7 @@ export const MobileQuickBar: React.FC = () => {
   ];
 
   return (
-    <div className="lg:hidden fixed bottom-0 left-0 right-0 h-[58px] bg-white/95 backdrop-blur-md border-t border-slate-200 z-40 px-2 flex items-center justify-around shadow-lg">
+    <div className="lg:hidden fixed bottom-0 left-0 right-0 h-[58px] bg-white/95 backdrop-blur-md border-t border-slate-200 z-40 px-2 flex items-center justify-around shadow-lg dark:bg-slate-900/95 dark:border-slate-800 transition-colors">
       {quickItems.map((item) => (
         <NavLink
           key={item.to}
@@ -25,8 +25,8 @@ export const MobileQuickBar: React.FC = () => {
             clsx(
               'flex flex-col items-center justify-center flex-1 h-full min-h-[48px] py-1 text-[10px] font-bold transition-all select-none',
               isActive
-                ? 'text-sky-600 font-extrabold'
-                : 'text-slate-500 hover:text-slate-900'
+                ? 'text-sky-600 dark:text-sky-400 font-extrabold'
+                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
             )
           }
         >
