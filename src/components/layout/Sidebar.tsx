@@ -79,7 +79,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       <aside
         className={clsx(
-          'fixed lg:sticky top-0 lg:top-14 left-0 h-screen lg:h-[calc(100vh-56px)] w-[260px] bg-white border-r border-slate-200 z-50 flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0 overflow-y-auto dark:bg-slate-900 dark:border-slate-700',
+          'fixed lg:sticky top-0 lg:top-14 left-0 h-screen lg:h-[calc(100vh-56px)] w-[240px] max-w-[75vw] lg:w-[220px] xl:w-[240px] bg-white border-r border-slate-200 z-50 flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0 overflow-y-auto dark:bg-slate-900 dark:border-slate-700',
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >

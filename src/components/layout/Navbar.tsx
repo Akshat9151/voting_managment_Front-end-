@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { Menu, Globe, Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { NotificationPanel } from '../ui/NotificationPanel';
+import { NotificationPanel, type NotificationItem } from '../ui/NotificationPanel';
 import { notificationsApi } from '../../services/api';
 import { VoteVictoryLogo } from '../ui/VoteVictoryLogo';
 
@@ -22,19 +22,33 @@ export const Navbar: React.FC<NavbarProps> = ({
   const { user } = useAuth();
 
   const [unreadNotifsCount, setUnreadNotifsCount] = useState(0);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+
+  const loadNotifications = useCallback(async () => {
+    try {
+      const response = await notificationsApi.listMyNotifications();
+      setNotifications(response as NotificationItem[]);
+    } catch {
+      setNotifications([]);
+    }
+  }, []);
 
   useEffect(() => {
-    const loadNotifications = async () => {
-      try {
-        const response = await notificationsApi.listMyNotifications();
-        setNotifications(response);
-      } catch {
-        setNotifications([]);
-      }
-    };
     loadNotifications();
-  }, []);
+    // Refresh every 60 seconds
+    const interval = setInterval(loadNotifications, 60000);
+    return () => clearInterval(interval);
+  }, [loadNotifications]);
+
+  // Refresh when panel opens
+  const handleBellClick = () => {
+    setShowNotifications(prev => !prev);
+    if (!showNotifications) {
+      loadNotifications();
+    }
+  };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
     <header className="h-14 bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 px-3 sm:px-5 flex items-center justify-between shadow-xs dark:bg-slate-900/90 dark:border-slate-700 transition-colors">
@@ -79,13 +93,15 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Notifications */}
         <button
-          onClick={() => setShowNotifications(!showNotifications)}
+          onClick={handleBellClick}
           className="p-2 rounded-full text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-all relative min-h-[38px] min-w-[38px] flex items-center justify-center cursor-pointer"
           title={t('navbarNotifications')}
         >
           <Bell className="w-4 h-4" />
-          {unreadNotifsCount > 0 && (
-            <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-1.5 right-1.5 ring-2 ring-white dark:ring-slate-900 animate-pulse" />
+          {unreadCount > 0 && (
+            <span className="min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-extrabold absolute -top-0.5 -right-0.5 ring-2 ring-white dark:ring-slate-900 flex items-center justify-center">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
           )}
         </button>
       </div>
@@ -95,6 +111,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         isOpen={showNotifications}
         notifications={notifications}
         onClose={() => setShowNotifications(false)}
+        onRefresh={loadNotifications}
         onUnreadCountChange={setUnreadNotifsCount}
       />
     </header>

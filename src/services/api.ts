@@ -384,6 +384,18 @@ export const notificationsApi = {
     const res = await httpClient.get('/notifications/my');
     return (unwrap<any>(res) ?? []) as any[];
   },
+  markAsRead: async (notification_id: string) => {
+    const res = await httpClient.patch(`/notifications/${notification_id}/read`);
+    return unwrap<any>(res);
+  },
+  markAllAsRead: async () => {
+    const res = await httpClient.post('/notifications/mark-all-read');
+    return unwrap<any>(res);
+  },
+  deleteNotification: async (notification_id: string) => {
+    const res = await httpClient.delete(`/notifications/${notification_id}`);
+    return unwrap<any>(res);
+  },
 };
 
 export const broadcastApi = {

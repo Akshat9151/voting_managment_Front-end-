@@ -27,6 +27,8 @@ export const AuthPage: React.FC = () => {
   const navigate = useNavigate();
   const { language, setLanguage, t } = useLanguage();
 
+  const [isLoginVerification, setIsLoginVerification] = useState(false);
+
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password) {
@@ -43,6 +45,13 @@ export const AuthPage: React.FC = () => {
       showToast('Signed in successfully.', 'success');
       navigate('/');
     } catch (err: any) {
+      const errorDetails = err?.response?.data?.error?.details || err?.response?.data?.details;
+      if (errorDetails?.requires_otp && errorDetails?.challenge_id) {
+        setOtpChallengeId(errorDetails.challenge_id);
+        setIsLoginVerification(true);
+        showToast('A one-time verification code has been sent to your email to activate your account.', 'info');
+        return;
+      }
       const msg = err?.response?.data?.error?.message
         || err?.response?.data?.message
         || err?.response?.data?.detail
@@ -69,13 +78,20 @@ export const AuthPage: React.FC = () => {
 
       setIsLoading(true);
       try {
-        await authApi.verifySignupOtp(otpChallengeId, otpCode);
-        showToast('Account verified! Please log in with your email and password.', 'success');
-        setSuccessBanner('Account verified successfully! Please enter your password to sign in.');
-        setOtpChallengeId(null);
-        setOtpCode('');
-        setPassword('');
-        setIsSignup(false);
+        if (isLoginVerification) {
+          const session = await authApi.verifyLoginOtp(otpChallengeId, otpCode, email.trim(), password);
+          loginWithSession(session, email.trim());
+          showToast('Account verified and signed in successfully!', 'success');
+          navigate('/');
+        } else {
+          await authApi.verifySignupOtp(otpChallengeId, otpCode);
+          showToast('Account verified! Please log in with your email and password.', 'success');
+          setSuccessBanner('Account verified successfully! Please enter your password to sign in.');
+          setOtpChallengeId(null);
+          setOtpCode('');
+          setPassword('');
+          setIsSignup(false);
+        }
       } catch (err: any) {
         const msg = err?.response?.data?.error?.message
           || err?.response?.data?.message
@@ -270,7 +286,7 @@ export const AuthPage: React.FC = () => {
               <button
                 type="button"
                 className="w-full text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors"
-                onClick={() => { setOtpChallengeId(null); setOtpCode(''); }}
+                onClick={() => { setOtpChallengeId(null); setOtpCode(''); setIsLoginVerification(false); }}
               >
                 Change email or go back
               </button>
