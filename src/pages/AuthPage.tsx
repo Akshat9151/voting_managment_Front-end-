@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useNavigate } from 'react-router-dom';
@@ -17,6 +17,7 @@ import { FormInput } from '../components/ui/FormInput';
 import { Button } from '../components/ui/Button';
 import { VoteVictoryLogo } from '../components/ui/VoteVictoryLogo';
 import { authApi } from '../services/api';
+import { warmUpServer } from '../services/httpClient';
 import './SplashPage.css';
 
 export const AuthPage: React.FC = () => {
@@ -30,6 +31,8 @@ export const AuthPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
+  const [slowRequest, setSlowRequest] = useState(false); // shows "server waking up" banner
+  const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { loginWithSession } = useAuth();
   const { showToast } = useToast();
@@ -37,6 +40,11 @@ export const AuthPage: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
 
   const [isLoginVerification, setIsLoginVerification] = useState(false);
+
+  // Silently wake the backend as soon as the auth page opens
+  useEffect(() => {
+    warmUpServer();
+  }, []);
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,13 +55,17 @@ export const AuthPage: React.FC = () => {
 
     setError(null);
     setSuccessBanner(null);
+    setSlowRequest(false);
     setIsLoading(true);
+    // After 5s with no response, show the "server waking up" banner
+    slowTimer.current = setTimeout(() => setSlowRequest(true), 5000);
     try {
       const session = await authApi.login(email.trim(), password);
       loginWithSession(session, email.trim());
       showToast('Signed in successfully.', 'success');
       navigate('/');
     } catch (err: any) {
+      const isTimeout = err?.code === 'ECONNABORTED' || err?.message?.includes('timeout');
       const errorDetails = err?.response?.data?.error?.details || err?.response?.data?.details;
       if (errorDetails?.requires_otp && errorDetails?.challenge_id) {
         setOtpChallengeId(errorDetails.challenge_id);
@@ -61,14 +73,18 @@ export const AuthPage: React.FC = () => {
         showToast('A one-time verification code has been sent to your email to activate your account.', 'info');
         return;
       }
-      const msg = err?.response?.data?.error?.message
-        || err?.response?.data?.message
-        || err?.response?.data?.detail
-        || err?.message
-        || 'Login failed. Please check credentials.';
+      const msg = isTimeout
+        ? 'The server took too long to respond — it may still be starting up. Please try again in a moment.'
+        : (err?.response?.data?.error?.message
+          || err?.response?.data?.message
+          || err?.response?.data?.detail
+          || err?.message
+          || 'Login failed. Please check credentials.');
       setError(msg);
       showToast(msg, 'error');
     } finally {
+      if (slowTimer.current) clearTimeout(slowTimer.current);
+      setSlowRequest(false);
       setIsLoading(false);
     }
   };
@@ -277,6 +293,17 @@ export const AuthPage: React.FC = () => {
           {error && (
             <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-medium">
               {error}
+            </div>
+          )}
+
+          {/* Cold-start warm-up banner — shown after 5s of no response */}
+          {slowRequest && (
+            <div className="mb-4 flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
+              <svg className="animate-spin mt-0.5 w-3.5 h-3.5 text-amber-600 flex-shrink-0" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+              </svg>
+              <span><strong>Server is waking up…</strong> The backend runs on a free-tier host that sleeps when idle. This usually takes 20–60 seconds on first use. Please wait — do not refresh.</span>
             </div>
           )}
 

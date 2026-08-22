@@ -58,8 +58,14 @@ export const tokenStore = {
 export const httpClient = axios.create({
   baseURL: BASE_URL,
   headers: { 'Content-Type': 'application/json' },
-  timeout: 60000,
+  timeout: 90000, // 90s — covers Render free-tier cold start (up to ~80s)
 });
+
+// ─── Warm-up ping: wake backend before user hits login ────────────────────────
+// Called silently on AuthPage mount. Fire-and-forget, never throws.
+export const warmUpServer = () => {
+  axios.get(`${BASE_URL}/health`, { timeout: 90000 }).catch(() => {/* silence */});
+};
 
 // ─── Request interceptor: attach access token ─────────────────────────────────
 httpClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
