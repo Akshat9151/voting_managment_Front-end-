@@ -31,9 +31,9 @@ const getSystemTheme = (): Theme => {
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [primaryColor, setPrimaryColorState] = useState<BrandColor>(() => {
     try {
-      return (window.localStorage.getItem('electwin_theme_color') as BrandColor) || '#0284c7';
+      return (window.localStorage.getItem('votevictory_theme_color') as BrandColor) || '#d97706';
     } catch {
-      return '#0284c7';
+      return '#d97706';
     }
   });
 

@@ -86,8 +86,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="p-4 space-y-4">
           {/* Mobile Drawer Header */}
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 lg:hidden dark:border-slate-800">
-            <div className="font-heading font-extrabold text-lg text-slate-900 dark:text-slate-100">
-              Vote<span style={{ color: 'var(--brand-primary)' }}>Victory</span>
+            <div className="flex flex-col">
+              <div className="font-heading font-extrabold text-base text-slate-900 dark:text-slate-100 leading-none">
+                Vote<span className="text-amber-600 dark:text-amber-400">Victory</span>
+              </div>
+              <div className="text-[9px] font-extrabold text-amber-600 dark:text-amber-400 tracking-wider mt-0.5">
+                वोट विजय
+              </div>
             </div>
             <button
               onClick={onClose}

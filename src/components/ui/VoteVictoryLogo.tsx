@@ -17,41 +17,32 @@ export const VoteVictoryLogo: React.FC<VoteVictoryLogoProps> = ({
       aria-label="VoteVictory logo"
     >
       <defs>
-        <linearGradient id="vv-nav-gmain" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#1B6FD8" />
-          <stop offset="42%" stopColor="#4A5CF0" />
-          <stop offset="100%" stopColor="#7C3AED" />
+        <linearGradient id="vv-saffron-base" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#F59E0B" />
+          <stop offset="60%" stopColor="#D97706" />
+          <stop offset="100%" stopColor="#B45309" />
         </linearGradient>
-        <linearGradient id="vv-nav-gface" x1="15%" y1="0%" x2="85%" y2="100%">
-          <stop offset="0%" stopColor="#5B9BFF" />
-          <stop offset="50%" stopColor="#4A5CF0" />
-          <stop offset="100%" stopColor="#8B5CF6" />
-        </linearGradient>
-        <linearGradient id="vv-nav-gcrown" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#FCD34D" />
+        <linearGradient id="vv-saffron-crown" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FEF3C7" />
           <stop offset="50%" stopColor="#F59E0B" />
           <stop offset="100%" stopColor="#D97706" />
         </linearGradient>
-        <linearGradient id="vv-nav-ggold" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#FDE68A" />
+        <linearGradient id="vv-saffron-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FFFBEB" />
           <stop offset="100%" stopColor="#F59E0B" />
-        </linearGradient>
-        <linearGradient id="vv-nav-gcheck" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#FFFFFF" />
-          <stop offset="100%" stopColor="#E0E8FF" />
         </linearGradient>
       </defs>
 
-      {/* Outer Circle */}
-      <circle cx="60" cy="56" r="48" fill="url(#vv-nav-gface)" />
+      {/* Outer Saffron Base Circle */}
+      <circle cx="60" cy="56" r="48" fill="url(#vv-saffron-base)" />
 
-      {/* Inner glass ring */}
+      {/* Inner subtle glass ring */}
       <circle
         cx="60"
         cy="56"
         r="36"
-        fill="rgba(255,255,255,0.08)"
-        stroke="rgba(255,255,255,0.2)"
+        fill="rgba(255,255,255,0.12)"
+        stroke="rgba(255,255,255,0.3)"
         strokeWidth="1.5"
       />
 
@@ -67,13 +58,13 @@ export const VoteVictoryLogo: React.FC<VoteVictoryLogoProps> = ({
 
       {/* Crown */}
       <g transform="translate(60,16)">
-        <rect x="-13" y="8" width="26" height="5" rx="2.5" fill="url(#vv-nav-gcrown)" />
-        <polygon points="-13,8 -10,0 -6,8" fill="url(#vv-nav-gcrown)" />
-        <polygon points="-4,8  0,-6  4,8" fill="url(#vv-nav-ggold)" />
-        <polygon points="6,8  10,0  13,8" fill="url(#vv-nav-gcrown)" />
-        <circle cx="-9" cy="5" r="2" fill="white" opacity="0.8" />
-        <circle cx="0" cy="3" r="2.5" fill="white" opacity="0.9" />
-        <circle cx="9" cy="5" r="2" fill="white" opacity="0.8" />
+        <rect x="-13" y="8" width="26" height="5" rx="2.5" fill="url(#vv-saffron-crown)" />
+        <polygon points="-13,8 -10,0 -6,8" fill="url(#vv-saffron-crown)" />
+        <polygon points="-4,8  0,-6  4,8" fill="url(#vv-saffron-gold)" />
+        <polygon points="6,8  10,0  13,8" fill="url(#vv-saffron-crown)" />
+        <circle cx="-9" cy="5" r="2" fill="white" opacity="0.85" />
+        <circle cx="0" cy="3" r="2.5" fill="white" opacity="0.95" />
+        <circle cx="9" cy="5" r="2" fill="white" opacity="0.85" />
       </g>
 
       {/* V-Checkmark */}
@@ -81,7 +72,7 @@ export const VoteVictoryLogo: React.FC<VoteVictoryLogoProps> = ({
         <polyline
           points="-20,2 -5,20 22,-19"
           fill="none"
-          stroke="rgba(255,255,255,0.3)"
+          stroke="rgba(15,23,42,0.25)"
           strokeWidth="12"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -89,19 +80,10 @@ export const VoteVictoryLogo: React.FC<VoteVictoryLogoProps> = ({
         <polyline
           points="-20,2 -5,20 22,-19"
           fill="none"
-          stroke="url(#vv-nav-gcheck)"
+          stroke="white"
           strokeWidth="9"
           strokeLinecap="round"
           strokeLinejoin="round"
-        />
-        <polyline
-          points="-20,2 -5,20 22,-19"
-          fill="none"
-          stroke="white"
-          strokeWidth="5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          opacity="0.95"
         />
       </g>
     </svg>

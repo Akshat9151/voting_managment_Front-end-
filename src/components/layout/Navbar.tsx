@@ -66,9 +66,14 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform overflow-hidden">
             <VoteVictoryLogo className="w-full h-full" />
           </div>
-          <span className="font-heading font-extrabold text-lg tracking-tight text-slate-900 dark:text-slate-100">
-            Vote<span style={{ color: 'var(--brand-primary)' }}>Victory</span>
-          </span>
+          <div className="flex flex-col">
+            <span className="font-heading font-extrabold text-base tracking-tight text-slate-900 dark:text-slate-100 leading-none">
+              Vote<span className="text-amber-600 dark:text-amber-400">Victory</span>
+            </span>
+            <span className="text-[9px] font-extrabold text-amber-600 dark:text-amber-400 tracking-wider leading-none mt-0.5">
+              वोट विजय
+            </span>
+          </div>
         </Link>
       </div>
 

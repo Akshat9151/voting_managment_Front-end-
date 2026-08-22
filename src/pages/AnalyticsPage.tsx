@@ -33,12 +33,12 @@ export const AnalyticsPage: React.FC = () => {
   useEffect(() => { loadAnalytics(); }, [loadAnalytics]);
 
   const handleExportReport = () => {
-    const reportContent = `ELECTWIN CAMPAIGN ANALYTICS REPORT\nGenerated on: ${new Date().toLocaleString()}\n\nElection: ${activeElectionId}\n\nTurnout Data:\n${JSON.stringify(analytics, null, 2)}`;
+    const reportContent = `VOTEVICTORY (वोट विजय) CAMPAIGN ANALYTICS REPORT\nGenerated on: ${new Date().toLocaleString()}\n\nElection: ${activeElectionId}\n\nTurnout Data:\n${JSON.stringify(analytics, null, 2)}`;
     const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `ElectWin_Analytics_${Date.now()}.txt`;
+    link.download = `VoteVictory_Analytics_${Date.now()}.txt`;
     link.click();
     showToast(t('analyticsReportExported'), 'info');
   };

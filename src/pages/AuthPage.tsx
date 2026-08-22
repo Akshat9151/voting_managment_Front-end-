@@ -2,25 +2,34 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, ShieldCheck, CheckCircle2, Mail, Lock, Globe, Smartphone, UserPlus } from 'lucide-react';
-import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
-import { Button } from '../components/ui/Button';
-import { FormInput } from '../components/ui/FormInput';
 import { useLanguage, SUPPORTED_LANGUAGES } from '../context/LanguageContext';
-import { authApi } from '../services/api';
+import { GoogleLogin } from '@react-oauth/google';
+import {
+  Lock,
+  Mail,
+  ArrowRight,
+  ShieldCheck,
+  CheckCircle2,
+  Globe,
+  Smartphone
+} from 'lucide-react';
+import { FormInput } from '../components/ui/FormInput';
+import { Button } from '../components/ui/Button';
 import { VoteVictoryLogo } from '../components/ui/VoteVictoryLogo';
+import { authApi } from '../services/api';
+import './SplashPage.css';
 
 export const AuthPage: React.FC = () => {
+  const [isSignup, setIsSignup] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [phone, setPhone] = useState('');
   const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpChallengeId, setOtpChallengeId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSignup, setIsSignup] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
-  const [otpChallengeId, setOtpChallengeId] = useState<string | null>(null);
-  const [otpCode, setOtpCode] = useState('');
 
   const { loginWithSession } = useAuth();
   const { showToast } = useToast();
@@ -134,21 +143,14 @@ export const AuthPage: React.FC = () => {
       setOtpChallengeId(challenge.challenge_id);
       showToast(
         challenge.dev_code ? `Development OTP: ${challenge.dev_code}` : `Verification code sent to ${challenge.destination}.`,
-        'success'
+        'info'
       );
     } catch (err: any) {
-      const isConflict = err?.response?.status === 409;
-      const msg = isConflict
-        ? 'This email is already registered. Please sign in with your existing account.'
-        : err?.response?.data?.error?.message
-          || err?.response?.data?.message
-          || err?.response?.data?.detail
-          || err?.message
-          || t('signUpFailed');
-      if (isConflict) {
-        setIsSignup(false);
-        setPassword('');
-      }
+      const msg = err?.response?.data?.error?.message
+        || err?.response?.data?.message
+        || err?.response?.data?.detail
+        || err?.message
+        || 'Signup failed. Please try again.';
       setError(msg);
       showToast(msg, 'error');
     } finally {
@@ -156,17 +158,17 @@ export const AuthPage: React.FC = () => {
     }
   };
 
-  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
-    if (!credentialResponse.credential) {
-      showToast('Google sign in failed. No credential received.', 'error');
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    if (!credentialResponse?.credential) {
+      showToast('Google authentication failed. No token received.', 'error');
       return;
     }
+
     setIsLoading(true);
     setError(null);
-    setSuccessBanner(null);
     try {
       const session = await authApi.googleAuth(credentialResponse.credential);
-      loginWithSession(session, session.user?.email || '');
+      loginWithSession(session, session.user?.email || 'Google User');
       showToast('Signed in with Google successfully!', 'success');
       navigate('/');
     } catch (err: any) {
@@ -187,40 +189,53 @@ export const AuthPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-3 sm:p-6">
-      <div className="w-full max-w-4xl bg-white rounded-3xl shadow-modal border border-slate-200 overflow-hidden grid grid-cols-1 md:grid-cols-2">
+    <div className="relative min-h-screen bg-slate-50 flex items-center justify-center p-3 sm:p-6 overflow-hidden">
+      {/* Soft Floating Gradient Aura Blobs */}
+      <div className="vv-aura-blob vv-aura-1" aria-hidden="true" />
+      <div className="vv-aura-blob vv-aura-2" aria-hidden="true" />
+      <div className="vv-aura-blob vv-aura-3" aria-hidden="true" />
+      <div className="vv-grid-dots" aria-hidden="true" />
+
+      {/* Glass Card */}
+      <div className="relative z-10 w-full max-w-4xl bg-white/85 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/80 overflow-hidden grid grid-cols-1 md:grid-cols-2">
         {/* Left Hero Graphic */}
-        <div className="bg-gradient-to-br from-sky-600 to-violet-700 p-8 text-white flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-2.5 mb-6">
-              <div className="w-10 h-10 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center backdrop-blur-md overflow-hidden p-1">
+        <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950 p-8 text-white flex flex-col justify-between relative overflow-hidden">
+          <div className="absolute -top-24 -left-24 w-64 h-64 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center backdrop-blur-md overflow-hidden p-1 shadow-lg">
                 <VoteVictoryLogo className="w-full h-full" />
               </div>
-              <span className="font-heading font-extrabold text-2xl tracking-tight">
-                Vote<span className="text-sky-300">Victory</span>
-              </span>
+              <div className="flex flex-col">
+                <span className="font-heading font-extrabold text-2xl tracking-tight text-white leading-tight">
+                  Vote<span className="text-amber-400">Victory</span>
+                </span>
+                <span className="text-[11px] font-extrabold text-amber-400 tracking-wider">
+                  वोट विजय
+                </span>
+              </div>
             </div>
 
-            <div className="inline-block px-3 py-1 rounded-full bg-white/15 border border-white/20 text-xs font-bold mb-4 backdrop-blur-xs">
+            <div className="inline-block px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/30 text-xs font-bold text-amber-300 mb-4 backdrop-blur-xs">
               {t('masterCampaignOS')}
             </div>
 
-            <h2 className="text-xl sm:text-2xl font-extrabold leading-tight mb-2">
+            <h2 className="text-xl sm:text-2xl font-extrabold leading-tight mb-2 text-white">
               {t('realTimeElection')}
             </h2>
-            <p className="text-sm text-white/80 leading-relaxed mb-6">
+            <p className="text-xs text-slate-300 leading-relaxed mb-6">
               {t('voterDataVolunteer')}
             </p>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-3 relative z-10">
             {[
               { icon: ShieldCheck, text: t('roleBasedAccess') },
               { icon: CheckCircle2, text: t('multiTenantOrg') },
               { icon: CheckCircle2, text: t('realtimeDashboard') }
             ].map(({ icon: Icon, text }) => (
-              <div key={text} className="flex items-center gap-2.5 text-sm font-semibold text-white/90">
-                <Icon className="w-4 h-4 text-sky-300 flex-shrink-0" />
+              <div key={text} className="flex items-center gap-2.5 text-xs font-bold text-slate-200">
+                <Icon className="w-4 h-4 text-amber-400 flex-shrink-0" />
                 {text}
               </div>
             ))}
@@ -228,7 +243,7 @@ export const AuthPage: React.FC = () => {
         </div>
 
         {/* Right Form */}
-        <div className="p-6 sm:p-8 flex flex-col justify-center">
+        <div className="p-6 sm:p-8 flex flex-col justify-center bg-white/90">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h3 className="text-xl font-extrabold text-slate-900 mb-1">
@@ -265,10 +280,10 @@ export const AuthPage: React.FC = () => {
             </div>
           )}
 
-          {/* OTP Verification Form (Only during Signup) */}
+          {/* OTP Verification Form */}
           {otpChallengeId ? (
             <form onSubmit={handleSignup} className="space-y-4">
-              <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-3 text-xs text-sky-800">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs text-amber-900">
                 A 6-digit verification code was sent to <strong>{email}</strong>. Please enter it below to complete registration.
               </div>
               <FormInput
@@ -317,9 +332,9 @@ export const AuthPage: React.FC = () => {
 
               {isSignup ? (
                 <form onSubmit={handleSignup} className="space-y-3.5" autoComplete="off">
-                  <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                     <p className="font-bold">Create your workspace</p>
-                    <p className="mt-0.5 text-sky-700">First signup becomes Super Admin and can manage campaign teams.</p>
+                    <p className="mt-0.5 text-amber-800">First signup becomes Super Admin and can manage campaign teams.</p>
                   </div>
                   <FormInput
                     label="Full Name"
@@ -383,14 +398,15 @@ export const AuthPage: React.FC = () => {
                   </Button>
                 </form>
               ) : (
-                <form onSubmit={handlePasswordLogin} className="space-y-4">
+                <form onSubmit={handlePasswordLogin} className="space-y-4" autoComplete="off">
                   <FormInput
                     label={t('emailAddress')}
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@yourorganization.com"
+                    placeholder={t('emailExample')}
                     leftIcon={<Mail className="w-4 h-4" />}
+                    autoComplete="username"
                     required
                   />
 
@@ -399,8 +415,9 @@ export const AuthPage: React.FC = () => {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••••••"
+                    placeholder={t('enterPassword')}
                     leftIcon={<Lock className="w-4 h-4" />}
+                    autoComplete="current-password"
                     required
                   />
 
@@ -413,11 +430,11 @@ export const AuthPage: React.FC = () => {
                     {isLoading ? (
                       <span className="flex items-center gap-2">
                         <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Signing in...
+                        {t('signingIn')}
                       </span>
                     ) : (
                       <span className="flex items-center gap-2">
-                        Sign In with Password
+                        {t('signIn')}
                         <ArrowRight className="w-4 h-4" />
                       </span>
                     )}
@@ -425,37 +442,20 @@ export const AuthPage: React.FC = () => {
                 </form>
               )}
 
-              <div className="mt-4 text-center">
-                {isSignup ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setError(null);
-                      setSuccessBanner(null);
-                      setIsSignup(false);
-                    }}
-                    className="w-full py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all"
-                  >
-                    {t('alreadyHaveAccountLogin')}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setError(null);
-                      setSuccessBanner(null);
-                      setIsSignup(true);
-                    }}
-                    className="w-full py-2.5 rounded-xl border border-sky-300 bg-sky-50 text-xs font-bold text-sky-700 hover:bg-sky-100 transition-all flex items-center justify-center gap-2"
-                  >
-                    <UserPlus className="w-4 h-4" />
-                    Create Workspace / Super Admin Account
-                  </button>
-                )}
-              </div>
-
-              <div className="mt-4 text-center text-[10px] text-slate-400 font-semibold">
-                {t('multiTenantNote')}
+              <div className="mt-5 text-center text-xs text-slate-500">
+                {isSignup ? t('alreadyHaveAccount') : t('dontHaveAccount')}{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSignup(!isSignup);
+                    setError(null);
+                    setSuccessBanner(null);
+                    setOtpChallengeId(null);
+                  }}
+                  className="font-extrabold text-amber-600 hover:text-amber-700 hover:underline cursor-pointer ml-1"
+                >
+                  {isSignup ? t('signIn') : t('createOneNow')}
+                </button>
               </div>
             </>
           )}

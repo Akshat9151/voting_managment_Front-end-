@@ -13,22 +13,26 @@
     --text-muted: #64748b;
     --border-color: #e2e8f0;
 
-    --brand-primary: #0284c7;
-    --brand-primary-soft: rgba(2, 132, 199, 0.12);
-    --brand-primary-border: rgba(2, 132, 199, 0.3);
-    --brand-primary-glow: rgba(2, 132, 199, 0.2);
-    --brand-secondary: #7c3aed;
+    --brand-primary: #d97706;
+    --brand-primary-hover: #f59e0b;
+    --brand-primary-soft: rgba(217, 119, 6, 0.12);
+    --brand-primary-border: rgba(217, 119, 6, 0.3);
+    --brand-primary-glow: rgba(217, 119, 6, 0.2);
+    --brand-secondary: #0f172a;
     --brand-accent: #059669;
 
-    --cyan-primary: #0284c7;
-    --cyan-light: #38bdf8;
-    --cyan-dark: #0369a1;
+    --saffron-primary: #d97706;
+    --saffron-light: #f59e0b;
+    --saffron-dark: #b45309;
 
-    --purple-primary: #7c3aed;
-    --purple-light: #a78bfa;
+    --navy-primary: #0f172a;
+    --navy-light: #1e293b;
 
     --mint-primary: #059669;
     --mint-light: #34d399;
+
+    --sky-primary: #0284c7;
+    --sky-light: #38bdf8;
 
     --card-border: #e2e8f0;
     --navbar-height: 56px;
