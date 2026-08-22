@@ -361,6 +361,49 @@
 .vv-auth-card button {
   touch-action: manipulation;
 }
+.vv-orbit-halo {
+  position: absolute;
+  z-index: 0;
+  left: 50%;
+  top: 50%;
+  width: min(26rem, 74vw);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(245, 158, 11, 0.08);
+  box-shadow:
+    0 0 0 2.5rem rgba(245, 158, 11, 0.045),
+    0 0 0 6rem rgba(2, 132, 199, 0.032);
+  animation: vv-orbit-breathe 3.8s ease-in-out infinite;
+  pointer-events: none;
+}
+.vv-orbit-signal {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 50%;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 0.9rem 0.2rem rgba(245, 158, 11, 0.58);
+  transform-origin: 0 0;
+  animation: vv-orbit 5s linear infinite;
+  pointer-events: none;
+}
+.vv-orbit-signal-2 {
+  background: #0284c7;
+  box-shadow: 0 0 0.9rem 0.2rem rgba(2, 132, 199, 0.52);
+  animation-delay: -2.5s;
+}
+@keyframes vv-orbit-breathe {
+  0%, 100% { transform: translate(-50%, -50%) scale(0.88); opacity: 0.72; }
+  50% { transform: translate(-50%, -50%) scale(1.16); opacity: 0.34; }
+}
+@keyframes vv-orbit {
+  from { transform: rotate(0deg) translateX(min(12rem, 31vw)); }
+  to { transform: rotate(360deg) translateX(min(12rem, 31vw)); }
+}
 .vv-aura-blob { position:absolute;border-radius:50%;filter:blur(90px);pointer-events:none;z-index:0;opacity:.85; }
 .vv-aura-1 { width:520px;height:520px;top:-120px;left:-100px;background:radial-gradient(circle,rgba(245,158,11,.22) 0%,rgba(217,119,6,.12) 70%);animation:vv-aura-float-1 20s ease-in-out infinite; }
 .vv-aura-2 { width:480px;height:480px;bottom:-100px;right:-80px;background:radial-gradient(circle,rgba(56,189,248,.22) 0%,rgba(2,132,199,.12) 70%);animation:vv-aura-float-2 22s ease-in-out infinite; }

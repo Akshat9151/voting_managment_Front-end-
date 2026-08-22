@@ -204,10 +204,10 @@ export const AuthPage: React.FC = () => {
 
   return (
     <div className="vv-auth-page relative min-h-screen flex items-center justify-center p-4 sm:p-6 overflow-x-hidden overflow-y-auto">
-      {/* Soft Floating Gradient Aura Blobs */}
-      <div className="vv-aura-blob vv-aura-1" aria-hidden="true" />
-      <div className="vv-aura-blob vv-aura-2" aria-hidden="true" />
-      <div className="vv-aura-blob vv-aura-3" aria-hidden="true" />
+      {/* Subtle Orbit Pulse background animation */}
+      <div className="vv-orbit-halo" aria-hidden="true" />
+      <div className="vv-orbit-signal vv-orbit-signal-1" aria-hidden="true" />
+      <div className="vv-orbit-signal vv-orbit-signal-2" aria-hidden="true" />
       <div className="vv-grid-dots" aria-hidden="true" />
 
       {/* Centered authentication card */}
