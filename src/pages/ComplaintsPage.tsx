@@ -88,7 +88,14 @@ export const ComplaintsPage: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Delete this complaint?')) return;
-    try { await complaintsApi.remove(id); showToast('Complaint deleted successfully.', 'success'); await loadComplaints(); } catch (err: any) { showToast(err?.response?.data?.detail || 'Delete failed.', 'error'); }
+    try {
+      await complaintsApi.remove(id);
+      showToast('Complaint deleted successfully.', 'success');
+      await loadComplaints();
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message || err?.response?.data?.message || (typeof err?.response?.data?.detail === 'string' ? err.response.data.detail : err?.response?.data?.detail?.message) || 'Delete failed.';
+      showToast(msg, 'error');
+    }
   };
 
   const filtered = complaints.filter(c => {

@@ -65,8 +65,8 @@ export const DashboardPage: React.FC = () => {
         recentActivity: (Array.isArray(dashData?.recent_activity) ? dashData.recent_activity : []).slice(0, 5).map((item: any) => ({
           type: item.type ?? item.activity_type ?? item.action ?? 'Activity',
           name: item.name ?? item.title ?? item.actor ?? 'System',
-          detail: item.detail ?? item.description ?? '',
-          time: item.time ?? item.timestamp ?? ''
+          detail: item.detail ?? item.description ?? 'System update recorded',
+          time: item.time ?? item.timestamp ?? (item.created_at ? new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now')
         }))
       };
     }

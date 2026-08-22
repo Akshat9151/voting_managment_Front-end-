@@ -78,7 +78,8 @@ export const VotersPage: React.FC = () => {
     try {
       const preview = await votersApi.uploadBatch(activeElectionId, file);
       setPendingImportJobId(preview.job_id);
-      showToast(`Preview ready: ${preview.valid_count ?? 0} valid rows found. Confirm the import to add them.`, 'success');
+      const count = preview.valid_count ?? preview.valid_rows ?? preview.total_rows ?? 0;
+      showToast(`Preview ready: ${count} valid rows found. Confirm the import to add them.`, 'success');
     } catch (err: any) {
       showToast(
         err?.response?.data?.error?.message
@@ -96,7 +97,8 @@ export const VotersPage: React.FC = () => {
     try {
       const report = await votersApi.confirmImport(pendingImportJobId);
       setPendingImportJobId(null);
-      showToast(`${report.successfully_imported ?? 0} voters imported successfully.`, 'success');
+      const count = report.successfully_imported ?? report.imported_count ?? report.imported_rows ?? 0;
+      showToast(`${count} voters imported successfully.`, 'success');
       await loadVoters();
     } catch (err: any) {
       showToast(err?.response?.data?.message || 'Import confirmation failed', 'error');

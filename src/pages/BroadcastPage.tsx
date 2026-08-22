@@ -67,11 +67,11 @@ export const BroadcastPage: React.FC = () => {
     const mobile = voter.mobile ?? voter.phone_number ?? '';
     const channel = voter.channel ?? 'SMS Only';
     const age = Number(voter.age ?? 0);
-    const gender = voter.gender ?? '';
+    const genderLower = String(voter.gender ?? '').toLowerCase();
     if (segment === 'whatsapp' && channel !== 'WhatsApp') return false;
     if (segment === 'no-whatsapp' && channel !== 'SMS Only') return false;
     if (segment === 'youth' && (age < 18 || age > 25)) return false;
-    if (segment === 'women' && gender !== 'Female') return false;
+    if (segment === 'women' && genderLower !== 'female' && genderLower !== 'f' && genderLower !== 'woman') return false;
     if (segment === 'missing' && mobile) return false;
     return true;
   }), [voters, segment]);

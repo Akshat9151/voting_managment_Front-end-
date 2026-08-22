@@ -25,8 +25,12 @@ export const VolunteerWardPage: React.FC = () => {
   }, []);
 
   const loadWardVoters = async () => {
-    const data = await api.getVolunteerVoters();
-    setVoters(data);
+    try {
+      const data = await api.getVolunteerVoters();
+      setVoters(Array.isArray(data) ? data : []);
+    } catch {
+      setVoters([]);
+    }
   };
 
   const handleFileUpload = async (file: File) => {

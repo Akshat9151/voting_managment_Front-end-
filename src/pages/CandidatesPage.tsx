@@ -80,22 +80,28 @@ export const CandidatesPage: React.FC = () => {
         election_id: activeElectionId || undefined,
         name: name.trim(),
         full_name: name.trim(),
+        hindi_name: (hindiName || name).trim(),
         hindiName: (hindiName || name).trim(),
         post: postType === 'sarpanch' ? 'Sarpanch (Gram Panchayat)' : 'Panch (Ward)',
+        post_type: postType,
         postType,
+        ward_or_constituency: constituency.trim(),
         constituency: constituency.trim(),
+        symbol_url: symbolUrl,
         symbol: symbolUrl,
+        symbol_name: symbolName.trim(),
         symbolName: symbolName.trim(),
+        photo_url: photoUrl,
         photo: photoUrl,
         slogan: slogan.trim(),
-        votersCount: 0,
-        volunteersCount: 0,
+        voters_count: 0,
+        volunteers_count: 0,
         manifesto: manifesto.trim()
       };
       if (editingCandidate) {
         await candidatesApi.update(editingCandidate.id, payload);
       } else {
-        await api.addCandidate(payload);
+        await candidatesApi.create(payload);
       }
 
       showToast(editingCandidate ? 'Candidate profile updated successfully!' : 'Candidate profile created successfully!', 'success');
