@@ -10,21 +10,28 @@ export interface LanguageOption {
 
 export const SUPPORTED_LANGUAGES: LanguageOption[] = [
   { code: 'en', label: 'English', native: 'English' },
-  { code: 'hi', label: 'Hindi', native: 'à¤¹à¤¿à¤¨à¥à¤¦à¥€' },
-  { code: 'pa', label: 'Punjabi', native: 'à¨ªà©°à¨œà¨¾à¨¬à©€' },
-  { code: 'bn', label: 'Bengali', native: 'à¦¬à¦¾à¦‚à¦²à¦¾' },
-  { code: 'mr', label: 'Marathi', native: 'à¤®à¤°à¤¾à¤ à¥€' },
-  { code: 'te', label: 'Telugu', native: 'à°¤à±†à°²à±à°—à±' },
-  { code: 'ta', label: 'Tamil', native: 'à®¤à®®à®¿à®´à¯' },
-  { code: 'gu', label: 'Gujarati', native: 'àª—à«àªœàª°àª¾àª¤à«€' }
+  { code: 'hi', label: 'Hindi', native: '\u0939\u093f\u0928\u094d\u0926\u0940' },
+  { code: 'pa', label: 'Punjabi', native: '\u0a2a\u0a70\u0a1c\u0a3e\u0a2c\u0a40' },
+  { code: 'bn', label: 'Bengali', native: '\u09ac\u09be\u0982\u09b2\u09be' },
+  { code: 'mr', label: 'Marathi', native: '\u092e\u0930\u093e\u0920\u0940' },
+  { code: 'te', label: 'Telugu', native: '\u0c24\u0c46\u0c32\u0c41\u0c17\u0c41' },
+  { code: 'ta', label: 'Tamil', native: '\u0924\u092e\u093f\u0934\u094d' },
+  { code: 'gu', label: 'Gujarati', native: '\u0917\u0941\u091c\u0930\u093e\u0924\u0940' }
 ];
+
+const repairMojibake = (value: string) => {
+  if (!/[àâ]/.test(value)) return value;
+  try {
+    return new TextDecoder().decode(Uint8Array.from(value, (character) => character.charCodeAt(0)));
+  } catch {
+    return value;
+  }
+};
 
 const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
   en: {
     deleteSelected: 'Delete Selected',
     selectAll: 'Select All',
-    selectAllGroups: 'Select all visible broadcast groups',
-    deleteGroup: 'Delete group',
     groupsFound: 'groups',
     confirmBulkDeleteGroup: 'Are you sure you want to delete {{count}} broadcast group(s)? This cannot be undone.',
     groupsBulkDeleted: 'Deleted {{count}} broadcast group(s).',
@@ -561,8 +568,6 @@ const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
   hi: {
     deleteSelected: 'चयनित मिटाएं',
     selectAll: 'सभी चुनें',
-    selectAllGroups: 'दिख रहे प्रसारण समूह चुनें',
-    deleteGroup: 'समूह हटाएं',
     groupsFound: 'समूह',
     confirmBulkDeleteGroup: 'क्या आप वाकई {{count}} प्रसारण समूह हटाना चाहते हैं? इसे पूर्ववत नहीं किया जा सकता।',
     groupsBulkDeleted: '{{count}} प्रसारण समूह हटा दिए गए।',
@@ -2039,7 +2044,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const t = (key: string, fallback?: string): string => {
     const dict = TRANSLATIONS[language] || TRANSLATIONS.en;
-    return dict[key] || EXTRA_TRANSLATIONS[language]?.[key] || TRANSLATIONS.en[key] || EXTRA_TRANSLATIONS.en[key] || fallback || key;
+    return repairMojibake(dict[key] || EXTRA_TRANSLATIONS[language]?.[key] || TRANSLATIONS.en[key] || EXTRA_TRANSLATIONS.en[key] || fallback || key);
   };
 
   return (
