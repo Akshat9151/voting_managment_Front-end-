@@ -309,9 +309,10 @@ export const BroadcastPage: React.FC = () => {
                 </button>
                 <button 
                   type="button" 
-                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                  className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-100 rounded-md transition-colors"
                   onClick={(e) => { e.stopPropagation(); deleteGroup(saved.id); }}
                   title={t('deleteGroup') || 'Delete group'}
+                  aria-label={t('deleteGroup') || 'Delete group'}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
