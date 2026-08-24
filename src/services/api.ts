@@ -1,11 +1,11 @@
 /**
- * api.ts â€” ElectWin Dashboard
+ * api.ts — ElectWin Dashboard
  * All methods make real HTTP calls to the FastAPI backend.
  * Zero localStorage / mockData references.
  */
 import { httpClient } from './httpClient';
 
-// â”€â”€â”€ Helper: unwrap APIResponse<T> envelope â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Helper: unwrap APIResponse<T> envelope ───────────────────────────────────
 function unwrap<T>(res: { data: { data: T; success?: boolean; message?: string } | T }): T {
   const body = res.data as any;
   // Backend wraps in {success, message, data: T}
@@ -13,7 +13,7 @@ function unwrap<T>(res: { data: { data: T; success?: boolean; message?: string }
   return body as T;
 }
 
-// â”€â”€â”€ Auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Auth ─────────────────────────────────────────────────────────────────────
 export const authApi = {
   onboard: async (payload: { organization_name: string; email: string; password: string; first_name: string; last_name: string; phone?: string }) => {
     const res = await httpClient.post('/auth/onboard', payload);
@@ -81,7 +81,7 @@ export const authApi = {
   },
 };
 
-// â”€â”€â”€ Tasks & Field Activities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Tasks & Field Activities ────────────────────────────────────────────────
 export const tasksApi = {
   list: async (params?: { status?: string; priority?: string; mine?: boolean }) => {
     const res = await httpClient.get('/tasks', { params });
@@ -122,7 +122,7 @@ export const fieldActivitiesApi = {
   },
 };
 
-// â”€â”€â”€ Elections â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Elections ────────────────────────────────────────────────────────────────
 export const electionsApi = {
   list: async () => {
     const res = await httpClient.get('/elections/');
@@ -143,7 +143,7 @@ export const electionsApi = {
   },
 };
 
-// â”€â”€â”€ Organizations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Organizations ────────────────────────────────────────────────────────────
 export const orgsApi = {
   list: async () => {
     const res = await httpClient.get('/organizations/');
@@ -183,7 +183,7 @@ export const candidatesApi = {
   },
 };
 
-// â”€â”€â”€ Voters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Voters ───────────────────────────────────────────────────────────────────
 export const votersApi = {
   list: async (election_id?: string, params?: Record<string, any>) => {
     try {
@@ -282,7 +282,7 @@ export const broadcastGroupsApi = {
   },
 };
 
-// â”€â”€â”€ Users / Team â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Users / Team ─────────────────────────────────────────────────────────────
 export const usersApi = {
   list: async (params?: Record<string, any>) => {
     const res = await httpClient.get('/users/', { params });
@@ -326,7 +326,7 @@ export const usersApi = {
   },
 };
 
-// â”€â”€â”€ Volunteers & Polling Stations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Volunteers & Polling Stations ────────────────────────────────────────────
 export const volunteersApi = {
   listAssignments: async (election_id: string, polling_station_id?: string) => {
     const params: any = {};
@@ -353,7 +353,7 @@ export const volunteersApi = {
   },
 };
 
-// â”€â”€â”€ Volunteer Voters (Field Canvassing) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Volunteer Voters (Field Canvassing) ──────────────────────────────────────
 export const volunteerVotersApi = {
   list: async () => {
     const res = await httpClient.get('/volunteer-voters');
@@ -369,7 +369,7 @@ export const volunteerVotersApi = {
   },
 };
 
-// â”€â”€â”€ Notifications / Broadcast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Notifications / Broadcast ────────────────────────────────────────────────
 export const notificationsApi = {
   listTemplates: async () => {
     const res = await httpClient.get('/notifications/templates');
@@ -425,7 +425,7 @@ export const broadcastApi = {
   },
 };
 
-// â”€â”€â”€ Complaints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Complaints ───────────────────────────────────────────────────────────────
 export const complaintsApi = {
   list: async (election_id: string, params?: Record<string, any>) => {
     const res = await httpClient.get(`/complaints/election/${election_id}`, { params });
@@ -450,7 +450,7 @@ export const complaintsApi = {
   },
 };
 
-// â”€â”€â”€ Expenses â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Expenses ─────────────────────────────────────────────────────────────────
 export const expensesApi = {
   list: async (election_id: string, params?: Record<string, any>) => {
     const res = await httpClient.get(`/expenses/election/${election_id}`, { params });
@@ -476,7 +476,7 @@ export const expensesApi = {
 };
 
 
-// â”€â”€â”€ Analytics & Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Analytics & Dashboard ────────────────────────────────────────────────────
 export const analyticsApi = {
   getTurnout: async (election_id: string) => {
     const res = await httpClient.get(`/analytics/election/${election_id}/turnout`);
@@ -496,7 +496,7 @@ export const analyticsApi = {
   },
 };
 
-// â”€â”€â”€ Results â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Results ──────────────────────────────────────────────────────────────────
 export const resultsApi = {
   getForElection: async (election_id: string) => {
     const res = await httpClient.get(`/results/election/${election_id}`);
@@ -512,7 +512,7 @@ export const resultsApi = {
   },
 };
 
-// â”€â”€â”€ Audit Logs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Audit Logs ───────────────────────────────────────────────────────────────
 export const auditApi = {
   list: async (params?: Record<string, any>) => {
     const res = await httpClient.get('/audit-logs', { params });
@@ -521,7 +521,7 @@ export const auditApi = {
   },
 };
 
-// â”€â”€â”€ Design Templates & Digital Studio â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Design Templates & Digital Studio ────────────────────────────────────────
 export const designTemplatesApi = {
   list: async (params?: { election_type?: string; category?: string }) => {
     const res = await httpClient.get('/design-templates/', { params });
@@ -574,7 +574,7 @@ export const designTemplatesApi = {
 };
 
 
-// â”€â”€â”€ Positions & Constituencies â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Positions & Constituencies ───────────────────────────────────────────────
 export const positionsApi = {
   list: async (election_id: string) => {
     const res = await httpClient.get(`/positions/election/${election_id}`);
@@ -595,7 +595,7 @@ export const constituenciesApi = {
   },
 };
 
-// â”€â”€â”€ Legacy default export (for pages still importing `api.`) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Legacy default export (for pages still importing `api.`) ────────────────
 // This thin adapter bridges old page code to new named exports above.
 class ApiService {
   // Auth
@@ -738,7 +738,7 @@ class ApiService {
   }
 }
 
-// â”€â”€â”€ Subscriptions API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Subscriptions API ────────────────────────────────────────────────────────
 export const subscriptionsApi = {
   listPlans: async () => {
     const res = await httpClient.get('/subscriptions/plans');
