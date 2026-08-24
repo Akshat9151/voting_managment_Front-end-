@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Search, Send, Upload, Trash2 } from 'lucide-react';
+import { MessageCircle, Plus, Search, Send, Upload, Trash2 } from 'lucide-react';
 import { broadcastGroupsApi, votersApi } from '../services/api';
 import { useElection } from '../context/ElectionContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -25,6 +25,17 @@ const normalizeVoter = (voter: any): Voter => ({
   channel: voter.channel ?? 'SMS Only',
 });
 
+const openWhatsApp = (voter: Voter, message: string) => {
+  const rawPhone = String(voter.mobile ?? '').replace(/\D/g, '');
+  const phone = rawPhone.length === 10 ? `91${rawPhone}` : rawPhone;
+  if (!phone) return;
+  const personalizedMessage = message
+    .replace(/\{\{\s*name\s*\}\}/gi, voter.name || 'there')
+    .replace(/\{\{\s*ward\s*\}\}/gi, voter.ward || 'General Ward')
+    .replace(/\{\{\s*booth\s*\}\}/gi, 'your polling booth');
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(personalizedMessage)}`, '_blank', 'noopener,noreferrer');
+};
+
 export const BroadcastPage: React.FC = () => {
   const { t } = useLanguage();
   const { showToast } = useToast();
@@ -33,14 +44,12 @@ export const BroadcastPage: React.FC = () => {
   const [voters, setVoters] = useState<Voter[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [channelOverrides, setChannelOverrides] = useState<Record<string, 'whatsapp' | 'sms'>>({});
   const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [segment, setSegment] = useState<Segment>('all');
   const [isLoading, setIsLoading] = useState(false);
-  const [isDeletingVoters, setIsDeletingVoters] = useState(false);
   const [pendingImportJobId, setPendingImportJobId] = useState<string | null>(null);
-  const [message, setMessage] = useState('Dear {{name}},\n\nHere is an important election update for Ward {{ward}}.');
+  const [message, setMessage] = useState('à¤ªà¥à¤°à¤¿à¤¯ {{name}} à¤œà¥€,\n\nà¤†à¤ªà¤•à¥‡ à¤µà¤¾à¤°à¥à¤¡ {{ward}} à¤®à¥‡à¤‚ à¤šà¥à¤¨à¤¾à¤µ à¤¸à¤‚à¤¬à¤‚à¤§à¥€ à¤®à¤¹à¤¤à¥à¤µà¤ªà¥‚à¤°à¥à¤£ à¤¸à¥‚à¤šà¤¨à¤¾ à¤¹à¥ˆà¥¤');
   const [group, setGroup] = useState<any | null>(null);
   const [result, setResult] = useState<any | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -104,23 +113,12 @@ export const BroadcastPage: React.FC = () => {
     return next;
   });
 
-  const allVisibleGroupsSelected = groups.length > 0 && groups.every((saved) => selectedGroupIds.has(saved.id));
-
-  const refreshGroupsAfterDelete = async (deletedIds: string[]) => {
-    const refreshedGroups = await broadcastGroupsApi.list();
-    const remainingIds = new Set(refreshedGroups.map((saved) => saved.id));
-    if (deletedIds.some((id) => remainingIds.has(id))) {
-      throw new Error('Deleted broadcast group is still present after refresh.');
-    }
-    setGroups(refreshedGroups);
-  };
-
   const deleteGroup = async (id: string) => {
     if (!window.confirm(t('confirmDeleteGroup') || 'Are you sure you want to delete this broadcast group? This cannot be undone.')) return;
     try {
       await broadcastGroupsApi.deleteGroup(id);
-      await refreshGroupsAfterDelete([id]);
       showToast(t('groupDeleted') || 'Broadcast group deleted successfully.', 'success');
+      await loadGroups();
       setSelectedGroupIds(new Set());
     } catch (error: any) {
       showToast(error?.response?.data?.detail || 'Failed to delete group.', 'error');
@@ -132,8 +130,8 @@ export const BroadcastPage: React.FC = () => {
     if (!window.confirm(t('confirmBulkDeleteGroup')?.replace('{{count}}', String(selectedGroupIds.size)) || "Are you sure you want to delete ${selectedGroupIds.size} broadcast group(s)? This cannot be undone.")) return;
     try {
       await broadcastGroupsApi.bulkDeleteGroups(Array.from(selectedGroupIds));
-      await refreshGroupsAfterDelete(Array.from(selectedGroupIds));
       showToast(t('groupsBulkDeleted')?.replace('{{count}}', String(selectedGroupIds.size)) || "Deleted ${selectedGroupIds.size} broadcast group(s).", 'success');
+      await loadGroups();
       setSelectedGroupIds(new Set());
     } catch (error: any) {
       showToast(error?.response?.data?.detail || 'Failed to delete groups.', 'error');
@@ -152,22 +150,6 @@ export const BroadcastPage: React.FC = () => {
     visibleIds.forEach((id) => allSelected ? next.delete(id) : next.add(id));
     return next;
   });
-
-  const deleteSelectedVoters = async () => {
-    const ids = Array.from(selectedIds);
-    if (!ids.length || !window.confirm(`Delete ${ids.length} selected voter(s) from the database?`)) return;
-    setIsDeletingVoters(true);
-    try {
-      await votersApi.deleteBulk(ids);
-      setSelectedIds(new Set());
-      showToast(`${ids.length} voter(s) deleted successfully.`, 'success');
-      await loadVoters();
-    } catch (error: any) {
-      showToast(error?.response?.data?.detail || error?.response?.data?.message || 'Unable to delete selected voters.', 'error');
-    } finally {
-      setIsDeletingVoters(false);
-    }
-  };
 
   const handleFileUpload = async (file: File) => {
     if (!activeElectionId) { showToast(t('noActiveElectionSelected'), 'error'); return; }
@@ -211,7 +193,7 @@ export const BroadcastPage: React.FC = () => {
     setIsSaving(true);
     try {
       const label = segment === 'all' ? t('filterAllVoters') : segment === 'whatsapp' ? t('filterHasWhatsApp') : segment === 'no-whatsapp' ? t('filterNoWhatsApp') : segment === 'youth' ? t('filterYouth') : segment === 'women' ? t('filterWomen') : t('filterMissingContact');
-      const created = await broadcastGroupsApi.create({ voter_ids: ids, channel_overrides: channelOverrides, filter_criteria_snapshot: { segment, search, label } });
+      const created = await broadcastGroupsApi.create({ voter_ids: ids, filter_criteria_snapshot: { segment, search, label } });
       setGroup(created);
       setStep(2);
       setSelectedIds(new Set());
@@ -270,9 +252,8 @@ export const BroadcastPage: React.FC = () => {
           <div className="flex items-center justify-between gap-3"><h2 className="font-heading font-extrabold text-sm">{t('broadcastChooseRecipients')}</h2><Button size="sm" variant="primary" onClick={createGroup} isLoading={isSaving} leftIcon={<Plus className="w-3.5 h-3.5" />}>{t('broadcastCreateGroup')}</Button></div>
           <FormInput placeholder={t('searchVoters')} leftIcon={<Search className="w-4 h-4" />} value={search} onChange={(event) => setSearch(event.target.value)} />
           <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">{[['all', t('filterAllVoters')], ['whatsapp', t('filterHasWhatsApp')], ['no-whatsapp', t('filterNoWhatsApp')], ['youth', t('filterYouth')], ['women', t('filterWomen')], ['missing', t('filterMissingContact')]].map(([id, label]) => <button key={id} type="button" onClick={() => setSegment(id as Segment)} className={`px-3 py-1.5 rounded-full font-bold whitespace-nowrap ${segment === id ? 'bg-sky-600 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>{label}</button>)}</div>
-          <div className="flex items-center justify-between gap-3 text-xs text-slate-500"><span>{selectedIds.size || filteredVoters.length} selected for this group</span><div className="flex items-center gap-3"><button type="button" className="font-bold text-sky-700" onClick={selectVisible}>{t('selectAllVoters')}</button>{selectedIds.size > 0 && <button type="button" className="inline-flex items-center gap-1 font-bold text-rose-600 hover:text-rose-700" onClick={deleteSelectedVoters} disabled={isDeletingVoters}><Trash2 className="h-3.5 w-3.5" />{isDeletingVoters ? 'Deleting...' : `Delete selected (${selectedIds.size})`}</button>}</div></div>
-          {selectedIds.size > 0 && <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">These voters are selected for a new group. To delete a saved group, scroll below to Saved Broadcast Groups and select its checkbox.</p>}
-          <div className="max-h-80 overflow-auto divide-y divide-slate-100 border border-slate-100 rounded-lg">{filteredVoters.map((voter: any) => { const defaultChannel = voter.channel === 'WhatsApp' ? 'whatsapp' : 'sms'; const selectedChannel = channelOverrides[voter.id] || defaultChannel; return <label key={voter.id} className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer"><input type="checkbox" checked={selectedIds.has(voter.id)} onChange={() => toggle(voter.id)} /><span className="min-w-0 flex-1"><strong className="block text-sm text-slate-900">{voter.name}</strong><span className="text-xs text-slate-500">{voter.ward || 'General Ward'} {voter.mobile ? `| ${voter.mobile}` : '| No mobile'}</span></span><select value={selectedChannel} onChange={(event) => setChannelOverrides((current) => ({ ...current, [voter.id]: event.target.value as 'whatsapp' | 'sms' }))} onClick={(event) => event.stopPropagation()} className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700"><option value="whatsapp">WhatsApp</option><option value="sms">SMS</option></select></label>; })}</div>
+          <div className="flex items-center justify-between text-xs text-slate-500"><span>{selectedIds.size || filteredVoters.length} selected for this group</span><button type="button" className="font-bold text-sky-700" onClick={selectVisible}>{t('selectAllVoters')}</button></div>
+          <div className="max-h-80 overflow-auto divide-y divide-slate-100 border border-slate-100 rounded-lg">{filteredVoters.map((voter: any) => <label key={voter.id} className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer"><input type="checkbox" checked={selectedIds.has(voter.id)} onChange={() => toggle(voter.id)} /><span className="min-w-0 flex-1"><strong className="block text-sm text-slate-900">{voter.name}</strong><span className="text-xs text-slate-500">{voter.ward || 'General Ward'} {voter.mobile ? `| ${voter.mobile}` : '| No mobile'}</span></span>{voter.mobile && <button type="button" className="rounded-md p-2 text-emerald-600 transition-colors hover:bg-emerald-50 hover:text-emerald-700" onClick={(event) => { event.preventDefault(); event.stopPropagation(); openWhatsApp(voter, message); }} title="Open WhatsApp with message" aria-label={`Open WhatsApp for ${voter.name}`}><MessageCircle className="h-4 w-4" /></button>}<Badge variant={voter.channel === 'WhatsApp' ? 'mint' : 'cyan'} size="sm">{voter.channel === 'WhatsApp' ? 'WhatsApp' : 'SMS'}</Badge></label>)}</div>
           {isLoading && <p className="text-xs text-slate-500">Loading voters...</p>}
         </Card>
         <div className="space-y-4">
@@ -294,16 +275,7 @@ export const BroadcastPage: React.FC = () => {
           
           <div className="flex items-center justify-between text-xs text-slate-500 pb-2 border-b border-slate-100">
             <span>{selectedGroupIds.size || groups.length} {t('groupsFound') || 'groups'}</span>
-            <label className="flex items-center gap-2 font-bold text-sky-700 cursor-pointer">
-              <input
-                type="checkbox"
-                aria-label={t('selectAllGroups') || 'Select all visible broadcast groups'}
-                checked={allVisibleGroupsSelected}
-                onChange={selectVisibleGroups}
-                className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-600"
-              />
-              {t('selectAll') || 'Select All'}
-            </label>
+            <button type="button" className="font-bold text-sky-700" onClick={selectVisibleGroups}>{t('selectAll') || 'Select All'}</button>
           </div>
 
           <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
@@ -328,10 +300,9 @@ export const BroadcastPage: React.FC = () => {
                 </button>
                 <button 
                   type="button" 
-                  className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-100 rounded-md transition-colors"
+                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
                   onClick={(e) => { e.stopPropagation(); deleteGroup(saved.id); }}
-                  title={t('deleteGroup') || 'Delete group'}
-                  aria-label={t('deleteGroup') || 'Delete group'}
+                  title="Delete group"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
