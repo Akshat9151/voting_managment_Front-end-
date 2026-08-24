@@ -8,8 +8,6 @@ import {
   Lock,
   Mail,
   ArrowRight,
-  ShieldCheck,
-  CheckCircle2,
   Globe,
   Smartphone
 } from 'lucide-react';
@@ -205,61 +203,65 @@ export const AuthPage: React.FC = () => {
   };
 
   return (
-    <div className="relative min-h-screen bg-slate-50 flex items-center justify-center p-3 sm:p-6 overflow-hidden">
-      {/* Soft Floating Gradient Aura Blobs */}
-      <div className="vv-aura-blob vv-aura-1" aria-hidden="true" />
-      <div className="vv-aura-blob vv-aura-2" aria-hidden="true" />
-      <div className="vv-aura-blob vv-aura-3" aria-hidden="true" />
-      <div className="vv-grid-dots" aria-hidden="true" />
+    <div className="vv-auth-page relative min-h-screen flex items-center justify-center p-4 sm:p-6 overflow-x-hidden overflow-y-auto">
+      {/* Animated wave background — intentionally limited to Login/Signup */}
+      <svg className="vv-wave-background" viewBox="0 0 1440 900" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="vv-wave-base" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#EDEBE6" />
+            <stop offset="100%" stopColor="#DDD9D0" />
+          </linearGradient>
+          <filter id="vv-wave-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="58" />
+          </filter>
+        </defs>
+        <rect width="1440" height="900" fill="url(#vv-wave-base)" />
+        <circle className="vv-wave-glow vv-wave-glow-one" cx="120" cy="80" r="220" fill="#B5471F" opacity="0.16">
+          <animate attributeName="cx" values="120;250;120" dur="15s" repeatCount="indefinite" />
+          <animate attributeName="cy" values="80;170;80" dur="15s" repeatCount="indefinite" />
+        </circle>
+        <circle className="vv-wave-glow vv-wave-glow-two" cx="1330" cy="790" r="250" fill="#B5471F" opacity="0.16">
+          <animate attributeName="cx" values="1330;1180;1330" dur="14s" repeatCount="indefinite" />
+          <animate attributeName="cy" values="790;690;790" dur="14s" repeatCount="indefinite" />
+        </circle>
+        <path className="vv-wave-line vv-wave-orange" d="M-40 245 C 220 120, 430 390, 700 245 S 1170 90, 1480 260">
+          <animate attributeName="d" dur="9s" repeatCount="indefinite"
+            values="M-40 245 C 220 120, 430 390, 700 245 S 1170 90, 1480 260;M-40 280 C 220 390, 455 100, 720 275 S 1180 410, 1480 220;M-40 245 C 220 120, 430 390, 700 245 S 1170 90, 1480 260" />
+        </path>
+        <path className="vv-wave-line vv-wave-gray" d="M-40 410 C 230 285, 460 520, 730 390 S 1190 270, 1480 430">
+          <animate attributeName="d" dur="11s" repeatCount="indefinite"
+            values="M-40 410 C 230 285, 460 520, 730 390 S 1190 270, 1480 430;M-40 370 C 230 530, 470 270, 740 430 S 1190 520, 1480 350;M-40 410 C 230 285, 460 520, 730 390 S 1190 270, 1480 430" />
+        </path>
+        <path className="vv-wave-line vv-wave-orange vv-wave-low" d="M-40 610 C 230 480, 470 735, 740 590 S 1190 475, 1480 640">
+          <animate attributeName="d" dur="13s" repeatCount="indefinite"
+            values="M-40 610 C 230 480, 470 735, 740 590 S 1190 475, 1480 640;M-40 660 C 220 760, 470 470, 760 650 S 1200 760, 1480 570;M-40 610 C 230 480, 470 735, 740 590 S 1190 475, 1480 640" />
+        </path>
+        <path className="vv-wave-line vv-wave-gray vv-wave-low" d="M-40 790 C 220 665, 460 875, 720 755 S 1180 660, 1480 820">
+          <animate attributeName="d" dur="15s" repeatCount="indefinite"
+            values="M-40 790 C 220 665, 460 875, 720 755 S 1180 660, 1480 820;M-40 745 C 220 900, 480 675, 760 790 S 1190 900, 1480 735;M-40 790 C 220 665, 460 875, 720 755 S 1180 660, 1480 820" />
+        </path>
+      </svg>
 
-      {/* Glass Card */}
-      <div className="relative z-10 w-full max-w-4xl bg-white/85 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/80 overflow-hidden grid grid-cols-1 md:grid-cols-2">
-        {/* Left Hero Graphic */}
-        <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950 p-8 text-white flex flex-col justify-between relative overflow-hidden">
-          <div className="absolute -top-24 -left-24 w-64 h-64 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
-          <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center backdrop-blur-md overflow-hidden p-1 shadow-lg">
-                <VoteVictoryLogo className="w-full h-full" />
-              </div>
-              <div className="flex flex-col">
-                <span className="font-heading font-extrabold text-2xl tracking-tight text-white leading-tight">
-                  Vote<span className="text-amber-400">Victory</span>
+      {/* Centered authentication card */}
+      <div className="vv-auth-card relative z-10 w-full bg-white rounded-[28px] border border-slate-200/80 shadow-[0_24px_70px_-28px_rgba(15,23,42,0.32)]">
+        <div className="p-6 sm:p-9">
+          <div className="vv-auth-brand text-center">
+            <div className="flex items-center justify-center gap-3">
+              <VoteVictoryLogo className="h-11 w-11" />
+              <div className="flex flex-col items-start">
+                <span className="font-heading font-extrabold text-[1.65rem] tracking-tight text-slate-900 leading-tight">
+                  Vote<span className="text-amber-600">Victory</span>
                 </span>
-                <span className="text-[11px] font-extrabold text-amber-400 tracking-wider">
+                <span className="text-[11px] font-extrabold text-amber-600 tracking-wider">
                   वोट विजय
                 </span>
               </div>
             </div>
-
-            <div className="inline-block px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/30 text-xs font-bold text-amber-300 mb-4 backdrop-blur-xs">
-              {t('masterCampaignOS')}
-            </div>
-
-            <h2 className="text-xl sm:text-2xl font-extrabold leading-tight mb-2 text-white">
-              {t('realTimeElection')}
-            </h2>
-            <p className="text-xs text-slate-300 leading-relaxed mb-6">
-              {t('voterDataVolunteer')}
+            <p className="mx-auto mt-4 max-w-xs text-sm leading-6 text-slate-500">
+              {t('authTagline')}
             </p>
           </div>
 
-          <div className="space-y-3 relative z-10">
-            {[
-              { icon: ShieldCheck, text: t('roleBasedAccess') },
-              { icon: CheckCircle2, text: t('multiTenantOrg') },
-              { icon: CheckCircle2, text: t('realtimeDashboard') }
-            ].map(({ icon: Icon, text }) => (
-              <div key={text} className="flex items-center gap-2.5 text-xs font-bold text-slate-200">
-                <Icon className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                {text}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Right Form */}
-        <div className="p-6 sm:p-8 flex flex-col justify-center bg-white/90">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h3 className="text-xl font-extrabold text-slate-900 mb-1">
@@ -359,10 +361,6 @@ export const AuthPage: React.FC = () => {
 
               {isSignup ? (
                 <form onSubmit={handleSignup} className="space-y-3.5" autoComplete="off">
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                    <p className="font-bold">Create your workspace</p>
-                    <p className="mt-0.5 text-amber-800">First signup becomes Super Admin and can manage campaign teams.</p>
-                  </div>
                   <FormInput
                     label="Full Name"
                     type="text"
