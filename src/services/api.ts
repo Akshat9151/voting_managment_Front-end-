@@ -31,8 +31,9 @@ export const authApi = {
     const res = await httpClient.post('/auth/register', payload);
     return unwrap<Record<string, any>>(res);
   },
-  login: async (email: string, password: string) => {
-    const res = await httpClient.post('/auth/login', { email, password });
+  login: async (identifier: string, password: string) => {
+    const isPhone = !identifier.includes('@');
+    const res = await httpClient.post('/auth/login', { [isPhone ? 'phone' : 'email']: identifier, password });
     return unwrap<{
       access_token: string;
       refresh_token: string;
@@ -49,12 +50,14 @@ export const authApi = {
       user: Record<string, any>;
     }>(res);
   },
-  requestLoginOtp: async (email: string, password: string) => {
-    const res = await httpClient.post('/auth/login/request-otp', { email, password });
+  requestLoginOtp: async (identifier: string, password: string) => {
+    const isPhone = !identifier.includes('@');
+    const res = await httpClient.post('/auth/login/request-otp', { [isPhone ? 'phone' : 'email']: identifier, password });
     return unwrap<{ challenge_id: string; destination: string; expires_in: number; dev_code?: string }>(res);
   },
-  verifyLoginOtp: async (challenge_id: string, code: string, email: string, password: string) => {
-    const res = await httpClient.post('/auth/login/verify-otp', { challenge_id, code, email, password });
+  verifyLoginOtp: async (challenge_id: string, code: string, identifier: string, password: string) => {
+    const isPhone = !identifier.includes('@');
+    const res = await httpClient.post('/auth/login/verify-otp', { challenge_id, code, [isPhone ? 'phone' : 'email']: identifier, password });
     return unwrap<{ access_token: string; refresh_token: string; expires_in: number; user: Record<string, any> }>(res);
   },
   refresh: async (refresh_token: string) => {

@@ -26,6 +26,7 @@ export const AuthPage: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [otpChallengeId, setOtpChallengeId] = useState<string | null>(null);
+  const [otpDestination, setOtpDestination] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
@@ -47,7 +48,7 @@ export const AuthPage: React.FC = () => {
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password) {
-      setError('Please enter both email and password.');
+      setError('Please enter both email/phone and password.');
       return;
     }
 
@@ -58,7 +59,8 @@ export const AuthPage: React.FC = () => {
     // After 5s with no response, show the "server waking up" banner
     slowTimer.current = setTimeout(() => setSlowRequest(true), 5000);
     try {
-      const session = await authApi.login(email.trim(), password);
+      const identifier = email.trim();
+      const session = await authApi.login(identifier, password);
       loginWithSession(session, email.trim());
       showToast('Signed in successfully.', 'success');
       navigate('/');
@@ -67,8 +69,9 @@ export const AuthPage: React.FC = () => {
       const errorDetails = err?.response?.data?.error?.details || err?.response?.data?.details;
       if (errorDetails?.requires_otp && errorDetails?.challenge_id) {
         setOtpChallengeId(errorDetails.challenge_id);
+        setOtpDestination(errorDetails.destination || email.trim());
         setIsLoginVerification(true);
-        showToast('A one-time verification code has been sent to your email to activate your account.', 'info');
+        showToast(`A one-time verification code has been sent to ${errorDetails.destination || email.trim()}.`, 'info');
         return;
       }
       const msg = isTimeout
@@ -155,6 +158,7 @@ export const AuthPage: React.FC = () => {
         phone: normalizedPhone
       });
       setOtpChallengeId(challenge.challenge_id);
+      setOtpDestination(challenge.destination);
       showToast(
         challenge.dev_code ? `Development OTP: ${challenge.dev_code}` : `Verification code sent to ${challenge.destination}.`,
         'info'
@@ -313,7 +317,7 @@ export const AuthPage: React.FC = () => {
           {otpChallengeId ? (
             <form onSubmit={handleSignup} className="space-y-4">
               <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs text-amber-900">
-                A 6-digit verification code was sent to <strong>{email}</strong>. Please enter it below to complete registration.
+                A 6-digit verification code was sent to <strong>{otpDestination || email}</strong>. Please enter it below to complete registration.
               </div>
               <FormInput
                 label="Email verification code"
@@ -330,7 +334,7 @@ export const AuthPage: React.FC = () => {
               <button
                 type="button"
                 className="w-full text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors"
-                onClick={() => { setOtpChallengeId(null); setOtpCode(''); setIsLoginVerification(false); }}
+                onClick={() => { setOtpChallengeId(null); setOtpCode(''); setOtpDestination(''); setIsLoginVerification(false); }}
               >
                 Change email or go back
               </button>
@@ -371,11 +375,11 @@ export const AuthPage: React.FC = () => {
                     required
                   />
                   <FormInput
-                    label={t('emailAddress')}
-                    type="email"
+                    label={t('emailOrPhone')}
+                    type="text"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder={t('emailExample')}
+                    placeholder={t('otpContactExample')}
                     leftIcon={<Mail className="w-4 h-4" />}
                     autoComplete="off"
                     required
