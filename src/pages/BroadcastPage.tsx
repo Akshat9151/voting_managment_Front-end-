@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
-import { MessageCircle, Plus, Search, Send, Upload, Trash2 } from 'lucide-react';
+import { MessageCircle, Plus, Search, Send, Smartphone, Upload, Trash2 } from 'lucide-react';
 import { broadcastGroupsApi, votersApi } from '../services/api';
 import { useElection } from '../context/ElectionContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -46,6 +46,17 @@ const openWhatsApp = (voter: Voter, message: string) => {
     .replace(/\{\{\s*ward\s*\}\}/gi, voter.ward || 'General Ward')
     .replace(/\{\{\s*booth\s*\}\}/gi, 'your polling booth');
   window.open(`https://wa.me/${phone}?text=${encodeURIComponent(personalizedMessage)}`, '_blank', 'noopener,noreferrer');
+};
+
+const openSms = (voter: Voter, message: string) => {
+  const rawPhone = String(voter.mobile ?? '').replace(/\D/g, '');
+  const phone = rawPhone.length === 10 ? `+91${rawPhone}` : `+${rawPhone}`;
+  if (phone === '+') return;
+  const personalizedMessage = repairMojibake(message)
+    .replace(/\{\{\s*name\s*\}\}/gi, voter.name || 'there')
+    .replace(/\{\{\s*ward\s*\}\}/gi, voter.ward || 'General Ward')
+    .replace(/\{\{\s*booth\s*\}\}/gi, 'your polling booth');
+  window.location.href = `sms:${phone}?body=${encodeURIComponent(personalizedMessage)}`;
 };
 
 export const BroadcastPage: React.FC = () => {
@@ -265,7 +276,7 @@ export const BroadcastPage: React.FC = () => {
           <FormInput placeholder={t('searchVoters')} leftIcon={<Search className="w-4 h-4" />} value={search} onChange={(event) => setSearch(event.target.value)} />
           <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">{[['all', t('filterAllVoters')], ['whatsapp', t('filterHasWhatsApp')], ['no-whatsapp', t('filterNoWhatsApp')], ['youth', t('filterYouth')], ['women', t('filterWomen')], ['missing', t('filterMissingContact')]].map(([id, label]) => <button key={id} type="button" onClick={() => setSegment(id as Segment)} className={`px-3 py-1.5 rounded-full font-bold whitespace-nowrap ${segment === id ? 'bg-sky-600 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>{label}</button>)}</div>
           <div className="flex items-center justify-between text-xs text-slate-500"><span>{selectedIds.size || filteredVoters.length} selected for this group</span><button type="button" className="font-bold text-sky-700" onClick={selectVisible}>{t('selectAllVoters')}</button></div>
-          <div className="max-h-80 overflow-auto divide-y divide-slate-100 border border-slate-100 rounded-lg">{filteredVoters.map((voter: any) => <label key={voter.id} className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer"><input type="checkbox" checked={selectedIds.has(voter.id)} onChange={() => toggle(voter.id)} /><span className="min-w-0 flex-1"><strong className="block text-sm text-slate-900">{voter.name}</strong><span className="text-xs text-slate-500">{voter.ward || 'General Ward'} {voter.mobile ? `| ${voter.mobile}` : '| No mobile'}</span></span>{voter.mobile && <button type="button" className="rounded-md p-2 text-emerald-600 transition-colors hover:bg-emerald-50 hover:text-emerald-700" onClick={(event) => { event.preventDefault(); event.stopPropagation(); openWhatsApp(voter, message); }} title="Open WhatsApp with message" aria-label={`Open WhatsApp for ${voter.name}`}><MessageCircle className="h-4 w-4" /></button>}<Badge variant={voter.channel === 'WhatsApp' ? 'mint' : 'cyan'} size="sm">{voter.channel === 'WhatsApp' ? 'WhatsApp' : 'SMS'}</Badge></label>)}</div>
+          <div className="max-h-80 overflow-auto divide-y divide-slate-100 border border-slate-100 rounded-lg">{filteredVoters.map((voter: any) => <label key={voter.id} className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer"><input type="checkbox" checked={selectedIds.has(voter.id)} onChange={() => toggle(voter.id)} /><span className="min-w-0 flex-1"><strong className="block text-sm text-slate-900">{voter.name}</strong><span className="text-xs text-slate-500">{voter.ward || 'General Ward'} {voter.mobile ? `| ${voter.mobile}` : '| No mobile'}</span></span>{voter.mobile && <><button type="button" className="rounded-md p-2 text-emerald-600 transition-colors hover:bg-emerald-50 hover:text-emerald-700" onClick={(event) => { event.preventDefault(); event.stopPropagation(); openWhatsApp(voter, message); }} title="Open WhatsApp with message" aria-label={`Open WhatsApp for ${voter.name}`}><MessageCircle className="h-4 w-4" /></button><button type="button" className="rounded-md p-2 text-sky-600 transition-colors hover:bg-sky-50 hover:text-sky-700" onClick={(event) => { event.preventDefault(); event.stopPropagation(); openSms(voter, message); }} title="Open SMS with message" aria-label={`Open SMS for ${voter.name}`}><Smartphone className="h-4 w-4" /></button></>}<Badge variant={voter.channel === 'WhatsApp' ? 'mint' : 'cyan'} size="sm">{voter.channel === 'WhatsApp' ? 'WhatsApp' : 'SMS'}</Badge></label>)}</div>
           {isLoading && <p className="text-xs text-slate-500">Loading voters...</p>}
         </Card>
         <div className="space-y-4">
