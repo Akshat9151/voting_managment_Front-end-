@@ -8,7 +8,8 @@ import {
   Lock,
   Mail,
   ArrowRight,
-  Globe
+  Globe,
+  Smartphone
 } from 'lucide-react';
 import { FormInput } from '../components/ui/FormInput';
 import { Button } from '../components/ui/Button';
@@ -22,6 +23,7 @@ export const AuthPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [otpChallengeId, setOtpChallengeId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -373,6 +375,19 @@ export const AuthPage: React.FC = () => {
                     required
                   />
 
+                  <div className="opacity-50 pointer-events-none">
+                    <FormInput
+                      label={t('formLabelPhoneNumber')}
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder={t('phoneExample')}
+                      leftIcon={<Smartphone className="w-4 h-4" />}
+                      autoComplete="off"
+                      disabled
+                    />
+                    <p className="text-[10px] text-amber-600 mt-1">{t('phoneOtpUnavailable')}</p>
+                  </div>
 
                   <FormInput
                     label={t('password')}
