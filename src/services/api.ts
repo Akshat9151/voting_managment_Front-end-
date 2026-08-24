@@ -260,7 +260,7 @@ export const broadcastGroupsApi = {
     const res = await httpClient.delete('/broadcast/groups/bulk', { data: { group_ids } });
     return unwrap<any>(res);
   },
-  create: async (payload: { name?: string; voter_ids: string[]; filter_criteria_snapshot: Record<string, unknown> }) => {
+  create: async (payload: { name?: string; voter_ids: string[]; channel_overrides?: Record<string, 'whatsapp' | 'sms'>; filter_criteria_snapshot: Record<string, unknown> }) => {
     const res = await httpClient.post('/broadcast/groups', payload);
     return unwrap<any>(res);
   },
