@@ -20,6 +20,15 @@ type Step = 1 | 2 | 3 | 4;
 const ENGLISH_BROADCAST_TEMPLATE = 'Dear {{name}},\n\nHere is an important election update for Ward {{ward}}.';
 const HINDI_BROADCAST_TEMPLATE = '\u092a\u094d\u0930\u093f\u092f {{name}} \u091c\u0940,\n\n\u0906\u092a\u0915\u0947 \u0935\u093e\u0930\u094d\u0921 {{ward}} \u092e\u0947\u0902 \u091a\u0941\u0928\u093e\u0935 \u0938\u0902\u092c\u0902\u0927\u0940 \u092e\u0939\u0924\u094d\u0935\u092a\u0942\u0930\u094d\u0923 \u0938\u0942\u091a\u0928\u093e \u0939\u0948\u0964';
 
+const repairMojibake = (value: string) => {
+  if (!/[àâ]/.test(value)) return value;
+  try {
+    return new TextDecoder().decode(Uint8Array.from(value, (character) => character.charCodeAt(0)));
+  } catch {
+    return value;
+  }
+};
+
 const normalizeVoter = (voter: any): Voter => ({
   ...voter,
   name: `${voter.first_name ?? voter.name ?? ''} ${voter.last_name ?? ''}`.trim(),
@@ -32,7 +41,7 @@ const openWhatsApp = (voter: Voter, message: string) => {
   const rawPhone = String(voter.mobile ?? '').replace(/\D/g, '');
   const phone = rawPhone.length === 10 ? `91${rawPhone}` : rawPhone;
   if (!phone) return;
-  const personalizedMessage = message
+  const personalizedMessage = repairMojibake(message)
     .replace(/\{\{\s*name\s*\}\}/gi, voter.name || 'there')
     .replace(/\{\{\s*ward\s*\}\}/gi, voter.ward || 'General Ward')
     .replace(/\{\{\s*booth\s*\}\}/gi, 'your polling booth');
@@ -293,7 +302,7 @@ export const BroadcastPage: React.FC = () => {
                 <button
                   type="button"
                   className="flex-1 flex items-center justify-between text-left"
-                  onClick={() => { setGroup(saved); setMessage(saved.message_text || message); setStep(saved.status === 'READY' ? 3 : 2); }}
+                  onClick={() => { setGroup(saved); setMessage(repairMojibake(saved.message_text || message)); setStep(saved.status === 'READY' ? 3 : 2); }}
                 >
                   <span>
                     <strong className="block text-sm text-slate-900">{saved.name}</strong>
