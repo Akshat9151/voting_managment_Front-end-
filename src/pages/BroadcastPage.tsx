@@ -37,6 +37,7 @@ export const BroadcastPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [segment, setSegment] = useState<Segment>('all');
   const [isLoading, setIsLoading] = useState(false);
+  const [isDeletingVoters, setIsDeletingVoters] = useState(false);
   const [pendingImportJobId, setPendingImportJobId] = useState<string | null>(null);
   const [message, setMessage] = useState('à¤ªà¥à¤°à¤¿à¤¯ {{name}} à¤œà¥€,\n\nà¤†à¤ªà¤•à¥‡ à¤µà¤¾à¤°à¥à¤¡ {{ward}} à¤®à¥‡à¤‚ à¤šà¥à¤¨à¤¾à¤µ à¤¸à¤‚à¤¬à¤‚à¤§à¥€ à¤®à¤¹à¤¤à¥à¤µà¤ªà¥‚à¤°à¥à¤£ à¤¸à¥‚à¤šà¤¨à¤¾ à¤¹à¥ˆà¥¤');
   const [group, setGroup] = useState<any | null>(null);
@@ -151,6 +152,22 @@ export const BroadcastPage: React.FC = () => {
     return next;
   });
 
+  const deleteSelectedVoters = async () => {
+    const ids = Array.from(selectedIds);
+    if (!ids.length || !window.confirm(`Delete ${ids.length} selected voter(s) from the database?`)) return;
+    setIsDeletingVoters(true);
+    try {
+      await votersApi.deleteBulk(ids);
+      setSelectedIds(new Set());
+      showToast(`${ids.length} voter(s) deleted successfully.`, 'success');
+      await loadVoters();
+    } catch (error: any) {
+      showToast(error?.response?.data?.detail || error?.response?.data?.message || 'Unable to delete selected voters.', 'error');
+    } finally {
+      setIsDeletingVoters(false);
+    }
+  };
+
   const handleFileUpload = async (file: File) => {
     if (!activeElectionId) { showToast(t('noActiveElectionSelected'), 'error'); return; }
     try {
@@ -252,7 +269,7 @@ export const BroadcastPage: React.FC = () => {
           <div className="flex items-center justify-between gap-3"><h2 className="font-heading font-extrabold text-sm">{t('broadcastChooseRecipients')}</h2><Button size="sm" variant="primary" onClick={createGroup} isLoading={isSaving} leftIcon={<Plus className="w-3.5 h-3.5" />}>{t('broadcastCreateGroup')}</Button></div>
           <FormInput placeholder={t('searchVoters')} leftIcon={<Search className="w-4 h-4" />} value={search} onChange={(event) => setSearch(event.target.value)} />
           <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">{[['all', t('filterAllVoters')], ['whatsapp', t('filterHasWhatsApp')], ['no-whatsapp', t('filterNoWhatsApp')], ['youth', t('filterYouth')], ['women', t('filterWomen')], ['missing', t('filterMissingContact')]].map(([id, label]) => <button key={id} type="button" onClick={() => setSegment(id as Segment)} className={`px-3 py-1.5 rounded-full font-bold whitespace-nowrap ${segment === id ? 'bg-sky-600 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>{label}</button>)}</div>
-          <div className="flex items-center justify-between text-xs text-slate-500"><span>{selectedIds.size || filteredVoters.length} selected for this group</span><button type="button" className="font-bold text-sky-700" onClick={selectVisible}>{t('selectAllVoters')}</button></div>
+          <div className="flex items-center justify-between gap-3 text-xs text-slate-500"><span>{selectedIds.size || filteredVoters.length} selected for this group</span><div className="flex items-center gap-3"><button type="button" className="font-bold text-sky-700" onClick={selectVisible}>{t('selectAllVoters')}</button>{selectedIds.size > 0 && <button type="button" className="inline-flex items-center gap-1 font-bold text-rose-600 hover:text-rose-700" onClick={deleteSelectedVoters} disabled={isDeletingVoters}><Trash2 className="h-3.5 w-3.5" />{isDeletingVoters ? 'Deleting...' : `Delete selected (${selectedIds.size})`}</button>}</div></div>
           {selectedIds.size > 0 && <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">These voters are selected for a new group. To delete a saved group, scroll below to Saved Broadcast Groups and select its checkbox.</p>}
           <div className="max-h-80 overflow-auto divide-y divide-slate-100 border border-slate-100 rounded-lg">{filteredVoters.map((voter: any) => <label key={voter.id} className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer"><input type="checkbox" checked={selectedIds.has(voter.id)} onChange={() => toggle(voter.id)} /><span className="min-w-0 flex-1"><strong className="block text-sm text-slate-900">{voter.name}</strong><span className="text-xs text-slate-500">{voter.ward || 'General Ward'} {voter.mobile ? `â€¢ ${voter.mobile}` : 'â€¢ No mobile'}</span></span><Badge variant={voter.channel === 'WhatsApp' ? 'mint' : 'cyan'} size="sm">{voter.channel === 'WhatsApp' ? <MessageCircle className="w-3 h-3" /> : <Smartphone className="w-3 h-3" />}{voter.channel === 'WhatsApp' ? 'WhatsApp' : 'SMS'}</Badge></label>)}</div>
           {isLoading && <p className="text-xs text-slate-500">Loading voters...</p>}
