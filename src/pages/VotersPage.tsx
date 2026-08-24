@@ -5,7 +5,7 @@ import { useToast } from '../context/ToastContext';
 import { useLanguage } from '../context/LanguageContext';
 import {
   Contact2, Search, Download, Phone,
-  MessageCircle, Smartphone, Plus, Trash2
+  MessageCircle, Smartphone, Plus, Trash2, Pencil
 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -36,6 +36,8 @@ export const VotersPage: React.FC = () => {
 
   // Modals
   const [isAddVoterModalOpen, setIsAddVoterModalOpen] = useState(false);
+  const [editingVoter, setEditingVoter] = useState<Voter | null>(null);
+  const [wardError, setWardError] = useState('');
 
   // Manual Add Form
   const [voterId, setVoterId] = useState('');
@@ -43,6 +45,36 @@ export const VotersPage: React.FC = () => {
   const [gender, setGender] = useState<'Male' | 'Female' | 'Other'>('Male');
   const [ward, setWard] = useState('');
   const [mobile, setMobile] = useState('');
+  const [email, setEmail] = useState('');
+  const [address, setAddress] = useState('');
+  const [houseNumber, setHouseNumber] = useState('');
+  const [fatherOrSpouseName, setFatherOrSpouseName] = useState('');
+  const [notes, setNotes] = useState('');
+
+  const splitName = (value: string) => {
+    const parts = value.trim().split(/\s+/).filter(Boolean);
+    return { first_name: parts[0] || '', last_name: parts.slice(1).join(' ') };
+  };
+
+  const resetVoterForm = () => {
+    setName(''); setVoterId(''); setMobile(''); setWard(''); setEmail('');
+    setAddress(''); setHouseNumber(''); setFatherOrSpouseName(''); setNotes('');
+    setAge(30); setGender('Male'); setChannel('WhatsApp'); setWardError('');
+  };
+
+  const openEditVoter = (voter: Voter) => {
+    setEditingVoter(voter);
+    setName(voter.name ?? `${voter.first_name ?? ''} ${voter.last_name ?? ''}`.trim());
+    setVoterId(voter.voter_id_number ?? voter.id);
+    setAge(voter.age ?? 30);
+    setGender((voter.gender as 'Male' | 'Female' | 'Other') ?? 'Male');
+    setWard(voter.ward_name ?? voter.ward ?? '');
+    setMobile(voter.phone_number ?? voter.mobile ?? '');
+    setEmail(voter.email ?? ''); setAddress(voter.address ?? '');
+    setHouseNumber(voter.house_number ?? '');
+    setFatherOrSpouseName(voter.father_or_spouse_name ?? ''); setNotes(voter.notes ?? '');
+    setChannel((voter.channel as 'WhatsApp' | 'SMS Only') ?? 'WhatsApp'); setWardError('');
+  };
 
   const loadVoters = useCallback(async () => {
     setIsLoading(true);
@@ -51,7 +83,7 @@ export const VotersPage: React.FC = () => {
       // Normalize: add computed `name` field
       setVoters(items.map((v: any) => ({
         ...v,
-        name: `${v.first_name ?? ''} ${v.last_name ?? ''}`.trim(),
+        name: v.name ?? `${v.first_name ?? ''} ${v.last_name ?? ''}`.trim(),
         ward: v.ward_name ?? v.ward ?? '',
         mobile: v.phone_number ?? v.mobile ?? '',
         channel: v.channel ?? (v.phone_number ? 'WhatsApp' : 'SMS Only'),
@@ -121,24 +153,50 @@ export const VotersPage: React.FC = () => {
 
   const handleAddVoter = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeElectionId || !name) return;
+    if (!activeElectionId || !name.trim()) return;
+    if (!ward.trim()) { setWardError('Ward is required.'); return; }
+    const nameParts = splitName(name);
     try {
       await votersApi.create({
         election_id: activeElectionId,
         voter_id_number: voterId || `${Date.now()}`,
-        first_name: name,
-        last_name: '',
+        name: name.trim(),
+        first_name: nameParts.first_name,
+        last_name: nameParts.last_name,
         age,
         gender,
-        ward_name: ward,
-        phone_number: mobile || null,
+        ward_name: ward.trim(),
+        phone_number: mobile.trim() || null,
+        email: email.trim() || null, address: address.trim() || null,
+        house_number: houseNumber.trim() || null, father_or_spouse_name: fatherOrSpouseName.trim() || null,
+        notes: notes.trim() || null, channel,
       });
       showToast(`${t('voterAddedSuccess')}`, 'success');
       setIsAddVoterModalOpen(false);
-      setName(''); setVoterId(''); setMobile('');
-      loadVoters();
+      resetVoterForm();
+      await loadVoters();
     } catch (err: any) {
       showToast(err?.response?.data?.message || t('errorSavingData'), 'error');
+    }
+  };
+
+  const handleUpdateVoter = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingVoter || !name.trim()) return;
+    if (!ward.trim()) { setWardError('Ward is required.'); return; }
+    const nameParts = splitName(name);
+    try {
+      await votersApi.update(editingVoter.id, {
+        name: name.trim(), first_name: nameParts.first_name, last_name: nameParts.last_name,
+        age, gender, ward_name: ward.trim(), phone_number: mobile.trim() || null,
+        email: email.trim() || null, address: address.trim() || null,
+        house_number: houseNumber.trim() || null, father_or_spouse_name: fatherOrSpouseName.trim() || null,
+        notes: notes.trim() || null, channel,
+      });
+      showToast('Voter updated successfully.', 'success');
+      setEditingVoter(null); resetVoterForm(); await loadVoters();
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || err?.response?.data?.detail || 'Unable to update voter.', 'error');
     }
   };
 
@@ -373,16 +431,10 @@ export const VotersPage: React.FC = () => {
                       </Badge>
                     </td>
                     <td className="py-3 px-4 text-right">
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        onClick={() => handleDeleteVoter(v)}
-                        leftIcon={<Trash2 className="w-3.5 h-3.5" />}
-                        aria-label={`Delete ${displayName || 'voter'}`}
-                        title="Delete voter"
-                      >
-                        Delete
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="outline" onClick={() => openEditVoter(v)} leftIcon={<Pencil className="w-3.5 h-3.5" />} aria-label={`Edit ${displayName || 'voter'}`} title="Edit voter">Edit</Button>
+                        <Button size="sm" variant="danger" onClick={() => handleDeleteVoter(v)} leftIcon={<Trash2 className="w-3.5 h-3.5" />} aria-label={`Delete ${displayName || 'voter'}`} title="Delete voter">Delete</Button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -422,15 +474,10 @@ export const VotersPage: React.FC = () => {
                     <span className="text-amber-600 font-bold">Missing Mobile</span>
                   )}
                 </div>
-                <Button
-                  size="sm"
-                  variant="danger"
-                  onClick={() => handleDeleteVoter(v)}
-                  leftIcon={<Trash2 className="w-3.5 h-3.5" />}
-                  aria-label={`Delete ${displayName || 'voter'}`}
-                >
-                  Delete voter
-                </Button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => openEditVoter(v)} leftIcon={<Pencil className="w-3.5 h-3.5" />} aria-label={`Edit ${displayName || 'voter'}`}>Edit</Button>
+                  <Button size="sm" variant="danger" onClick={() => handleDeleteVoter(v)} leftIcon={<Trash2 className="w-3.5 h-3.5" />} aria-label={`Delete ${displayName || 'voter'}`}>Delete voter</Button>
+                </div>
               </div>
             );
           })}
@@ -493,7 +540,9 @@ export const VotersPage: React.FC = () => {
             <TransliteratingTextInput
               label="Ward Assignment"
               value={ward}
-              onChange={(e) => setWard(e.target.value)}
+              onChange={(e) => { setWard(e.target.value); setWardError(''); }}
+              error={wardError}
+              required
             />
             <Select
               label="Primary Channel"
@@ -520,6 +569,28 @@ export const VotersPage: React.FC = () => {
               Save Elector
             </Button>
           </div>
+        </form>
+      </Modal>
+
+      <Modal isOpen={!!editingVoter} onClose={() => { setEditingVoter(null); resetVoterForm(); }} title={<div className="flex items-center gap-2"><Pencil className="w-5 h-5 text-sky-600" /><span>Edit Voter</span></div>}>
+        <form onSubmit={handleUpdateVoter} className="space-y-4">
+          <FormInput label="EPIC ID" value={voterId} readOnly />
+          <TransliteratingNameInput label="Voter Name" placeholder="e.g. Rameshwar Patel" value={name} onChange={(e) => setName(e.target.value)} required />
+          <div className="grid grid-cols-2 gap-3">
+            <FormInput label="Age" type="number" value={age} onChange={(e) => setAge(Number(e.target.value))} />
+            <Select label="Gender" value={gender} onChange={(e) => setGender(e.target.value as any)}><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></Select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <TransliteratingTextInput label="Ward Assignment" value={ward} onChange={(e) => { setWard(e.target.value); setWardError(''); }} error={wardError} required />
+            <Select label="Primary Channel" value={channel} onChange={(e) => setChannel(e.target.value as any)}><option value="WhatsApp">WhatsApp</option><option value="SMS Only">SMS Only</option></Select>
+          </div>
+          <FormInput label="Mobile Number (with +91)" value={mobile} onChange={(e) => setMobile(e.target.value)} />
+          <FormInput label="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <FormInput label="House Number" value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} />
+          <FormInput label="Father / Spouse Name" value={fatherOrSpouseName} onChange={(e) => setFatherOrSpouseName(e.target.value)} />
+          <FormInput label="Address" value={address} onChange={(e) => setAddress(e.target.value)} />
+          <FormInput label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+          <div className="flex justify-end gap-2 pt-3"><Button type="button" variant="outline" onClick={() => { setEditingVoter(null); resetVoterForm(); }}>Cancel</Button><Button type="submit" variant="primary">Save Changes</Button></div>
         </form>
       </Modal>
     </div>
