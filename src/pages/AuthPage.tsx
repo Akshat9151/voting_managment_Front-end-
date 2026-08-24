@@ -47,8 +47,9 @@ export const AuthPage: React.FC = () => {
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password) {
-      setError('Please enter both email and password.');
+    const identifier = (loginMethod === 'phone' ? phone : email).trim();
+    if (!identifier || !password) {
+      setError(loginMethod === 'phone' ? 'Please enter both phone number and password.' : 'Please enter both email and password.');
       return;
     }
 
@@ -59,8 +60,8 @@ export const AuthPage: React.FC = () => {
     // After 5s with no response, show the "server waking up" banner
     slowTimer.current = setTimeout(() => setSlowRequest(true), 5000);
     try {
-      const session = await authApi.login(email.trim(), password);
-      loginWithSession(session, email.trim());
+      const session = await authApi.login(identifier, password);
+      loginWithSession(session, identifier);
       showToast('Signed in successfully.', 'success');
       navigate('/');
     } catch (err: any) {
@@ -69,7 +70,7 @@ export const AuthPage: React.FC = () => {
       if (errorDetails?.requires_otp && errorDetails?.challenge_id) {
         setOtpChallengeId(errorDetails.challenge_id);
         setIsLoginVerification(true);
-        showToast('A one-time verification code has been sent to your email to activate your account.', 'info');
+        showToast('A one-time verification code has been sent to activate your account.', 'info');
         return;
       }
       const msg = isTimeout
@@ -93,6 +94,8 @@ export const AuthPage: React.FC = () => {
     setError(null);
     setSuccessBanner(null);
 
+    const identifier = (loginMethod === 'phone' ? phone : email).trim();
+
     if (otpChallengeId) {
       // OTP Verification Step
       if (!otpCode || otpCode.length !== 6) {
@@ -103,13 +106,13 @@ export const AuthPage: React.FC = () => {
       setIsLoading(true);
       try {
         if (isLoginVerification) {
-          const session = await authApi.verifyLoginOtp(otpChallengeId, otpCode, email.trim(), password);
-          loginWithSession(session, email.trim());
+          const session = await authApi.verifyLoginOtp(otpChallengeId, otpCode, identifier, password);
+          loginWithSession(session, identifier);
           showToast('Account verified and signed in successfully!', 'success');
           navigate('/');
         } else {
           await authApi.verifySignupOtp(otpChallengeId, otpCode);
-          showToast('Account verified! Please log in with your email and password.', 'success');
+          showToast('Account verified! Please log in with your credentials.', 'success');
           setSuccessBanner('Account verified successfully! Please enter your password to sign in.');
           setOtpChallengeId(null);
           setOtpCode('');
@@ -130,7 +133,7 @@ export const AuthPage: React.FC = () => {
       return;
     }
 
-    if (!fullName.trim() || !email.trim() || !password) {
+    if (!fullName.trim() || !identifier || !password) {
       setError('Please complete all required fields.');
       return;
     }
@@ -142,15 +145,16 @@ export const AuthPage: React.FC = () => {
 
     setIsLoading(true);
     try {
+      const isPhone = loginMethod === 'phone';
       const challenge = await authApi.requestSignupOtp({
         full_name: fullName.trim(),
-        email: email.trim(),
-        password,
-        phone: undefined
+        email: isPhone ? `${phone.replace(/\D/g, '')}@campaign.votevictory.internal` : email.trim(),
+        phone: isPhone ? phone.trim() : undefined,
+        password
       });
       setOtpChallengeId(challenge.challenge_id);
       showToast(
-        challenge.dev_code ? `Development OTP: ${challenge.dev_code}` : 'Verification code sent to your email.',
+        challenge.dev_code ? `Development OTP: ${challenge.dev_code}` : (isPhone ? 'Verification code sent to your phone.' : 'Verification code sent to your email.'),
         'info'
       );
     } catch (err: any) {
