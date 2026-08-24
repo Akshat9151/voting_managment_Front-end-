@@ -8,8 +8,7 @@ import {
   Lock,
   Mail,
   ArrowRight,
-  Globe,
-  Smartphone
+  Globe
 } from 'lucide-react';
 import { FormInput } from '../components/ui/FormInput';
 import { Button } from '../components/ui/Button';
@@ -23,7 +22,6 @@ export const AuthPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [otpChallengeId, setOtpChallengeId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -129,8 +127,7 @@ export const AuthPage: React.FC = () => {
       return;
     }
 
-    const normalizedPhone = phone.trim();
-    if (!fullName.trim() || !email.trim() || !password || !normalizedPhone) {
+    if (!fullName.trim() || !email.trim() || !password) {
       setError('Please complete all required fields.');
       return;
     }
@@ -140,23 +137,17 @@ export const AuthPage: React.FC = () => {
       return;
     }
 
-    const phoneIsValid = /^\+?[\d\s()-]{10,20}$/.test(normalizedPhone);
-    if (!phoneIsValid) {
-      setError('Please enter a valid phone number.');
-      return;
-    }
-
     setIsLoading(true);
     try {
       const challenge = await authApi.requestSignupOtp({
         full_name: fullName.trim(),
         email: email.trim(),
         password,
-        phone: normalizedPhone
+        phone: undefined
       });
       setOtpChallengeId(challenge.challenge_id);
       showToast(
-        challenge.dev_code ? `Development OTP: ${challenge.dev_code}` : `Verification code sent to ${challenge.destination}.`,
+        challenge.dev_code ? `Development OTP: ${challenge.dev_code}` : 'Verification code sent to your email.',
         'info'
       );
     } catch (err: any) {
@@ -382,16 +373,6 @@ export const AuthPage: React.FC = () => {
                     required
                   />
 
-                  <FormInput
-                    label={t('formLabelPhoneNumber')}
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder={t('phoneExample')}
-                    leftIcon={<Smartphone className="w-4 h-4" />}
-                    autoComplete="off"
-                    required
-                  />
 
                   <FormInput
                     label={t('password')}
@@ -408,7 +389,7 @@ export const AuthPage: React.FC = () => {
                     type="submit"
                     variant="primary"
                     className="w-full"
-                    disabled={isLoading || !fullName || !email || !password || !phone}
+                    disabled={isLoading || !fullName || !email || !password}
                   >
                     {isLoading ? (
                       <span className="flex items-center gap-2">
