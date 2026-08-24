@@ -17,6 +17,9 @@ import { Voter } from '../types';
 type Segment = 'all' | 'whatsapp' | 'no-whatsapp' | 'youth' | 'women' | 'missing';
 type Step = 1 | 2 | 3 | 4;
 
+const ENGLISH_BROADCAST_TEMPLATE = 'Dear {{name}},\n\nHere is an important election update for Ward {{ward}}.';
+const HINDI_BROADCAST_TEMPLATE = '\u092a\u094d\u0930\u093f\u092f {{name}} \u091c\u0940,\n\n\u0906\u092a\u0915\u0947 \u0935\u093e\u0930\u094d\u0921 {{ward}} \u092e\u0947\u0902 \u091a\u0941\u0928\u093e\u0935 \u0938\u0902\u092c\u0902\u0927\u0940 \u092e\u0939\u0924\u094d\u0935\u092a\u0942\u0930\u094d\u0923 \u0938\u0942\u091a\u0928\u093e \u0939\u0948\u0964';
+
 const normalizeVoter = (voter: any): Voter => ({
   ...voter,
   name: `${voter.first_name ?? voter.name ?? ''} ${voter.last_name ?? ''}`.trim(),
@@ -37,7 +40,7 @@ const openWhatsApp = (voter: Voter, message: string) => {
 };
 
 export const BroadcastPage: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { showToast } = useToast();
   const { activeElectionId } = useElection();
   const [step, setStep] = useState<Step>(1);
@@ -49,7 +52,7 @@ export const BroadcastPage: React.FC = () => {
   const [segment, setSegment] = useState<Segment>('all');
   const [isLoading, setIsLoading] = useState(false);
   const [pendingImportJobId, setPendingImportJobId] = useState<string | null>(null);
-  const [message, setMessage] = useState('à¤ªà¥à¤°à¤¿à¤¯ {{name}} à¤œà¥€,\n\nà¤†à¤ªà¤•à¥‡ à¤µà¤¾à¤°à¥à¤¡ {{ward}} à¤®à¥‡à¤‚ à¤šà¥à¤¨à¤¾à¤µ à¤¸à¤‚à¤¬à¤‚à¤§à¥€ à¤®à¤¹à¤¤à¥à¤µà¤ªà¥‚à¤°à¥à¤£ à¤¸à¥‚à¤šà¤¨à¤¾ à¤¹à¥ˆà¥¤');
+  const [message, setMessage] = useState(language === 'hi' ? HINDI_BROADCAST_TEMPLATE : ENGLISH_BROADCAST_TEMPLATE);
   const [group, setGroup] = useState<any | null>(null);
   const [result, setResult] = useState<any | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -313,7 +316,7 @@ export const BroadcastPage: React.FC = () => {
       )}
     </>}
 
-    {step === 2 && group && <Card className="max-w-3xl mx-auto space-y-5"><div><h2 className="text-lg font-extrabold font-heading">{t('broadcastDraftTitle')}</h2><p className="text-xs text-slate-500">{group.name}</p></div>{groupSummary}<div className="flex flex-wrap gap-2 text-xs font-bold">{['name', 'ward', 'booth'].map((tag) => <button type="button" key={tag} onClick={() => insertTag(tag)} className="rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-sky-700">+ {tag}</button>)}</div><TransliteratingTextArea rows={8} value={message} onChange={(event) => setMessage(event.target.value)} placeholder={t('broadcastDraftDesc')} /><div className="flex justify-end"><Button variant="primary" size="lg" onClick={saveDraft} isLoading={isSaving} leftIcon={<Send className="w-4 h-4" />}>{t('broadcastSaveDraft')}</Button></div></Card>}
+    {step === 2 && group && <Card className="max-w-3xl mx-auto space-y-5"><div><h2 className="text-lg font-extrabold font-heading">{t('broadcastDraftTitle')}</h2><p className="text-xs text-slate-500">{group.name}</p></div>{groupSummary}<div className="flex items-center gap-2"><span className="text-xs font-bold text-slate-500">Message language:</span><button type="button" onClick={() => setMessage(ENGLISH_BROADCAST_TEMPLATE)} className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:border-sky-400">English</button><button type="button" onClick={() => setMessage(HINDI_BROADCAST_TEMPLATE)} className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:border-sky-400">Hindi</button></div><div className="flex flex-wrap gap-2 text-xs font-bold">{['name', 'ward', 'booth'].map((tag) => <button type="button" key={tag} onClick={() => insertTag(tag)} className="rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-sky-700">+ {tag}</button>)}</div><TransliteratingTextArea rows={8} value={message} onChange={(event) => setMessage(event.target.value)} placeholder={t('broadcastDraftDesc')} /><div className="flex justify-end"><Button variant="primary" size="lg" onClick={saveDraft} isLoading={isSaving} leftIcon={<Send className="w-4 h-4" />}>{t('broadcastSaveDraft')}</Button></div></Card>}
 
     {step === 3 && group && <Card className="max-w-3xl mx-auto space-y-5"><div><h2 className="text-lg font-extrabold font-heading">{t('broadcastReviewSend')}</h2><p className="text-xs text-slate-500">{group.name}</p></div>{groupSummary}<div className="rounded-lg border border-slate-200 bg-slate-50 p-4 whitespace-pre-wrap text-sm">{message}</div><div className="flex justify-end"><Button variant="primary" size="lg" onClick={sendNow} isLoading={isSaving} leftIcon={<Send className="w-4 h-4" />}>{t('broadcastSendNow')}</Button></div></Card>}
 
