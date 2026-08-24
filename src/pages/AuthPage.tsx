@@ -37,6 +37,7 @@ export const AuthPage: React.FC = () => {
   const navigate = useNavigate();
   const { language, setLanguage, t } = useLanguage();
 
+  const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
   const [isLoginVerification, setIsLoginVerification] = useState(false);
 
   // Silently wake the backend as soon as the auth page opens
@@ -306,26 +307,26 @@ export const AuthPage: React.FC = () => {
           {otpChallengeId ? (
             <form onSubmit={handleSignup} className="space-y-4">
               <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs text-amber-900">
-                A 6-digit verification code was sent to <strong>{email}</strong>. Please enter it below to complete registration.
+                {t('emailVerificationSent', 'A 6-digit verification code was sent to {{email}}. Please enter it below to complete registration.').replace('{{email}}', email)}
               </div>
               <FormInput
-                label="Email verification code"
+                label={t('emailVerificationCode', 'Email verification code')}
                 value={otpCode}
                 onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder={t('auth.enter_otp', 'Enter 6-digit code')}
+                placeholder={t('enterOtp', 'Enter 6-digit code')}
                 inputMode="numeric"
                 maxLength={6}
                 required
               />
               <Button type="submit" variant="primary" className="w-full" disabled={isLoading || otpCode.length !== 6}>
-                {isLoading ? 'Verifying...' : 'Verify and proceed to login'}
+                {isLoading ? t('verifying', 'Verifying...') : t('verifyAndProceed', 'Verify and proceed to login')}
               </Button>
               <button
                 type="button"
                 className="w-full text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors"
                 onClick={() => { setOtpChallengeId(null); setOtpCode(''); setIsLoginVerification(false); }}
               >
-                Change email or go back
+                {t('changeEmailGoBack', 'Change email or go back')}
               </button>
             </form>
           ) : (
@@ -348,19 +349,23 @@ export const AuthPage: React.FC = () => {
                     <div className="w-full border-t border-slate-200" />
                   </div>
                   <div className="relative flex justify-center text-xs">
-                    <span className="bg-white px-2 text-[10px] text-slate-400 uppercase font-bold tracking-wider">{t('or')}</span>
+                    <span className="bg-white px-2 text-[10px] text-slate-400 uppercase font-bold tracking-wider">{t('or', 'OR')}</span>
                   </div>
                 </div>
               </div>
 
               {isSignup ? (
                 <form onSubmit={handleSignup} className="space-y-3.5" autoComplete="off">
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                    <p className="font-bold">{t('createYourWorkspace', 'Create your workspace')}</p>
+                    <p className="mt-0.5 text-amber-800">{t('firstSignupSuperAdmin', 'First signup becomes Super Admin and can manage campaign teams.')}</p>
+                  </div>
                   <FormInput
-                    label="Full Name"
+                    label={t('fullName', 'Full Name')}
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Enter your full name"
+                    placeholder={t('enterFullName', 'Enter your full name')}
                     autoComplete="name"
                     required
                   />
@@ -375,7 +380,7 @@ export const AuthPage: React.FC = () => {
                     required
                   />
 
-                  <div className="opacity-50 pointer-events-none">
+                  <div className="opacity-60">
                     <FormInput
                       label={t('formLabelPhoneNumber')}
                       type="tel"
@@ -386,7 +391,7 @@ export const AuthPage: React.FC = () => {
                       autoComplete="off"
                       disabled
                     />
-                    <p className="text-[10px] text-amber-600 mt-1">{t('phoneOtpUnavailable')}</p>
+                    <p className="text-[10px] text-amber-600 mt-1 font-medium">{t('phoneOtpUnavailable')}</p>
                   </div>
 
                   <FormInput
@@ -420,48 +425,101 @@ export const AuthPage: React.FC = () => {
                   </Button>
                 </form>
               ) : (
-                <form onSubmit={handlePasswordLogin} className="space-y-4" autoComplete="off">
-                  <FormInput
-                    label={t('emailAddress')}
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder={t('emailExample')}
-                    leftIcon={<Mail className="w-4 h-4" />}
-                    autoComplete="username"
-                    required
-                  />
+                <div className="space-y-4">
+                  {/* Email / Phone Method Selector */}
+                  <div className="flex rounded-xl bg-slate-100 p-1">
+                    <button
+                      type="button"
+                      onClick={() => setLoginMethod('email')}
+                      className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                        loginMethod === 'email' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      {t('email', 'Email')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLoginMethod('phone')}
+                      className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                        loginMethod === 'phone' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+                      }`}
+                    >
+                      <Smartphone className="w-3.5 h-3.5" />
+                      <span>{t('phone', 'Phone')}</span>
+                      <span className="text-[9px] bg-amber-100 text-amber-800 font-extrabold px-1.5 py-0.5 rounded-full">{t('soon', 'Soon')}</span>
+                    </button>
+                  </div>
 
-                  <FormInput
-                    label={t('password')}
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={t('enterPassword')}
-                    leftIcon={<Lock className="w-4 h-4" />}
-                    autoComplete="current-password"
-                    required
-                  />
+                  {loginMethod === 'phone' ? (
+                    <div className="space-y-4">
+                      <div className="opacity-60">
+                        <FormInput
+                          label={t('formLabelPhoneNumber')}
+                          type="tel"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          placeholder={t('phoneExample')}
+                          leftIcon={<Smartphone className="w-4 h-4" />}
+                          disabled
+                        />
+                      </div>
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 leading-relaxed">
+                        {t('phoneLoginNotice', 'Phone number login with OTP is currently in private preview. Please use email to sign in.')}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => setLoginMethod('email')}
+                      >
+                        {t('switchToEmailLogin', 'Switch to Email Login')}
+                      </Button>
+                    </div>
+                  ) : (
+                    <form onSubmit={handlePasswordLogin} className="space-y-4" autoComplete="off">
+                      <FormInput
+                        label={t('emailAddress')}
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder={t('emailExample')}
+                        leftIcon={<Mail className="w-4 h-4" />}
+                        autoComplete="username"
+                        required
+                      />
 
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    className="w-full"
-                    disabled={isLoading || !email || !password}
-                  >
-                    {isLoading ? (
-                      <span className="flex items-center gap-2">
-                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        {t('signingIn')}
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-2">
-                        {t('signIn')}
-                        <ArrowRight className="w-4 h-4" />
-                      </span>
-                    )}
-                  </Button>
-                </form>
+                      <FormInput
+                        label={t('password')}
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder={t('enterPassword')}
+                        leftIcon={<Lock className="w-4 h-4" />}
+                        autoComplete="current-password"
+                        required
+                      />
+
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        className="w-full"
+                        disabled={isLoading || !email || !password}
+                      >
+                        {isLoading ? (
+                          <span className="flex items-center gap-2">
+                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            {t('signingIn')}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-2">
+                            {t('signIn')}
+                            <ArrowRight className="w-4 h-4" />
+                          </span>
+                        )}
+                      </Button>
+                    </form>
+                  )}
+                </div>
               )}
 
               <div className="mt-5 text-center text-xs text-slate-500">
