@@ -20,12 +20,17 @@ export const SUPPORTED_LANGUAGES: LanguageOption[] = [
 ];
 
 const repairMojibake = (value: string) => {
-  if (!/[àâ]/.test(value)) return value;
-  try {
-    return new TextDecoder().decode(Uint8Array.from(value, (character) => character.charCodeAt(0)));
-  } catch {
-    return value;
+  let repaired = value;
+  for (let attempt = 0; attempt < 3 && /[àâÃ]/.test(repaired); attempt += 1) {
+    try {
+      const decoded = new TextDecoder().decode(Uint8Array.from(repaired, (character) => character.charCodeAt(0)));
+      if (decoded === repaired) break;
+      repaired = decoded;
+    } catch {
+      break;
+    }
   }
+  return repaired;
 };
 
 const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {

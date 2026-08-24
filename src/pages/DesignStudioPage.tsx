@@ -394,7 +394,7 @@ export const DesignStudioPage: React.FC = () => {
         <div>
           <h2 className="text-sm font-extrabold text-slate-900 mb-4 flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-amber-500" />
-            Campaign Gallery – Choose Your Template
+            {t('campaignGallery')}
           </h2>
           {isLoadingTemplates ? (
             <div className="flex items-center justify-center p-12">
@@ -427,7 +427,7 @@ export const DesignStudioPage: React.FC = () => {
                     className="w-full text-xs"
                     onClick={() => handleSelectTemplate(template)}
                   >
-                    Use Template
+                    {t('useTemplate')}
                   </Button>
                 </Card>
               ))}
@@ -465,7 +465,7 @@ export const DesignStudioPage: React.FC = () => {
             <h1 className="text-lg sm:text-xl font-extrabold font-heading text-slate-900">
               {selectedTemplate?.name}
             </h1>
-            <p className="text-xs text-slate-500 mt-0.5">Fill in the details below to customize your poster</p>
+            <p className="text-xs text-slate-500 mt-0.5">{t('fillDetails')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
