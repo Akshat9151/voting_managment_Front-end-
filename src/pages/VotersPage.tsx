@@ -196,7 +196,7 @@ export const VotersPage: React.FC = () => {
       showToast('Voter updated successfully.', 'success');
       setEditingVoter(null); resetVoterForm(); await loadVoters();
     } catch (err: any) {
-      showToast(err?.response?.data?.message || err?.response?.data?.detail || 'Unable to update voter.', 'error');
+      showToast(err?.response?.data?.error?.message || err?.response?.data?.message || err?.response?.data?.detail || 'Unable to update voter.', 'error');
     }
   };
 
