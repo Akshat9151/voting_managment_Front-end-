@@ -154,16 +154,23 @@ export const AnalyticsPage: React.FC = () => {
             <span>Design Studio Material Production</span>
           </h3>
 
-          <div className="grid grid-cols-2 gap-3">
-            {analytics.materialPrints.map((mat: any) => (
-              <div key={mat.type} className="p-3 bg-slate-50 border border-slate-100 rounded-xl">
-                <div className="text-lg font-extrabold font-heading text-sky-600">
-                  {mat.count.toLocaleString()}
+          {analytics.materialPrints.length === 0 || analytics.materialPrints.every((m: any) => m.count === 0) ? (
+            <div className="flex flex-col items-center justify-center py-6 text-center text-slate-400 gap-2">
+              <Award className="w-8 h-8 opacity-30" />
+              <p className="text-xs font-medium">No saved designs yet.<br />Create posters in Design Studio to track production here.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {analytics.materialPrints.filter((mat: any) => mat.count > 0).map((mat: any) => (
+                <div key={mat.type} className="p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                  <div className="text-lg font-extrabold font-heading text-sky-600">
+                    {mat.count.toLocaleString()}
+                  </div>
+                  <div className="text-xs font-bold text-slate-700 mt-0.5">{mat.type}</div>
                 </div>
-                <div className="text-xs font-bold text-slate-700 mt-0.5">{mat.type}</div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </Card>
 
         <Card className="space-y-4">
@@ -172,17 +179,24 @@ export const AnalyticsPage: React.FC = () => {
             <span>Volunteer Slip Distribution Leaderboard</span>
           </h3>
 
-          <div className="space-y-2">
-            {analytics.volunteerProductivity.map((vol: any) => (
-              <div key={vol.name} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
-                <span className="font-bold text-slate-900">{vol.name}</span>
-                <div className="flex gap-3">
-                  <span className="text-emerald-700 font-bold">{vol.slips} Slips Handed</span>
-                  <span className="text-sky-700 font-bold">{vol.calls} Calls</span>
+          {analytics.volunteerProductivity.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-6 text-center text-slate-400 gap-2">
+              <TrendingUp className="w-8 h-8 opacity-30" />
+              <p className="text-xs font-medium">No volunteer activity yet.<br />Add volunteers to your team to track their performance.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {analytics.volunteerProductivity.map((vol: any) => (
+                <div key={vol.name} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
+                  <span className="font-bold text-slate-900">{vol.name}</span>
+                  <div className="flex gap-3">
+                    <span className="text-emerald-700 font-bold">{vol.slips} Records</span>
+                    <span className="text-sky-700 font-bold">{vol.calls} Approved</span>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </Card>
       </div>
     </div>

@@ -325,7 +325,15 @@ export const DesignStudioPage: React.FC = () => {
 
     setIsExporting(true);
     try {
-      const dataUrl = await toPng(node, { pixelRatio: 1, cacheBust: true });
+      if (document.fonts?.ready) await document.fonts.ready;
+      await Promise.all(Array.from(node.querySelectorAll('img')).map((image) => image.decode().catch(() => undefined)));
+      const dataUrl = await toPng(node, {
+        width: 1080,
+        height: 1350,
+        pixelRatio: 1,
+        cacheBust: true,
+        style: { transform: 'none', transformOrigin: 'top left' },
+      });
       const link = document.createElement('a');
       link.href = dataUrl;
       link.download = `${candidateName.replace(/\s+/g, '_')}_poster_${Date.now()}.png`;
@@ -424,10 +432,10 @@ export const DesignStudioPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {templates.map(template => (
                 <Card key={template.id} className="p-4 space-y-3 hover:shadow-lg transition-all group cursor-pointer border-2 border-slate-200 hover:border-sky-400">
-                  {template.thumbnail_url && (
+                  {getTemplateThumbnailUrl(template) && (
                     <div className="aspect-[4/3] overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
                       <img
-                        src={resolveAssetUrl(template.thumbnail_url)}
+                        src={getTemplateThumbnailUrl(template)}
                         alt={template.name}
                         className="h-full w-full object-cover"
                       />
@@ -722,6 +730,16 @@ const resolveAssetUrl = (url: string): string => {
 
   const apiBase = (import.meta as any).env?.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1';
   return `${apiBase.replace(/\/api\/v1\/?$/, '')}${url.startsWith('/') ? url : `/${url}`}`;
+};
+
+const getTemplateThumbnailUrl = (template: DesignTemplate): string => {
+  if (template.thumbnail_url) return resolveAssetUrl(template.thumbnail_url);
+  const name = template.name.toLowerCase();
+  if (name.includes('banner')) return '/assets/holdings.png';
+  if (name.includes('id card')) return '/assets/Id%20Card.png';
+  if (name.includes('pamphlet')) return '/assets/poster2.png';
+  if (name.includes('poster')) return '/assets/Poster.png';
+  return '';
 };
 
 const toAssetUrl = resolveAssetUrl;
