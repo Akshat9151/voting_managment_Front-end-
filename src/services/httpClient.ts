@@ -7,7 +7,8 @@
  */
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-const BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1';
+const BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL
+  ?? ((import.meta as any).env?.PROD ? 'https://votevictory-backend.onrender.com/api/v1' : 'http://localhost:8000/api/v1');
 
 // ─── Token store ─────────────────────────────────────────────────────────────
 let _accessToken: string | null = localStorage.getItem('ew_at') ?? null;
