@@ -733,12 +733,12 @@ const resolveAssetUrl = (url: string): string => {
 };
 
 const getTemplateThumbnailUrl = (template: DesignTemplate): string => {
-  if (template.thumbnail_url) return resolveAssetUrl(template.thumbnail_url);
   const name = template.name.toLowerCase();
   if (name.includes('banner')) return '/assets/holdings.png';
   if (name.includes('id card')) return '/assets/Id%20Card.png';
   if (name.includes('pamphlet')) return '/assets/poster2.png';
   if (name.includes('poster')) return '/assets/Poster.png';
+  if (template.thumbnail_url) return resolveAssetUrl(template.thumbnail_url);
   return '';
 };
 
