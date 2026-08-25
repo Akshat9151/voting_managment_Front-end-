@@ -33,7 +33,10 @@ export const DashboardPage: React.FC = () => {
 
   useEffect(() => {
     const fetchDashboard = async () => {
-      if (currentRole !== 'SUPER_ADMIN' && !activeElectionId) return;
+      if (currentRole !== 'SUPER_ADMIN' && !activeElectionId) {
+        setIsLoading(false);
+        return;
+      }
 
       setIsLoading(true);
       try {

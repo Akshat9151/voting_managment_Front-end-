@@ -195,8 +195,8 @@ export const votersApi = {
         const data = unwrap<any>(res);
         return { items: (data?.items ?? (Array.isArray(data) ? data : [])) as any[], pagination: data?.pagination };
       }
-    } catch {
-      // Fall through to organization-scoped list for stale election selections.
+    } catch (error) {
+      if ((error as any)?.response?.status !== 404) throw error;
     }
 
     const res = await httpClient.get('/voters/', { params });

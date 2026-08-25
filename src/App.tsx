@@ -29,11 +29,12 @@ import { VolunteerWardPage } from './pages/VolunteerWardPage';
 import { VolunteerAddPage } from './pages/VolunteerAddPage';
 import { VolunteerActivityPage } from './pages/VolunteerActivityPage';
 import { VolunteersPage } from './pages/VolunteersPage';
+import { SubscriptionsPage } from './pages/SubscriptionsPage';
 
 const ROLE_ROUTE_ALLOWLIST: Record<'SUPER_ADMIN' | 'ADMIN' | 'VOLUNTEER', readonly string[]> = {
-  SUPER_ADMIN: ['/', '/team', '/volunteers', '/candidates', '/voters', '/tasks', '/field-activities', '/studio', '/broadcast', '/complaints', '/expenses', '/analytics', '/settings', '/volunteer-ward', '/volunteer-add', '/volunteer-activity'],
-  ADMIN: ['/', '/team', '/volunteers', '/voters', '/tasks', '/field-activities', '/studio', '/broadcast', '/complaints', '/settings'],
-  VOLUNTEER: ['/', '/volunteer-add', '/volunteer-activity', '/field-activities', '/tasks', '/studio']
+  SUPER_ADMIN: ['/', '/team', '/volunteers', '/candidates', '/voters', '/tasks', '/field-activities', '/studio', '/broadcast', '/complaints', '/expenses', '/analytics', '/subscriptions', '/settings', '/volunteer-ward', '/volunteer-add', '/volunteer-activity'],
+  ADMIN: ['/', '/team', '/volunteers', '/voters', '/tasks', '/field-activities', '/studio', '/broadcast', '/complaints', '/expenses', '/analytics', '/subscriptions', '/settings'],
+  VOLUNTEER: ['/', '/volunteer-add', '/volunteer-activity', '/volunteer-ward', '/field-activities', '/tasks', '/studio']
 };
 
 // ─── ProtectedRoute with optional permission check ────────────────────────────
@@ -115,6 +116,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="complaints" element={<ComplaintsPage />} />
         <Route path="expenses" element={<ExpensesPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
+        <Route path="subscriptions" element={<SubscriptionsPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="volunteer-ward" element={<VolunteerWardPage />} />
         <Route path="volunteer-add" element={<VolunteerAddPage />} />
