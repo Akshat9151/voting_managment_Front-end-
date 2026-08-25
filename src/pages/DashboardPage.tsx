@@ -42,7 +42,7 @@ export const DashboardPage: React.FC = () => {
       try {
         let data: any;
         if (currentRole === 'SUPER_ADMIN') {
-          data = await analyticsApi.getDashboardSuperAdmin();
+          data = await analyticsApi.getDashboardSuperAdmin(activeElectionId);
         } else if (currentRole === 'ADMIN' && activeElectionId) {
           data = await analyticsApi.getDashboardAdmin(activeElectionId);
         } else {

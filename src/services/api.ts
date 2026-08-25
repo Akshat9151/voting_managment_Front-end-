@@ -488,8 +488,8 @@ export const analyticsApi = {
     const res = await httpClient.get(`/analytics/election/${election_id}/turnout`);
     return unwrap<any>(res);
   },
-  getDashboardSuperAdmin: async () => {
-    const res = await httpClient.get('/dashboard/superadmin');
+  getDashboardSuperAdmin: async (election_id?: string | null) => {
+    const res = await httpClient.get('/dashboard/superadmin', { params: election_id ? { election_id } : undefined });
     return unwrap<any>(res);
   },
   getDashboardAdmin: async (election_id: string) => {

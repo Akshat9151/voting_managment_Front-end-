@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { toPng, toBlob } from 'html-to-image';
 import { api, designTemplatesApi, usersApi } from '../services/api';
 import { getCandidateStudioAutofill } from '../services/templateSelector';
 import { useLanguage } from '../context/LanguageContext';
@@ -21,6 +22,7 @@ import { FormInput } from '../components/ui/FormInput';
 import { TransliteratingTextInput, TransliteratingTextArea } from '../components/ui/TransliteratingTextInput';
 import { FileDropzone } from '../components/ui/FileDropzone';
 import { Button } from '../components/ui/Button';
+import { PosterTemplate } from '../components/studio/PosterTemplate';
 import { DesignTemplate } from '../types';
 
 const validateMediaFile = (file: File): { valid: boolean; error?: string } => {
@@ -41,13 +43,15 @@ export const DesignStudioPage: React.FC = () => {
   const { t } = useLanguage();
   const { showToast } = useToast();
   const { activeElectionId } = useElection();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const posterRef = useRef<HTMLDivElement>(null);
+  const previewContainerRef = useRef<HTMLDivElement>(null);
+  const [previewScale, setPreviewScale] = useState(0.4);
 
   // Dynamic templates from API
   const [templates, setTemplates] = useState<DesignTemplate[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [isSavingDesign, setIsSavingDesign] = useState(false);
-  const [isRenderingCanvas, setIsRenderingCanvas] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // View state
   const [view, setView] = useState<'gallery' | 'editor'>('gallery');
@@ -209,14 +213,26 @@ export const DesignStudioPage: React.FC = () => {
       const url = toAssetUrl(uploaded.url);
       setSymbolUrl(url);
       setSymbolPreview(url);
-      showToast('Election symbol uploaded!', 'success');
     } catch {
       showToast('Symbol upload failed.', 'error');
     } finally {
       setIsUploadingSymbol(false);
     }
   };
-
+  // Auto-fit preview scale to container width
+  useEffect(() => {
+    const updateScale = () => {
+      if (previewContainerRef.current) {
+        const containerW = previewContainerRef.current.clientWidth;
+        // Poster canvas is 1080px wide
+        const calculated = Math.min(0.55, Math.max(0.25, (containerW - 32) / 1080));
+        setPreviewScale(calculated);
+      }
+    };
+    updateScale();
+    window.addEventListener('resize', updateScale);
+    return () => window.removeEventListener('resize', updateScale);
+  }, [view]);
 
   const validateForm = (): boolean => {
     if (!candidateName.trim()) {
@@ -231,31 +247,30 @@ export const DesignStudioPage: React.FC = () => {
       showToast(t('wardNumberRequired'), 'error');
       return false;
     }
-    if (!candidatePhotoUrl && !photoPreview) {
-      showToast(t('candidatePhotoRequired'), 'error');
-      return false;
-    }
     return true;
   };
 
   const handleSaveDesign = async () => {
-    if (!selectedTemplate || isRenderingCanvas) return;
+    if (isSavingDesign || isExporting) return;
     if (!validateForm()) return;
 
     setIsSavingDesign(true);
     try {
-      const canvas = canvasRef.current;
+      const node = document.getElementById('poster-canvas-root');
       let previewImageUrl: string | undefined;
-      if (canvas) {
-        const previewFile = await canvasToFile(canvas, `${candidateName.replace(/\s+/g, '_')}_design.png`);
-        const uploadedPreview = await designTemplatesApi.uploadAsset(previewFile);
-        previewImageUrl = toAssetUrl(uploadedPreview.url);
+      if (node) {
+        const blob = await toBlob(node, { pixelRatio: 1, cacheBust: true });
+        if (blob) {
+          const previewFile = new File([blob], `${candidateName.replace(/\s+/g, '_')}_poster.png`, { type: 'image/png' });
+          const uploadedPreview = await designTemplatesApi.uploadAsset(previewFile);
+          previewImageUrl = toAssetUrl(uploadedPreview.url);
+        }
       }
 
       await designTemplatesApi.saveDesign({
-        template_id: selectedTemplate.id,
+        template_id: selectedTemplate?.id || '1080x1350-official-poster',
         election_id: activeElectionId || undefined,
-        title: `${candidateName} - ${selectedTemplate.name}`,
+        title: `${candidateName} - Campaign Poster`,
         form_data: {
           candidateName,
           position,
@@ -299,23 +314,28 @@ export const DesignStudioPage: React.FC = () => {
   };
 
   const handleDownload = async () => {
-    if (isRenderingCanvas) return;
+    if (isExporting) return;
     if (!validateForm()) return;
 
-    const canvas = canvasRef.current;
-    if (!canvas) {
-      showToast(t('canvasNotReady'), 'error');
+    const node = document.getElementById('poster-canvas-root');
+    if (!node) {
+      showToast('Poster preview element not found.', 'error');
       return;
     }
 
+    setIsExporting(true);
     try {
+      const dataUrl = await toPng(node, { pixelRatio: 1, cacheBust: true });
       const link = document.createElement('a');
-      link.href = canvas.toDataURL('image/png');
+      link.href = dataUrl;
       link.download = `${candidateName.replace(/\s+/g, '_')}_poster_${Date.now()}.png`;
       link.click();
       showToast(t('posterDownloadedSuccessfully'), 'success');
-    } catch (err) {
+    } catch (err: any) {
+      console.error('Poster export error:', err);
       showToast(t('posterDownloadFailed'), 'error');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -473,7 +493,7 @@ export const DesignStudioPage: React.FC = () => {
             variant="outline"
             size="sm"
             onClick={handleSaveDesign}
-            disabled={isSavingDesign || isRenderingCanvas}
+            disabled={isSavingDesign || isExporting}
             leftIcon={<Save className="w-3.5 h-3.5" />}
           >
             {isSavingDesign ? 'Saving...' : 'Save Design'}
@@ -482,10 +502,10 @@ export const DesignStudioPage: React.FC = () => {
             variant="primary"
             size="sm"
             onClick={handleDownload}
-            disabled={isRenderingCanvas}
+            disabled={isExporting}
             leftIcon={<Download className="w-3.5 h-3.5" />}
           >
-            Download
+            {isExporting ? 'Exporting...' : 'Download'}
           </Button>
         </div>
       </div>
@@ -642,400 +662,67 @@ export const DesignStudioPage: React.FC = () => {
 
         </div>
 
-        {/* Right Col: Live Canvas Preview (5 Cols) */}
+        {/* Right Col: Live Template Preview (5 Cols) */}
         <div className="lg:col-span-5">
-          <Card className="sticky top-6 space-y-4 bg-slate-50/60 p-6">
+          <Card className="sticky top-6 space-y-4 bg-slate-50/60 p-5">
             <div className="flex items-center justify-between pb-2 border-b border-slate-200">
               <span className="text-xs font-extrabold uppercase text-slate-500 tracking-wider">
-                Live Preview
+                Live Preview (1080 × 1350)
               </span>
               <Badge variant="mint" className="text-[10px]">
-                High-Res
+                Official Template
               </Badge>
             </div>
 
-            <div className="flex items-center justify-center bg-white rounded-lg border-2 border-dashed border-slate-300 p-4 min-h-[400px]">
-              <canvas
-                ref={canvasRef}
-                className="max-w-full max-h-[600px] rounded-lg border border-slate-200 shadow-sm"
-                style={{ background: '#fff' }}
-              />
+            <div
+              ref={previewContainerRef}
+              className="flex items-center justify-center bg-slate-200/50 rounded-xl border border-slate-200 p-2 overflow-hidden shadow-inner"
+              style={{ minHeight: '560px' }}
+            >
+              <div
+                style={{
+                  width: `${1080 * previewScale}px`,
+                  height: `${1350 * previewScale}px`,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  borderRadius: '12px',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
+                }}
+              >
+                <PosterTemplate
+                  ref={posterRef}
+                  candidateName={candidateName}
+                  position={position}
+                  wardNo={wardNo}
+                  ballotNo={ballotNo}
+                  slogan={slogan}
+                  contactNumber={contactNumber}
+                  photoUrl={photoPreview}
+                  symbolUrl={symbolPreview}
+                  scale={previewScale}
+                />
+              </div>
             </div>
 
-            <div className="text-center text-xs text-slate-600">
-              Updates as you fill in the form above
+            <div className="text-center text-xs text-slate-500 font-medium">
+              Updates in real-time • Auto-fits text without overlapping
             </div>
           </Card>
         </div>
       </div>
-
-      {/* DB template renderer - updates as form and uploaded media change */}
-      <RenderCanvas
-        canvasRef={canvasRef}
-        candidateName={candidateName}
-        position={position}
-        wardNo={wardNo}
-        ballotNo={ballotNo}
-        slogan={slogan}
-        contactNumber={contactNumber}
-        photoUrl={photoPreview}
-        symbolUrl={symbolPreview}
-        templateLayout={selectedTemplate?.layout_json}
-        onRenderStateChange={setIsRenderingCanvas}
-      />
     </div>
   );
-};
-
-// ────────────────────────────────────────────────────────────────────────────────
-// CANVAS RENDERING HELPER
-// ────────────────────────────────────────────────────────────────────────────────
-interface RenderCanvasProps {
-  canvasRef: React.RefObject<HTMLCanvasElement>;
-  candidateName: string;
-  position: string;
-  wardNo: string;
-  ballotNo: string;
-  slogan: string;
-  contactNumber: string;
-  photoUrl: string | null;
-  symbolUrl?: string | null;
-  templateLayout?: any;
-  onRenderStateChange: (isRendering: boolean) => void;
-}
-
-const drawCanvasRoundedRect = (
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number
-) => {
-  const r = Math.min(radius, width / 2, height / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + width - r, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
-  ctx.lineTo(x + width, y + height - r);
-  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
-  ctx.lineTo(x + r, y + height);
-  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-};
-
-const RenderCanvas: React.FC<RenderCanvasProps> = ({
-  canvasRef,
-  candidateName,
-  position,
-  wardNo,
-  ballotNo,
-  slogan,
-  contactNumber,
-  photoUrl,
-  symbolUrl,
-  templateLayout,
-  onRenderStateChange
-}) => {
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !templateLayout) {
-      onRenderStateChange(false);
-      return;
-    }
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      onRenderStateChange(false);
-      return;
-    }
-    onRenderStateChange(true);
-
-    // Set canvas high-res dimensions
-    const w = templateLayout.width || 600;
-    const h = templateLayout.height || 848;
-    canvas.width = w;
-    canvas.height = h;
-
-    let cancelled = false;
-    const loadImage = (src: string) => new Promise<HTMLImageElement>((resolve, reject) => {
-      const image = new Image();
-      image.crossOrigin = 'anonymous';
-      image.onload = () => resolve(image);
-      image.onerror = reject;
-      image.src = resolveAssetUrl(src);
-    });
-
-    const render = async () => {
-      ctx.fillStyle = templateLayout.bg_color || '#ffffff';
-      ctx.fillRect(0, 0, w, h);
-
-      // Data bindings dictionary
-      const values: Record<string, string> = {
-        candidate_name: candidateName.trim(),
-        position: position.trim(),
-        ward_no: wardNo.trim() ? `वार्ड: ${wardNo.trim()}` : '',
-        ballot_no: ballotNo.trim() ? `क्रमांक: ${ballotNo.trim()}` : '',
-        slogan: slogan.trim(),
-        contact: contactNumber.trim(),
-        candidateName: candidateName.trim(),
-        name: candidateName.trim(),
-        full_name: candidateName.trim(),
-        hindiName: candidateName.trim(),
-        post: position.trim(),
-        post_title: position.trim(),
-        position_title: position.trim(),
-        ward: wardNo.trim() ? `वार्ड: ${wardNo.trim()}` : '',
-        wardNo: wardNo.trim() ? `वार्ड: ${wardNo.trim()}` : '',
-        ballot: ballotNo.trim() ? `क्रमांक: ${ballotNo.trim()}` : '',
-        ballot_number: ballotNo.trim() ? `क्रमांक: ${ballotNo.trim()}` : '',
-        ballotNo: ballotNo.trim() ? `क्रमांक: ${ballotNo.trim()}` : '',
-        serial_number: ballotNo.trim() ? `क्रमांक: ${ballotNo.trim()}` : '',
-        sequence_number: ballotNo.trim() ? `क्रमांक: ${ballotNo.trim()}` : '',
-        message: slogan.trim(),
-        tagline: slogan.trim(),
-        nara: slogan.trim(),
-        contact_number: contactNumber.trim(),
-        contactNumber: contactNumber.trim(),
-        phone: contactNumber.trim(),
-        mobile: contactNumber.trim(),
-        symbol_name: ''
-      };
-
-      const elements = [...(templateLayout.elements || [])].sort((a: any, b: any) => (a.z_index || 0) - (b.z_index || 0));
-      for (const el of elements) {
-        if (cancelled) return;
-        ctx.save();
-
-        // 1. IMAGE ELEMENTS
-        if (el.type === 'image') {
-          const source = el.value || el.src;
-          if (source) {
-            try {
-              const image = await loadImage(source);
-              if (el.border_radius) {
-                drawCanvasRoundedRect(ctx, el.x, el.y, el.width, el.height, el.border_radius);
-                ctx.clip();
-              }
-              ctx.drawImage(image, el.x, el.y, el.width, el.height);
-            } catch {
-              ctx.fillStyle = templateLayout.bg_color || '#ffffff';
-              ctx.fillRect(el.x, el.y, el.width, el.height);
-            }
-          }
-        }
-        // 2. MASK & SHAPE ELEMENTS (Used to cleanly wipe baked placeholder graphics & render custom frames)
-        else if (el.type === 'mask' || el.type === 'shape') {
-          const color = el.color || el.bg_color || '#ffffff';
-          const radius = el.border_radius || 0;
-          if (radius > 0) {
-            drawCanvasRoundedRect(ctx, el.x, el.y, el.width, el.height, radius);
-            ctx.fillStyle = color;
-            ctx.fill();
-            if (el.border_width && el.border_color) {
-              ctx.lineWidth = el.border_width;
-              ctx.strokeStyle = el.border_color;
-              ctx.stroke();
-            }
-          } else {
-            ctx.fillStyle = color;
-            ctx.fillRect(el.x, el.y, el.width, el.height);
-            if (el.border_width && el.border_color) {
-              ctx.lineWidth = el.border_width;
-              ctx.strokeStyle = el.border_color;
-              ctx.strokeRect(el.x, el.y, el.width, el.height);
-            }
-          }
-        }
-        // 3. ELECTION SYMBOL ELEMENT
-        else if (el.type === 'symbol') {
-          const symSrc = symbolUrl;
-          if (symSrc) {
-            try {
-              const image = await loadImage(symSrc);
-              const radius = el.border_radius !== undefined ? el.border_radius : 8;
-              if (radius > 0) {
-                drawCanvasRoundedRect(ctx, el.x, el.y, el.width, el.height, radius);
-                ctx.clip();
-              }
-              // contain mode: preserve aspect ratio
-              const imgRatio = image.width / image.height;
-              const boxRatio = el.width / el.height;
-              let renderW = el.width;
-              let renderH = el.height;
-              let offsetX = 0;
-              let offsetY = 0;
-              if (imgRatio > boxRatio) {
-                renderH = el.width / imgRatio;
-                offsetY = (el.height - renderH) / 2;
-              } else {
-                renderW = el.height * imgRatio;
-                offsetX = (el.width - renderW) / 2;
-              }
-              ctx.drawImage(image, el.x + offsetX, el.y + offsetY, renderW, renderH);
-            } catch {
-              drawCanvasRoundedRect(ctx, el.x, el.y, el.width, el.height, el.border_radius || 8);
-              ctx.fillStyle = '#fef3c7';
-              ctx.fill();
-            }
-          } else {
-            // Placeholder box
-            drawCanvasRoundedRect(ctx, el.x, el.y, el.width, el.height, el.border_radius || 8);
-            ctx.fillStyle = '#fef3c7';
-            ctx.fill();
-            ctx.strokeStyle = '#f59e0b';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            ctx.fillStyle = '#92400e';
-            ctx.font = `bold ${Math.min(el.width, el.height) * 0.3}px sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('🗳️', el.x + el.width / 2, el.y + el.height / 2);
-          }
-        }
-        // 4. CANDIDATE PHOTO ELEMENT
-        else if (el.type === 'photo') {
-          const radius = el.border_radius !== undefined ? el.border_radius : 24;
-          const photoSrc = photoUrl;
-          if (photoSrc) {
-            try {
-              const image = await loadImage(photoSrc);
-              drawCanvasRoundedRect(ctx, el.x, el.y, el.width, el.height, radius);
-              ctx.clip();
-
-              // Cover mode math
-              const imgRatio = image.width / image.height;
-              const boxRatio = el.width / el.height;
-              let renderW = el.width;
-              let renderH = el.height;
-              let offsetX = 0;
-              let offsetY = 0;
-
-              if (imgRatio > boxRatio) {
-                renderW = el.height * imgRatio;
-                offsetX = -(renderW - el.width) / 2;
-              } else {
-                renderH = el.width / imgRatio;
-                offsetY = -(renderH - el.height) / 2;
-              }
-
-              ctx.drawImage(image, el.x + offsetX, el.y + offsetY, renderW, renderH);
-            } catch {
-              // Neutral background placeholder
-              drawCanvasRoundedRect(ctx, el.x, el.y, el.width, el.height, radius);
-              ctx.fillStyle = '#f1f5f9';
-              ctx.fill();
-            }
-          } else {
-            // Neutral placeholder with candidate initials
-            drawCanvasRoundedRect(ctx, el.x, el.y, el.width, el.height, radius);
-            ctx.fillStyle = '#f8fafc';
-            ctx.fill();
-            ctx.strokeStyle = '#cbd5e1';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
-            const initial = (candidateName.trim().charAt(0) || 'उ').toUpperCase();
-            ctx.fillStyle = '#94a3b8';
-            ctx.font = `bold ${Math.min(el.width, el.height) * 0.35}px "Noto Sans Devanagari", sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(initial, el.x + el.width / 2, el.y + el.height / 2);
-          }
-        }
-        // 4. TEXT ELEMENT WITH COMPREHENSIVE BINDING & SAFETY CHECKS
-        else if (el.type === 'text') {
-          let sourceText = el.placeholder || el.value || '';
-          if (sourceText.includes('') || sourceText.includes('?')) {
-            sourceText = 'आपका अपना'; // Patch corrupted placeholder text from DB
-          }
-          // Replace {{variable}} tokens
-          let text = sourceText.replace(/\{\{\s*([\w]+)\s*\}\}/g, (_match: string, key: string) => values[key] ?? '').trim();
-
-          // Safety: Don't render empty labels or un-substituted placeholders
-          if (sourceText.includes('{{') && !text) {
-            ctx.restore();
-            continue;
-          }
-
-          if (text) {
-            const fontWeight = el.font_weight || 'normal';
-            let fontSize = el.font_size || 24;
-            const fontFamilies = '"Noto Sans Devanagari", "Outfit", "Plus Jakarta Sans", "Mangal", "Nirmala UI", sans-serif';
-
-            // Auto-fit font size to prevent overflow
-            ctx.font = `${fontWeight} ${fontSize}px ${fontFamilies}`;
-            let textMetrics = ctx.measureText(text);
-            const maxW = (el.width || w) - 4;
-            if (textMetrics.width > maxW && maxW > 20) {
-              const scale = maxW / textMetrics.width;
-              fontSize = Math.max(12, Math.floor(fontSize * scale));
-              ctx.font = `${fontWeight} ${fontSize}px ${fontFamilies}`;
-            }
-
-            ctx.fillStyle = el.color || '#111111';
-            const textAlign = (el.text_align as CanvasTextAlign) || 'left';
-            ctx.textAlign = textAlign;
-            ctx.textBaseline = 'middle';
-
-            const textX = textAlign === 'center' ? el.x + el.width / 2 : textAlign === 'right' ? el.x + el.width : el.x;
-            const textY = el.y + (el.height || fontSize * 1.2) / 2;
-
-            ctx.fillText(text, textX, textY);
-          }
-        }
-
-        ctx.restore();
-      }
-    };
-
-    void render().finally(() => {
-      if (!cancelled) onRenderStateChange(false);
-    });
-    return () => { cancelled = true; };
-  }, [
-    canvasRef,
-    candidateName,
-    position,
-    wardNo,
-    ballotNo,
-    slogan,
-    contactNumber,
-    photoUrl,
-    symbolUrl,
-    templateLayout,
-    onRenderStateChange
-  ]);
-
-  return null;
 };
 
 const resolveAssetUrl = (url: string): string => {
   if (!url) return '';
   if (/^https?:\/\//.test(url)) return url;
   if (url.startsWith('/assets/')) return url;
-  
-  const lower = url.toLowerCase();
-  if (lower.includes('poster2.png')) return '/assets/poster2.png';
-  if (lower.includes('poster.png')) return '/assets/Poster.png';
-  if (lower.includes('id card.png') || lower.includes('id%20card.png')) return '/assets/Id Card.png';
-  if (lower.includes('holding') || lower.includes('banner')) return '/assets/holdings.png';
+  if (url.startsWith('data:')) return url;
 
   const apiBase = (import.meta as any).env?.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1';
   return `${apiBase.replace(/\/api\/v1\/?$/, '')}${url.startsWith('/') ? url : `/${url}`}`;
 };
 
 const toAssetUrl = resolveAssetUrl;
-
-const canvasToFile = (canvas: HTMLCanvasElement, fileName: string): Promise<File> => new Promise((resolve, reject) => {
-  canvas.toBlob((blob) => {
-    if (!blob) {
-      reject(new Error('Unable to create poster preview.'));
-      return;
-    }
-    resolve(new File([blob], fileName, { type: 'image/png' }));
-  }, 'image/png');
-});
 

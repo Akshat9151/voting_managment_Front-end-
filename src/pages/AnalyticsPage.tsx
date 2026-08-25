@@ -91,7 +91,11 @@ export const AnalyticsPage: React.FC = () => {
               <BarChart3 className="w-4 h-4 text-sky-600" />
               <span>Ward-Wise Voter Roll Reach %</span>
             </h3>
-            <Badge variant="cyan">86% Average</Badge>
+            <Badge variant="cyan">
+              {analytics.wardCoverage.length
+                ? `${Math.round(analytics.wardCoverage.reduce((sum: number, item: any) => sum + item.percentage, 0) / analytics.wardCoverage.length)}% Average`
+                : 'No data'}
+            </Badge>
           </div>
 
           <div className="space-y-3 pt-2">
@@ -118,7 +122,9 @@ export const AnalyticsPage: React.FC = () => {
               <PieChart className="w-4 h-4 text-emerald-600" />
               <span>Broadcast Delivery Channel Split</span>
             </h3>
-            <Badge variant="mint">3,500 Total</Badge>
+            <Badge variant="mint">
+              {analytics.channelDelivery.reduce((sum: number, item: any) => sum + item.count, 0).toLocaleString()} Total
+            </Badge>
           </div>
 
           <div className="p-4 bg-slate-50 rounded-2xl space-y-3">
@@ -129,7 +135,7 @@ export const AnalyticsPage: React.FC = () => {
                   <span className="text-xs font-bold text-slate-800">{ch.channel}</span>
                 </div>
                 <span className="text-xs font-extrabold font-mono text-slate-900">
-                  {ch.count.toLocaleString()} ({Math.round((ch.count / 3500) * 100)}%)
+                  {ch.count.toLocaleString()} ({Math.round((ch.count / Math.max(1, analytics.channelDelivery.reduce((sum: number, item: any) => sum + item.count, 0))) * 100)}%)
                 </span>
               </div>
             ))}
