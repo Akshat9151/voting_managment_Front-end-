@@ -3,7 +3,7 @@ import { expensesApi } from '../services/api';
 import { useElection } from '../context/ElectionContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
-import { Receipt, Plus } from 'lucide-react';
+import { Receipt, Plus, Trash2 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -100,6 +100,17 @@ export const ExpensesPage: React.FC = () => {
     }
   };
 
+  const handleDeleteExpense = async (expense: Expense) => {
+    if (!window.confirm(`Delete this expense of ₹${expense.amount.toLocaleString()}? This cannot be undone.`)) return;
+    try {
+      await expensesApi.remove(expense.id);
+      showToast('Expense deleted successfully.', 'success');
+      await loadData();
+    } catch (err: any) {
+      showToast(err?.response?.data?.detail || 'Failed to delete expense.', 'error');
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -170,6 +181,7 @@ export const ExpensesPage: React.FC = () => {
                 <th className="p-3.5">Vendor &amp; Note</th>
                 <th className="p-3.5">Payment Mode</th>
                 <th className="p-3.5">Logged By</th>
+                <th className="p-3.5">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -187,6 +199,11 @@ export const ExpensesPage: React.FC = () => {
                     <Badge variant="mint" size="sm">{exp.mode}</Badge>
                   </td>
                   <td className="p-3.5 text-slate-500">{exp.user}</td>
+                  <td className="p-3.5">
+                    <Button size="sm" variant="danger" onClick={() => handleDeleteExpense(exp)} aria-label="Delete expense" title="Delete expense">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -206,7 +223,12 @@ export const ExpensesPage: React.FC = () => {
               <div className="text-xs font-semibold text-slate-800">{exp.note}</div>
               <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
                 <span>{exp.date} • {exp.user}</span>
-                <Badge variant="mint" size="sm">{exp.mode}</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="mint" size="sm">{exp.mode}</Badge>
+                  <Button size="sm" variant="danger" onClick={() => handleDeleteExpense(exp)} aria-label="Delete expense" title="Delete expense">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
               </div>
             </div>
           ))}

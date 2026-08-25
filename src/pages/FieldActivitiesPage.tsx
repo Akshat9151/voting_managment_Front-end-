@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { Map, Plus, Camera, Clock, MapPin, X } from 'lucide-react';
+import { Map, Plus, Camera, Clock, MapPin, X, Trash2 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { FormInput } from '../components/ui/FormInput';
@@ -148,6 +148,17 @@ export const FieldActivitiesPage: React.FC = () => {
       showToast(t('taskUpdated'), 'success');
     } catch (err: any) {
       showToast(err?.response?.data?.detail || 'Unable to update activity.', 'error');
+    }
+  };
+
+  const handleDeleteActivity = async (activity: FieldActivity) => {
+    if (!window.confirm(`Delete field activity "${activity.title}"? This cannot be undone.`)) return;
+    try {
+      await fieldActivitiesApi.remove(activity.id);
+      setActivities((current) => current.filter((item) => item.id !== activity.id));
+      showToast('Field activity deleted successfully.', 'success');
+    } catch (err: any) {
+      showToast(err?.response?.data?.detail || 'Unable to delete field activity.', 'error');
     }
   };
 
@@ -311,6 +322,18 @@ export const FieldActivitiesPage: React.FC = () => {
                       <option value="approved">Approved</option>
                       <option value="rejected">Rejected</option>
                     </Select>
+                  )}
+
+                  {(isAdmin || isVolunteer) && (
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => handleDeleteActivity(activity)}
+                      aria-label={`Delete ${activity.title}`}
+                      title="Delete field activity"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
                   )}
                 </div>
               </div>

@@ -120,6 +120,9 @@ export const fieldActivitiesApi = {
       : await httpClient.put(`/field-activities/${id}/${path}`);
     return unwrap<any>(res);
   },
+  remove: async (id: string) => {
+    await httpClient.delete(`/field-activities/${id}`);
+  },
 };
 
 // ─── Elections ────────────────────────────────────────────────────────────────
@@ -460,6 +463,9 @@ export const expensesApi = {
   create: async (election_id: string, payload: Record<string, any>) => {
     const res = await httpClient.post(`/expenses/election/${election_id}`, payload);
     return unwrap<any>(res);
+  },
+  remove: async (id: string) => {
+    await httpClient.delete(`/expenses/${id}`);
   },
 
   getBudgetSummary: async (election_id: string) => {
