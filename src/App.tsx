@@ -146,7 +146,8 @@ export const AppContent: React.FC = () => {
   return <AppRoutes />;
 };
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || import.meta.env.GOOGLE_CLIENT_ID || '788447535370-saku8bnlrok263gt8qh244aq7rucnr53.apps.googleusercontent.com';
+
 
 export const App: React.FC = () => {
   return (

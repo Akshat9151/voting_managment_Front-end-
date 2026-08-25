@@ -1,4 +1,4 @@
-﻿import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 
 export type LanguageCode = 'en' | 'hi' | 'pa' | 'bn' | 'mr' | 'te' | 'ta' | 'gu';
 
@@ -414,7 +414,7 @@ const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     otpInputLabel: "6-digit OTP",
     otpExpiredMessage: "OTP expired. Please request a new code.",
     registerVerifiedAccount: "Register Your Campaign Account",
-    enterCredentials: "Enter your email or phone number to receive a one-time code",
+    enterCredentials: "Enter your email and password to sign in",
     emailAddress: "Email Address",
     password: "Password",
     createPassword: "Create a password",
@@ -763,7 +763,7 @@ const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     createAccount: "खाता बनाएं",
     signIn: "साइन इन करें",
     registerVerifiedAccount: "Register Your Campaign Account",
-    enterCredentials: "Enter your email or phone number to receive a one-time code",
+    enterCredentials: "Enter your email and password to sign in",
     emailAddress: "ईमेल पता",
     password: "पासवर्ड",
     createPassword: "एक पासवर्ड बनाएं",

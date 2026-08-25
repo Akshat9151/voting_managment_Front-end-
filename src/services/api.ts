@@ -79,7 +79,16 @@ export const authApi = {
     const res = await httpClient.post('/auth/mfa/confirm', { totp_code });
     return unwrap<boolean>(res);
   },
+  requestForgotPasswordOtp: async (email: string) => {
+    const res = await httpClient.post('/auth/forgot-password', { email });
+    return unwrap<{ challenge_id: string; destination: string; expires_in: number; dev_code?: string }>(res);
+  },
+  resetPassword: async (payload: { challenge_id: string; code: string; new_password: string }) => {
+    const res = await httpClient.post('/auth/reset-password', payload);
+    return unwrap<boolean>(res);
+  },
 };
+
 
 // ─── Tasks & Field Activities ────────────────────────────────────────────────
 export const tasksApi = {

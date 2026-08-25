@@ -355,9 +355,17 @@
   padding-bottom: 1.35rem;
 }
 .vv-auth-card input,
-.vv-auth-card select {
+.vv-auth-card select:not(.vv-auth-lang-select) {
   min-height: 44px;
 }
+.vv-auth-lang-select {
+  min-height: auto !important;
+  height: 22px !important;
+  line-height: 20px !important;
+  padding: 0 2px !important;
+  font-size: 11px !important;
+}
+
 .vv-auth-card button {
   touch-action: manipulation;
 }

@@ -9,8 +9,15 @@ import {
   Mail,
   ArrowRight,
   Globe,
-  Smartphone
+  Smartphone,
+  Eye,
+  EyeOff,
+  ArrowLeft,
+  KeyRound,
+  CheckCircle2,
+  Sparkles
 } from 'lucide-react';
+
 import { FormInput } from '../components/ui/FormInput';
 import { Button } from '../components/ui/Button';
 import { VoteVictoryLogo } from '../components/ui/VoteVictoryLogo';
@@ -19,17 +26,30 @@ import { warmUpServer } from '../services/httpClient';
 import './SplashPage.css';
 
 export const AuthPage: React.FC = () => {
-  const [isSignup, setIsSignup] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot'>('login');
+  const isSignup = authMode === 'signup';
+  const isForgot = authMode === 'forgot';
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [otpChallengeId, setOtpChallengeId] = useState<string | null>(null);
+
+  // Forgot Password State
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotOtp, setForgotOtp] = useState('');
+  const [forgotNewPassword, setForgotNewPassword] = useState('');
+  const [showForgotNewPassword, setShowForgotNewPassword] = useState(false);
+  const [forgotChallengeId, setForgotChallengeId] = useState<string | null>(null);
+  const [forgotStep, setForgotStep] = useState<'email' | 'otp'>('email');
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
-  const [slowRequest, setSlowRequest] = useState(false); // shows "server waking up" banner
+  const [slowRequest, setSlowRequest] = useState(false);
   const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { loginWithSession } = useAuth();
@@ -45,6 +65,11 @@ export const AuthPage: React.FC = () => {
     warmUpServer();
   }, []);
 
+const isValidEmail = (val: string): boolean => {
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  return emailRegex.test(val.trim());
+};
+
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     const identifier = (loginMethod === 'phone' ? phone : email).trim();
@@ -53,11 +78,18 @@ export const AuthPage: React.FC = () => {
       return;
     }
 
+    if (loginMethod === 'email' && !isValidEmail(email)) {
+      const msg = 'Please enter a valid, complete email address (e.g. yourname@gmail.com).';
+      setError(msg);
+      showToast(msg, 'error');
+      return;
+    }
+
+
     setError(null);
     setSuccessBanner(null);
     setSlowRequest(false);
     setIsLoading(true);
-    // After 5s with no response, show the "server waking up" banner
     slowTimer.current = setTimeout(() => setSlowRequest(true), 5000);
     try {
       const session = await authApi.login(identifier, password);
@@ -111,14 +143,12 @@ export const AuthPage: React.FC = () => {
           showToast('Account verified and signed in successfully!', 'success');
           navigate('/');
         } else {
-          await authApi.verifySignupOtp(otpChallengeId, otpCode);
-          showToast('Account verified! Please log in with your credentials.', 'success');
-          setSuccessBanner('Account verified successfully! Please enter your password to sign in.');
-          setOtpChallengeId(null);
-          setOtpCode('');
-          setPassword('');
-          setIsSignup(false);
+          const session = await authApi.verifySignupOtp(otpChallengeId, otpCode);
+          loginWithSession(session, identifier);
+          showToast('Account created and signed in successfully! Welcome to VoteVictory.', 'success');
+          navigate('/');
         }
+
       } catch (err: any) {
         const msg = err?.response?.data?.error?.message
           || err?.response?.data?.message
@@ -138,17 +168,26 @@ export const AuthPage: React.FC = () => {
       return;
     }
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long.');
+    if (loginMethod === 'email' && !isValidEmail(email)) {
+      const msg = 'Please enter a valid, complete email address (e.g. yourname@gmail.com).';
+      setError(msg);
+      showToast(msg, 'error');
       return;
     }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      return;
+    }
+
 
     setIsLoading(true);
     try {
       const isPhone = loginMethod === 'phone';
+      const cleanEmail = isPhone ? `${phone.replace(/\D/g, '')}@campaign.votevictory.internal` : email.trim();
       const challenge = await authApi.requestSignupOtp({
         full_name: fullName.trim(),
-        email: isPhone ? `${phone.replace(/\D/g, '')}@campaign.votevictory.internal` : email.trim(),
+        email: cleanEmail,
         phone: isPhone ? phone.trim() : undefined,
         password
       });
@@ -162,7 +201,86 @@ export const AuthPage: React.FC = () => {
         || err?.response?.data?.message
         || err?.response?.data?.detail
         || err?.message
-        || 'Signup failed. Please try again.';
+        || 'Signup failed. Please check details and try again.';
+      setError(msg);
+      showToast(msg, 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleForgotPasswordRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail.trim() || !isValidEmail(forgotEmail)) {
+      const msg = 'Please enter a valid, complete registered email address (e.g. yourname@gmail.com).';
+      setError(msg);
+      showToast(msg, 'error');
+      return;
+    }
+
+
+    setIsLoading(true);
+    setError(null);
+    setSuccessBanner(null);
+    try {
+      const challenge = await authApi.requestForgotPasswordOtp(forgotEmail.trim());
+      setForgotChallengeId(challenge.challenge_id);
+      setForgotStep('otp');
+      showToast(
+        challenge.dev_code ? `Dev OTP: ${challenge.dev_code}` : 'Password reset code sent to your email. Please check your inbox.',
+        'info'
+      );
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message
+        || err?.response?.data?.message
+        || err?.response?.data?.detail
+        || err?.message
+        || 'Failed to send password reset code. Please check email address.';
+      setError(msg);
+      showToast(msg, 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotChallengeId) {
+      setError('Invalid or expired password reset session.');
+      return;
+    }
+    if (!forgotOtp || forgotOtp.length !== 6) {
+      setError('Please enter the valid 6-digit verification code.');
+      return;
+    }
+    if (!forgotNewPassword || forgotNewPassword.length < 6) {
+      setError('New password must be at least 6 characters long.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    try {
+      await authApi.resetPassword({
+        challenge_id: forgotChallengeId,
+        code: forgotOtp.trim(),
+        new_password: forgotNewPassword
+      });
+      showToast('Password updated successfully! Please sign in with your new password.', 'success');
+      setSuccessBanner('Password updated successfully! Please enter your new password to sign in.');
+      setEmail(forgotEmail);
+      setPassword('');
+      setForgotChallengeId(null);
+      setForgotOtp('');
+      setForgotNewPassword('');
+      setForgotStep('email');
+      setAuthMode('login');
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message
+        || err?.response?.data?.message
+        || err?.response?.data?.detail
+        || err?.message
+        || 'Password reset failed. Please verify the code and try again.';
       setError(msg);
       showToast(msg, 'error');
     } finally {
@@ -202,7 +320,7 @@ export const AuthPage: React.FC = () => {
 
   return (
     <div className="vv-auth-page relative min-h-screen flex items-center justify-center p-4 sm:p-6 overflow-x-hidden overflow-y-auto">
-      {/* Animated wave background — intentionally limited to Login/Signup */}
+      {/* Animated wave background */}
       <svg className="vv-wave-background" viewBox="0 0 1440 900" preserveAspectRatio="none" aria-hidden="true">
         <defs>
           <linearGradient id="vv-wave-base" x1="0" y1="0" x2="0" y2="1">
@@ -260,21 +378,40 @@ export const AuthPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-start justify-between mb-3 gap-2">
             <div>
-              <h3 className="text-xl font-extrabold text-slate-900 mb-1">
-                {isSignup ? t('createAccount') : t('signIn')}
-              </h3>
-              <p className="text-xs text-slate-500 mb-0">
-                {isSignup ? t('registerVerifiedAccount') : t('enterCredentials')}
+              <div className="flex items-center gap-2">
+                <h3 className="text-xl font-extrabold text-slate-900 leading-tight">
+                  {isForgot ? 'Password Recovery' : (isSignup ? t('createAccount') : t('signIn'))}
+                </h3>
+                {isSignup && (
+                  <div className="relative group inline-flex items-center">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-[10px] font-bold text-amber-700 cursor-pointer shadow-2xs hover:bg-amber-500/15 transition-all">
+                      <Sparkles className="w-2.5 h-2.5 text-amber-600" />
+                      <span>Workspace</span>
+                    </span>
+                    {/* Hover popup tooltip */}
+                    <div className="absolute left-0 bottom-full mb-2 hidden group-hover:flex flex-col w-56 p-2.5 rounded-xl bg-slate-900 text-white text-[11px] leading-snug shadow-xl z-50 pointer-events-none transition-all">
+                      <span className="font-bold text-amber-400">Create your workspace</span>
+                      <span className="text-slate-300 text-[10px] mt-0.5">First signup becomes Super Admin and can manage campaign teams.</span>
+                      <div className="absolute left-4 top-full w-2 h-2 bg-slate-900 rotate-45 -mt-1" />
+                    </div>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5 mb-0">
+                {isForgot
+                  ? (forgotStep === 'email' ? 'Enter registered email for OTP' : 'Enter 6-digit OTP and new password')
+                  : (isSignup ? t('registerVerifiedAccount') : t('enterCredentials'))}
               </p>
             </div>
-            <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-2 py-1.5">
-              <Globe className="w-3.5 h-3.5 text-slate-600" />
+            {/* Compact language selector */}
+            <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 shadow-2xs hover:bg-slate-100 transition-colors flex-shrink-0">
+              <Globe className="w-3 h-3 text-slate-500 flex-shrink-0" />
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value as any)}
-                className="bg-transparent text-[10px] font-bold text-slate-700 outline-none"
+                className="vv-auth-lang-select bg-transparent text-[11px] font-semibold text-slate-700 outline-none cursor-pointer border-0"
                 aria-label="Select language"
               >
                 {SUPPORTED_LANGUAGES.map((lang) => (
@@ -282,11 +419,14 @@ export const AuthPage: React.FC = () => {
                 ))}
               </select>
             </div>
+
           </div>
 
+
           {successBanner && (
-            <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 font-medium">
-              {successBanner}
+            <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 font-medium flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              <span>{successBanner}</span>
             </div>
           )}
 
@@ -296,32 +436,146 @@ export const AuthPage: React.FC = () => {
             </div>
           )}
 
-          {/* Cold-start warm-up banner — shown after 5s of no response */}
+          {/* Cold-start warm-up banner */}
           {slowRequest && (
             <div className="mb-4 flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
               <svg className="animate-spin mt-0.5 w-3.5 h-3.5 text-amber-600 flex-shrink-0" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
               </svg>
-              <span><strong>Server is waking up…</strong> The backend runs on a free-tier host that sleeps when idle. This usually takes 20–60 seconds on first use. Please wait — do not refresh.</span>
+              <span><strong>Server is waking up…</strong> Please wait a few seconds.</span>
             </div>
           )}
 
-          {/* OTP Verification Form */}
-          {otpChallengeId ? (
+          {/* ── FORGOT PASSWORD VIEW ── */}
+          {isForgot ? (
+            <div className="space-y-4">
+              {forgotStep === 'email' ? (
+                <form onSubmit={handleForgotPasswordRequest} className="space-y-4" autoComplete="off">
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900 flex items-start gap-2">
+                    <KeyRound className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <span>Enter your registered email address. We will send an instant 6-digit OTP code to reset your password.</span>
+                  </div>
+
+                  <FormInput
+                    label={t('emailAddress')}
+                    type="email"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    placeholder="Enter your registered email address"
+                    leftIcon={<Mail className="w-4 h-4" />}
+                    autoComplete="email"
+                    required
+                  />
+
+
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className="w-full"
+                    disabled={isLoading || !forgotEmail.trim()}
+                  >
+                    {isLoading ? 'Sending OTP code...' : 'Send Reset Code'}
+                  </Button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode('login');
+                      setError(null);
+                      setSuccessBanner(null);
+                    }}
+                    className="w-full text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors flex items-center justify-center gap-1.5 py-1"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Back to Sign In</span>
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleResetPasswordSubmit} className="space-y-3.5" autoComplete="off">
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
+                    A 6-digit verification code was sent to <strong>{forgotEmail}</strong>. Enter it below with your new password.
+                  </div>
+
+                  <FormInput
+                    label="Verification Code (OTP)"
+                    value={forgotOtp}
+                    onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="Enter 6-digit verification code"
+                    inputMode="numeric"
+                    maxLength={6}
+                    required
+                  />
+
+                  <FormInput
+                    label="New Password"
+                    type={showForgotNewPassword ? 'text' : 'password'}
+                    value={forgotNewPassword}
+                    onChange={(e) => setForgotNewPassword(e.target.value)}
+                    placeholder="Enter your new password (min. 6 characters)"
+                    leftIcon={<Lock className="w-4 h-4" />}
+
+                    rightIcon={
+                      <button
+                        type="button"
+                        onClick={() => setShowForgotNewPassword(!showForgotNewPassword)}
+                        className="text-slate-400 hover:text-slate-600 focus:outline-none transition-colors p-1"
+                        aria-label={showForgotNewPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showForgotNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    }
+                    autoComplete="new-password"
+                    required
+                  />
+
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className="w-full"
+                    disabled={isLoading || forgotOtp.length !== 6 || forgotNewPassword.length < 6}
+                  >
+                    {isLoading ? 'Resetting Password...' : 'Save New Password & Sign In'}
+                  </Button>
+
+                  <div className="flex justify-between items-center text-xs pt-1">
+                    <button
+                      type="button"
+                      onClick={() => { setForgotStep('email'); setForgotOtp(''); }}
+                      className="font-bold text-amber-600 hover:underline"
+                    >
+                      Change Email / Resend
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode('login');
+                        setError(null);
+                      }}
+                      className="text-slate-500 hover:text-slate-700"
+                    >
+                      Back to Sign In
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          ) : otpChallengeId ? (
+            /* ── SIGNUP / LOGIN OTP VERIFICATION VIEW ── */
             <form onSubmit={handleSignup} className="space-y-4">
               <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs text-amber-900">
-                {t('emailVerificationSent', 'A 6-digit verification code was sent to {{email}}. Please enter it below to complete registration.').replace('{{email}}', email)}
+                {t('emailVerificationSent', 'A 6-digit verification code was sent to {{email}}. Please enter it below to complete registration.').replace('{{email}}', email || phone)}
               </div>
               <FormInput
-                label={t('emailVerificationCode', 'Email verification code')}
+                label={t('emailVerificationCode', 'Verification code')}
                 value={otpCode}
                 onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder={t('enterOtp', 'Enter 6-digit code')}
+                placeholder="Enter 6-digit verification code"
                 inputMode="numeric"
                 maxLength={6}
                 required
               />
+
               <Button type="submit" variant="primary" className="w-full" disabled={isLoading || otpCode.length !== 6}>
                 {isLoading ? t('verifying', 'Verifying...') : t('verifyAndProceed', 'Verify and proceed to login')}
               </Button>
@@ -334,6 +588,7 @@ export const AuthPage: React.FC = () => {
               </button>
             </form>
           ) : (
+            /* ── SIGNIN / SIGNUP FORM ── */
             <>
               {/* Google Sign In / Sign Up Button */}
               <div className="mb-4">
@@ -358,7 +613,9 @@ export const AuthPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Email / Phone Method Selector — shown on BOTH Signup and Login */}
+
+
+              {/* Email / Phone Method Selector */}
               <div className="flex rounded-xl bg-slate-100 p-1 mb-4">
                 <button
                   type="button"
@@ -383,10 +640,6 @@ export const AuthPage: React.FC = () => {
 
               {isSignup ? (
                 <form onSubmit={handleSignup} className="space-y-3.5" autoComplete="off">
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                    <p className="font-bold">{t('createYourWorkspace', 'Create your workspace')}</p>
-                    <p className="mt-0.5 text-amber-800">{t('firstSignupSuperAdmin', 'First signup becomes Super Admin and can manage campaign teams.')}</p>
-                  </div>
                   <FormInput
                     label={t('fullName', 'Full Name')}
                     type="text"
@@ -403,7 +656,7 @@ export const AuthPage: React.FC = () => {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder={t('emailExample')}
+                      placeholder="Enter your email address"
                       leftIcon={<Mail className="w-4 h-4" />}
                       autoComplete="email"
                       required
@@ -414,7 +667,7 @@ export const AuthPage: React.FC = () => {
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+91 98765 43210"
+                      placeholder="Enter your phone number (e.g. +91 98765 43210)"
                       leftIcon={<Smartphone className="w-4 h-4" />}
                       autoComplete="tel"
                       required
@@ -423,11 +676,22 @@ export const AuthPage: React.FC = () => {
 
                   <FormInput
                     label={t('password')}
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder={t('createPassword')}
+                    placeholder="Enter your password (min. 6 characters)"
                     leftIcon={<Lock className="w-4 h-4" />}
+
+                    rightIcon={
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="text-slate-400 hover:text-slate-600 focus:outline-none transition-colors p-1"
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    }
                     autoComplete="new-password"
                     required
                   />
@@ -452,41 +716,71 @@ export const AuthPage: React.FC = () => {
                   </Button>
                 </form>
               ) : (
-                <form onSubmit={handlePasswordLogin} className="space-y-4" autoComplete="off">
+                <form onSubmit={handlePasswordLogin} className="space-y-3.5" autoComplete="off">
                   {loginMethod === 'email' ? (
                     <FormInput
                       label={t('emailAddress')}
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder={t('emailExample')}
+                      placeholder="Enter your email address"
                       leftIcon={<Mail className="w-4 h-4" />}
-                      autoComplete="username"
+                      autoComplete="email"
                       required
                     />
+
+
                   ) : (
                     <FormInput
                       label={t('formLabelPhoneNumber')}
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+91 98765 43210"
+                      placeholder="Enter your phone number (e.g. +91 98765 43210)"
                       leftIcon={<Smartphone className="w-4 h-4" />}
                       autoComplete="tel"
                       required
                     />
                   )}
 
-                  <FormInput
-                    label={t('password')}
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={t('enterPassword')}
-                    leftIcon={<Lock className="w-4 h-4" />}
-                    autoComplete="current-password"
-                    required
-                  />
+                  <div>
+                    <FormInput
+                      label={t('password')}
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      leftIcon={<Lock className="w-4 h-4" />}
+
+                      rightIcon={
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="text-slate-400 hover:text-slate-600 focus:outline-none transition-colors p-1"
+                          aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      }
+                      autoComplete="current-password"
+                      required
+                    />
+                    <div className="flex justify-end mt-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthMode('forgot');
+                          setForgotStep('email');
+                          setForgotEmail(email || '');
+                          setError(null);
+                          setSuccessBanner(null);
+                        }}
+                        className="text-xs font-bold text-amber-600 hover:text-amber-700 hover:underline cursor-pointer"
+                      >
+                        {t('forgotPassword', 'Forgot Password?')}
+                      </button>
+                    </div>
+                  </div>
 
                   <Button
                     type="submit"
@@ -514,7 +808,7 @@ export const AuthPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    setIsSignup(!isSignup);
+                    setAuthMode(isSignup ? 'login' : 'signup');
                     setError(null);
                     setSuccessBanner(null);
                     setOtpChallengeId(null);
