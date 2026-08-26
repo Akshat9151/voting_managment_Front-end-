@@ -89,9 +89,10 @@ export const DesignStudioPage: React.FC = () => {
       try {
         const data = await designTemplatesApi.list();
         if (data && data.length > 0) {
-          setTemplates(data);
+          const sorted = [...data].sort((a, b) => getTemplateSortOrder(a) - getTemplateSortOrder(b));
+          setTemplates(sorted);
           if (!selectedTemplate) {
-            setSelectedTemplate(data[0]);
+            setSelectedTemplate(sorted[0]);
           }
         }
       } catch (err: any) {
@@ -469,7 +470,7 @@ export const DesignStudioPage: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {templates.map(template => (
+              {[...templates].sort((a, b) => getTemplateSortOrder(a) - getTemplateSortOrder(b)).map(template => (
                 <Card key={template.id} className="p-4 space-y-3 hover:shadow-lg transition-all group cursor-pointer border-2 border-slate-200 hover:border-sky-400">
                   {getTemplateThumbnailUrl(template) && (
                     <div className="aspect-[4/3] overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
@@ -773,9 +774,44 @@ const resolveAssetUrl = (url: string): string => {
   return `${apiBase.replace(/\/api\/v1\/?$/, '')}${url.startsWith('/') ? url : `/${url}`}`;
 };
 
+const getTemplateSortOrder = (template: DesignTemplate): number => {
+  const name = template.name.toLowerCase();
+  const id = (template.id || '').toLowerCase();
+
+  // Top 4 Main / Original Templates
+  // 1. Campaign Poster
+  if (name === 'campaign poster' || id === '1080x1350-official-poster' || (name.includes('poster') && !name.includes('youth') && !name.includes('vikas') && !name.includes('purple') && !name.includes('social') && !name.includes('rally'))) return 1;
+  // 2. Campaign Pamphlet
+  if (name === 'campaign pamphlet' || id.includes('pamphlet') || (name.includes('pamphlet') && !name.includes('patrika'))) return 2;
+  // 3. Candidate ID Card
+  if (name.includes('id card') || id.includes('id-card')) return 3;
+  // 4. Campaign Banner
+  if (name === 'campaign banner' || (name.includes('banner') && !name.includes('hoarding') && !name.includes('grand'))) return 4;
+
+  // New 10 Templates follow below:
+  if (name.includes('navy') || id.includes('navy')) return 10;
+  if (name.includes('crimson') || id.includes('crimson') || name.includes('youth')) return 11;
+  if (name.includes('emerald') || id.includes('emerald')) return 12;
+  if (name.includes('tricolor') || id.includes('tricolor')) return 13;
+  if (name.includes('purple') || id.includes('purple')) return 14;
+  if (name.includes('maroon') || id.includes('maroon')) return 15;
+  if (name.includes('whatsapp') || id.includes('whatsapp')) return 16;
+  if (name.includes('square') || id.includes('square')) return 17;
+  if (name.includes('hoarding') || id.includes('hoarding')) return 18;
+  if (name.includes('patrika') || id.includes('patrika')) return 19;
+
+  return 99;
+};
+
 const getTemplateThumbnailUrl = (template: DesignTemplate): string => {
   const name = template.name.toLowerCase();
   const id = (template.id || '').toLowerCase();
+
+  // 4 Original Templates (check first)
+  if (name === 'campaign poster' || id === '1080x1350-official-poster' || (name.includes('poster') && !name.includes('youth') && !name.includes('vikas') && !name.includes('purple') && !name.includes('social') && !name.includes('rally'))) return '/assets/Poster.png';
+  if (name === 'campaign pamphlet' || (name.includes('pamphlet') && !name.includes('patrika'))) return '/assets/poster2.png';
+  if (name.includes('id card') || id.includes('id-card')) return '/assets/Id%20Card.png';
+  if (name === 'campaign banner' || (name.includes('banner') && !name.includes('hoarding') && !name.includes('grand'))) return '/assets/holdings.png';
 
   // 10 New Templates
   if (name.includes('navy') || id.includes('navy')) return '/assets/royal_navy_gold.png';
@@ -788,12 +824,6 @@ const getTemplateThumbnailUrl = (template: DesignTemplate): string => {
   if (name.includes('square') || id.includes('square') || name.includes('social')) return '/assets/square_social_post.png';
   if (name.includes('hoarding') || id.includes('hoarding') || (name.includes('grand') && name.includes('banner'))) return '/assets/grand_victory_hoarding.png';
   if (name.includes('patrika') || id.includes('patrika') || name.includes('manifesto')) return '/assets/gram_vikas_sankalp_patrika.png';
-
-  // 4 Original Templates
-  if (name.includes('banner')) return '/assets/holdings.png';
-  if (name.includes('id card') || id.includes('id-card')) return '/assets/Id%20Card.png';
-  if (name.includes('pamphlet')) return '/assets/poster2.png';
-  if (name.includes('poster')) return '/assets/Poster.png';
 
   if (template.thumbnail_url) return resolveAssetUrl(template.thumbnail_url);
   return '/assets/Poster.png';
