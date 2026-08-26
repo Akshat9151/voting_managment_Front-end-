@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toPng, toBlob } from 'html-to-image';
 import { api, designTemplatesApi, usersApi } from '../services/api';
@@ -37,8 +37,9 @@ const validateMediaFile = (file: File): { valid: boolean; error?: string } => {
 };
 
 export const DesignStudioPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const candidateIdParam = searchParams.get('candidateId');
+  const templateIdParam = searchParams.get('templateId');
 
   const { t } = useLanguage();
   const { showToast } = useToast();
@@ -102,6 +103,19 @@ export const DesignStudioPage: React.FC = () => {
     fetchTemplates();
   }, [showToast]);
 
+  // Sync templateId with URL search params for browser back button support
+  useEffect(() => {
+    if (templateIdParam && templates.length > 0) {
+      const found = templates.find((t) => t.id === templateIdParam || t.name.toLowerCase() === templateIdParam.toLowerCase());
+      if (found) {
+        setSelectedTemplate(found);
+        setView('editor');
+      }
+    } else if (!candidateIdParam && !templateIdParam) {
+      setView('gallery');
+    }
+  }, [templateIdParam, candidateIdParam, templates]);
+
   useEffect(() => {
     designTemplatesApi.listMyDesigns().then(setSavedDesigns).catch(() => setSavedDesigns([]));
     designTemplatesApi.listSharedDesigns().then(setSharedDesigns).catch(() => setSharedDesigns([]));
@@ -121,11 +135,10 @@ export const DesignStudioPage: React.FC = () => {
     loadRecipients();
   }, []);
 
-  // Handle Candidate Autofill from URL Query Param (?candidateId=...)
+  // Autofill candidate data when navigating from Candidate profile
   useEffect(() => {
-    if (!candidateIdParam) return;
-
     const loadCandidateData = async () => {
+      if (!candidateIdParam) return;
       try {
         const candidates = await api.getCandidates(activeElectionId || undefined);
         const cand = Array.isArray(candidates) ? candidates.find((c: any) => c.id === candidateIdParam) : null;
@@ -148,14 +161,16 @@ export const DesignStudioPage: React.FC = () => {
           }
 
           if (autofill.photoPreview) {
-            setCandidatePhotoUrl(autofill.photoPreview);
-            setPhotoPreview(autofill.photoPreview);
+            const photoResolved = toAssetUrl(autofill.photoPreview);
+            setCandidatePhotoUrl(photoResolved);
+            setPhotoPreview(photoResolved);
           }
 
-          // Autofill election symbol if it's an image URL
-          if (cand.symbol && (cand.symbol.startsWith('http') || cand.symbol.startsWith('/'))) {
-            setSymbolUrl(cand.symbol);
-            setSymbolPreview(cand.symbol);
+          // Autofill election symbol if present
+          if (cand.symbol) {
+            const symResolved = toAssetUrl(cand.symbol);
+            setSymbolUrl(symResolved);
+            setSymbolPreview(symResolved);
           }
 
           if (autofill.recommendedTemplate) {
@@ -175,11 +190,29 @@ export const DesignStudioPage: React.FC = () => {
   const handleSelectTemplate = (template: DesignTemplate) => {
     setSelectedTemplate(template);
     setView('editor');
-    // Keep user's entered form data when changing templates!
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('templateId', template.id || template.name);
+      return next;
+    });
+  };
+
+  const handleBackToGallery = () => {
+    setView('gallery');
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('templateId');
+      next.delete('candidateId');
+      return next;
+    });
   };
 
   const handlePhotoUpload = async (file: File) => {
     setIsUploadingPhoto(true);
+    // Instant local blob preview for immediate UI feedback
+    const localBlob = URL.createObjectURL(file);
+    setCandidatePhotoUrl(localBlob);
+    setPhotoPreview(localBlob);
     try {
       const validation = validateMediaFile(file);
       if (!validation.valid) {
@@ -194,7 +227,7 @@ export const DesignStudioPage: React.FC = () => {
       setPhotoPreview(url);
       showToast(t('photoUploadedSuccessfully'), 'success');
     } catch (err: any) {
-      showToast(t('photoUploadFailed'), 'error');
+      // Keep local blob so design preview continues to work
     } finally {
       setIsUploadingPhoto(false);
     }
@@ -202,6 +235,10 @@ export const DesignStudioPage: React.FC = () => {
 
   const handleSymbolUpload = async (file: File) => {
     setIsUploadingSymbol(true);
+    // Instant local blob preview for immediate UI feedback
+    const localBlob = URL.createObjectURL(file);
+    setSymbolUrl(localBlob);
+    setSymbolPreview(localBlob);
     try {
       const validation = validateMediaFile(file);
       if (!validation.valid) {
@@ -214,11 +251,12 @@ export const DesignStudioPage: React.FC = () => {
       setSymbolUrl(url);
       setSymbolPreview(url);
     } catch {
-      showToast('Symbol upload failed.', 'error');
+      // Keep local blob so design preview continues to work
     } finally {
       setIsUploadingSymbol(false);
     }
   };
+  
   // Auto-fit preview scale to container width
   useEffect(() => {
     const updateScale = () => {
@@ -478,7 +516,7 @@ export const DesignStudioPage: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setView('gallery')}
+            onClick={handleBackToGallery}
             leftIcon={<ArrowLeft className="w-3.5 h-3.5" />}
           >
             Back
@@ -486,7 +524,7 @@ export const DesignStudioPage: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => { setShowSavedPosters(true); setView('gallery'); }}
+            onClick={() => { setShowSavedPosters(true); handleBackToGallery(); }}
           >
             {t('savedPosters')}
           </Button>
@@ -729,6 +767,7 @@ const resolveAssetUrl = (url: string): string => {
   if (/^https?:\/\//.test(url)) return url;
   if (url.startsWith('/assets/')) return url;
   if (url.startsWith('data:')) return url;
+  if (url.startsWith('blob:')) return url;
 
   const apiBase = (import.meta as any).env?.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1';
   return `${apiBase.replace(/\/api\/v1\/?$/, '')}${url.startsWith('/') ? url : `/${url}`}`;

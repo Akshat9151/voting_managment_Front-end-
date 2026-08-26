@@ -994,18 +994,11 @@ export const WhatsAppStatusTemplate = forwardRef<HTMLDivElement, PosterTemplateP
       >
         <div style={{ position: 'absolute', top: 0, left: 0, width: '1080px', height: '1920px', background: 'linear-gradient(180deg, #0F172A 0%, #1E293B 40%, #0F172A 100%)' }} />
 
-        {/* WhatsApp Header */}
-        <div style={{ position: 'absolute', top: '50px', left: '60px', width: '960px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '2px solid rgba(255,255,255,0.15)', paddingBottom: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '32px' }}>📲</span>
-            <div>
-              <div style={{ fontSize: '18px', fontWeight: 800, color: '#FBBF24', letterSpacing: '1px' }}>WHATSAPP STATUS • SHARE & SUPPORT</div>
-              <div style={{ fontSize: '14px', fontWeight: 600, color: '#94A3B8' }}>ग्राम पंचायत आम चुनाव 2026</div>
-            </div>
-          </div>
-          <div style={{ background: '#059669', padding: '6px 16px', borderRadius: '20px', fontSize: '14px', fontWeight: 800, color: '#FFFFFF' }}>
-            VOTE FOR VICTORY
-          </div>
+        {/* Election Header Banner */}
+        <div style={{ position: 'absolute', top: '40px', left: '60px', width: '960px', height: '65px', background: 'linear-gradient(90deg, #D97706, #F59E0B, #D97706)', borderRadius: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 18px rgba(217,119,6,0.35)' }}>
+          <span style={{ fontSize: '24px', fontWeight: 900, color: '#0F172A', letterSpacing: '1px' }}>
+            ॥ ग्राम पंचायत आम चुनाव 2026 • विजय संकल्प अपील ॥
+          </span>
         </div>
 
         {/* Hero Photo Center Top */}
