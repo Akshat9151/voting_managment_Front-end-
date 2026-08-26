@@ -22,7 +22,7 @@ import { FormInput } from '../components/ui/FormInput';
 import { TransliteratingTextInput, TransliteratingTextArea } from '../components/ui/TransliteratingTextInput';
 import { FileDropzone } from '../components/ui/FileDropzone';
 import { Button } from '../components/ui/Button';
-import { PosterTemplate } from '../components/studio/PosterTemplate';
+import { StudioTemplateRenderer, getTemplateDimensions } from '../components/studio/StudioTemplateRenderer';
 import { DesignTemplate } from '../types';
 
 const validateMediaFile = (file: File): { valid: boolean; error?: string } => {
@@ -224,15 +224,15 @@ export const DesignStudioPage: React.FC = () => {
     const updateScale = () => {
       if (previewContainerRef.current) {
         const containerW = previewContainerRef.current.clientWidth;
-        // Poster canvas is 1080px wide
-        const calculated = Math.min(0.55, Math.max(0.25, (containerW - 32) / 1080));
+        const targetW = getTemplateDimensions(selectedTemplate).width;
+        const calculated = Math.min(0.55, Math.max(0.18, (containerW - 32) / targetW));
         setPreviewScale(calculated);
       }
     };
     updateScale();
     window.addEventListener('resize', updateScale);
     return () => window.removeEventListener('resize', updateScale);
-  }, [view]);
+  }, [view, selectedTemplate]);
 
   const validateForm = (): boolean => {
     if (!candidateName.trim()) {
@@ -327,9 +327,10 @@ export const DesignStudioPage: React.FC = () => {
     try {
       if (document.fonts?.ready) await document.fonts.ready;
       await Promise.all(Array.from(node.querySelectorAll('img')).map((image) => image.decode().catch(() => undefined)));
+      const dims = getTemplateDimensions(selectedTemplate);
       const dataUrl = await toPng(node, {
-        width: 1080,
-        height: 1350,
+        width: dims.width,
+        height: dims.height,
         pixelRatio: 1,
         cacheBust: true,
         style: { transform: 'none', transformOrigin: 'top left' },
@@ -562,12 +563,12 @@ export const DesignStudioPage: React.FC = () => {
                 placeholder="e.g., 001"
               />
             </div>
-            <TransliteratingTextInput
+            <FormInput
               label="Contact Number"
+              type="tel"
               value={contactNumber}
               onChange={(e) => setContactNumber(e.target.value)}
               placeholder="+91 98XXXX XXXX"
-              alwaysTransliterate={true}
             />
           </Card>
 
@@ -675,10 +676,10 @@ export const DesignStudioPage: React.FC = () => {
           <Card className="sticky top-6 space-y-4 bg-slate-50/60 p-5">
             <div className="flex items-center justify-between pb-2 border-b border-slate-200">
               <span className="text-xs font-extrabold uppercase text-slate-500 tracking-wider">
-                Live Preview (1080 × 1350)
+                Live Preview ({getTemplateDimensions(selectedTemplate).width} × {getTemplateDimensions(selectedTemplate).height})
               </span>
               <Badge variant="mint" className="text-[10px]">
-                Official Template
+                {selectedTemplate?.category?.toUpperCase() || 'OFFICIAL TEMPLATE'}
               </Badge>
             </div>
 
@@ -689,16 +690,17 @@ export const DesignStudioPage: React.FC = () => {
             >
               <div
                 style={{
-                  width: `${1080 * previewScale}px`,
-                  height: `${1350 * previewScale}px`,
+                  width: `${getTemplateDimensions(selectedTemplate).width * previewScale}px`,
+                  height: `${getTemplateDimensions(selectedTemplate).height * previewScale}px`,
                   position: 'relative',
                   overflow: 'hidden',
                   borderRadius: '12px',
                   boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
                 }}
               >
-                <PosterTemplate
+                <StudioTemplateRenderer
                   ref={posterRef}
+                  template={selectedTemplate}
                   candidateName={candidateName}
                   position={position}
                   wardNo={wardNo}
@@ -734,12 +736,28 @@ const resolveAssetUrl = (url: string): string => {
 
 const getTemplateThumbnailUrl = (template: DesignTemplate): string => {
   const name = template.name.toLowerCase();
+  const id = (template.id || '').toLowerCase();
+
+  // 10 New Templates
+  if (name.includes('navy') || id.includes('navy')) return '/assets/royal_navy_gold.png';
+  if (name.includes('crimson') || id.includes('crimson') || name.includes('youth')) return '/assets/crimson_bold_youth.png';
+  if (name.includes('emerald') || id.includes('emerald') || (name.includes('vikas') && name.includes('poster'))) return '/assets/emerald_gram_vikas.png';
+  if (name.includes('tricolor') || id.includes('tricolor') || name.includes('gaurav')) return '/assets/tricolor_rashtriya_gaurav.png';
+  if (name.includes('purple') || id.includes('purple') || name.includes('elite')) return '/assets/royal_purple_elite.png';
+  if (name.includes('maroon') || id.includes('maroon') || name.includes('heritage')) return '/assets/maroon_heritage_sarpanch.png';
+  if (name.includes('whatsapp') || id.includes('whatsapp') || name.includes('status')) return '/assets/whatsapp_status_story.png';
+  if (name.includes('square') || id.includes('square') || name.includes('social')) return '/assets/square_social_post.png';
+  if (name.includes('hoarding') || id.includes('hoarding') || (name.includes('grand') && name.includes('banner'))) return '/assets/grand_victory_hoarding.png';
+  if (name.includes('patrika') || id.includes('patrika') || name.includes('manifesto')) return '/assets/gram_vikas_sankalp_patrika.png';
+
+  // 4 Original Templates
   if (name.includes('banner')) return '/assets/holdings.png';
-  if (name.includes('id card')) return '/assets/Id%20Card.png';
+  if (name.includes('id card') || id.includes('id-card')) return '/assets/Id%20Card.png';
   if (name.includes('pamphlet')) return '/assets/poster2.png';
   if (name.includes('poster')) return '/assets/Poster.png';
+
   if (template.thumbnail_url) return resolveAssetUrl(template.thumbnail_url);
-  return '';
+  return '/assets/Poster.png';
 };
 
 const toAssetUrl = resolveAssetUrl;
