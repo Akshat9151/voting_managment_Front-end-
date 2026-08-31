@@ -298,7 +298,7 @@ export const DesignStudioPage: React.FC = () => {
       const node = document.getElementById('poster-canvas-root');
       let previewImageUrl: string | undefined;
       if (node) {
-        const blob = await toBlob(node, { pixelRatio: 1, cacheBust: true });
+        const blob = await toBlob(node, { pixelRatio: 1, cacheBust: true, fontEmbedCSS: '' });
         if (blob) {
           const previewFile = new File([blob], `${candidateName.replace(/\s+/g, '_')}_poster.png`, { type: 'image/png' });
           const uploadedPreview = await designTemplatesApi.uploadAsset(previewFile);
@@ -372,6 +372,7 @@ export const DesignStudioPage: React.FC = () => {
         height: dims.height,
         pixelRatio: 1,
         cacheBust: true,
+        fontEmbedCSS: '',
         style: { transform: 'none', transformOrigin: 'top left' },
       });
       const link = document.createElement('a');
